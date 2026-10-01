@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { E2E_STORAGE_DIR } from "./tests/e2e/state";
 import { databaseUrlFor } from "./tests/setup/database";
 
 const PORT = 3100;
@@ -15,7 +16,13 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL: E2E_BASE_URL },
+  use: {
+    baseURL: E2E_BASE_URL,
+    // En entornos con Chromium preinstalado se puede indicar su ruta; en CI se instala.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+      : undefined,
+  },
   webServer: {
     command: `npx next start -p ${PORT}`,
     url: `${E2E_BASE_URL}/login`,
@@ -24,6 +31,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: E2E_DATABASE_URL,
       APP_URL: E2E_BASE_URL,
+      STORAGE_DIR: E2E_STORAGE_DIR,
     },
   },
 });

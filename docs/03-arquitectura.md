@@ -37,6 +37,8 @@ Navegador ──────▶│  UI (rutas /p/[projectId]/…)               
 | 006 | Salidas de IA en tablas propias, nunca sobrescriben datos originales | Separación original/IA (RE-07, RE-09) |
 | 007 | Métricas inmutables con fuente obligatoria; las correcciones son filas nuevas | No inventar métricas (RE-08), trazabilidad |
 | 008 | Ninguna ruta de código publica/envía sin aprobación humana registrada y acción humana explícita | RE-05 |
+| 009 | Archivos en un **disco persistente de Render** detrás del puerto `StorageProvider` (`src/lib/storage`). Se sirven solo por `/p/[projectId]/archivos/[assetId]`, que autoriza cada descarga; no hay URLs públicas ni firmadas. El tipo se detecta por contenido (sin SVG/HTML) y el máximo es 25 MB | Sin otro proveedor que contratar; un adaptador S3 (p. ej. Cloudflare R2 en la UE) se puede añadir sin tocar los módulos si el volumen crece |
+| 010 | Los enlaces externos (Drive, Canva) se admiten como referencia, marcados como "pueden cambiar fuera del Hub" | Lo aprobable de verdad son los archivos subidos, que son inmutables |
 
 ## 3.2 Módulos y límites de responsabilidad
 
@@ -130,7 +132,8 @@ marketing-project-hub/
 └── docker-compose.yml            # Postgres + almacenamiento S3 local para desarrollo
 ```
 
-> **Estado tras F0–F1:** existen los módulos `identity`, `access`, `projects` y `audit`. Las
+> **Estado tras F2:** existen los módulos `identity`, `access`, `projects`, `audit`, `cycles` y
+> `content` (este último incluye por ahora los comentarios). Las
 > piezas comunes de la UI están en `src/lib/project-page.ts` (entrada obligatoria de toda página
 > o acción de proyecto) y `src/modules/identity/next.ts` (cookies y sesión en Next.js). Las
 > pruebas viven en `tests/isolation`, `tests/integration`, `tests/lint` y `tests/e2e`.

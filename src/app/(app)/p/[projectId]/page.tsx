@@ -1,18 +1,23 @@
 import Link from "next/link";
+import { ActionForm } from "@/components/action-form";
 import { projectContextForPage } from "@/lib/project-page";
+import { formatPeriod, nextPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ROLE_LABELS } from "@/modules/access/permissions";
 import { listProjectMembers } from "@/modules/access/service";
 import { PLATFORMS } from "@/modules/projects/catalog";
+import { CYCLE_STATUS_LABELS, listCycles } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
+import { openCycleAction } from "./actions";
 
 export default async function ProjectPage({ params }: PageProps<"/p/[projectId]">) {
   const { projectId } = await params;
   const ctx = await projectContextForPage(projectId);
-  const [project, channels, members] = await Promise.all([
+  const [project, channels, members, cycles] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     listProjectMembers(ctx),
+    listCycles(ctx),
   ]);
 
   return (
@@ -33,6 +38,38 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
           </Link>
         )}
       </div>
+
+      <section className="card flex flex-col gap-3">
+        <h2 className="h2">Ciclos mensuales</h2>
+        {cycles.length === 0 ? (
+          <p className="text-sm text-muted">Todavía no hay ciclos.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border">
+            {cycles.map((c) => (
+              <li key={c.id} className="flex items-center justify-between py-2">
+                <Link href={`/p/${projectId}/ciclos/${c.period}`} className="link font-medium">
+                  {formatPeriod(c.period, project.locale)}
+                </Link>
+                <span className="badge">{CYCLE_STATUS_LABELS[c.status]}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {hasPermission(ctx, "cycle.manage") && (
+          <ActionForm action={openCycleAction.bind(null, projectId)} submitLabel="Abrir ciclo">
+            <label className="field">
+              Mes
+              <input
+                type="month"
+                name="period"
+                className="input"
+                defaultValue={nextPeriod(new Date(), project.timezone)}
+                required
+              />
+            </label>
+          </ActionForm>
+        )}
+      </section>
 
       <section className="card">
         <h2 className="h2">Canales</h2>
@@ -87,10 +124,6 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
         </table>
       </section>
 
-      <section className="card text-sm text-muted">
-        El ciclo mensual (planificación, contenidos, aprobación, métricas e informe) llega en las
-        siguientes fases del plan.
-      </section>
     </div>
   );
 }

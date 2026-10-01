@@ -109,7 +109,8 @@ Las pruebas SV-01..03 se **generan** recorriendo el registro de servicios export
 | Fixture de dos proyectos con marcadores | ✅ | `tests/fixtures/two-projects.ts` |
 | DB-06 (toda tabla con `project_id` tiene FK a projects; toda FK hacia tabla de proyecto es compuesta; tablas referenciables por `(project_id, id)`) | ✅ | `tests/isolation/db-schema.test.ts` |
 | DB-07 (auditoría inmutable: UPDATE, DELETE y TRUNCATE prohibidos) | ✅ | `tests/isolation/db-schema.test.ts` |
-| DB-01..05 | ⏳ F2–F5 | Llegan con las tablas de contenidos, aprobaciones, métricas e IA; DB-06 obliga a que cumplan el patrón |
+| DB-01, DB-02 y referencias cruzadas de piezas y comentarios; CHECK de la clave de archivo; inmutabilidad de versiones y archivos | ✅ F2 | `tests/isolation/db-content.test.ts` |
+| DB-03..05 | ⏳ F3–F5 | Con aprobaciones, métricas e IA; DB-06 obliga a que cumplan el patrón |
 | SV-01..03, generadas desde el registro de servicios; la prueba falla si un servicio nuevo no está clasificado | ✅ | `tests/isolation/service-isolation.test.ts` + `service-cases.ts` |
 | SV-05 (rol distinto en cada proyecto), SV-06 (retirar la membresía corta el acceso) | ✅ | `tests/isolation/access.test.ts` |
 | HT-01 (todas las páginas de `/p/[projectId]`, descubiertas leyendo el sistema de ficheros) | ✅ | `tests/e2e/route-isolation.spec.ts` |
@@ -117,6 +118,11 @@ Las pruebas SV-01..03 se **generan** recorriendo el registro de servicios export
 | HT-04 (sin sesión, sesión falsa o usuario desactivado ⇒ login) | ✅ | `tests/e2e/route-isolation.spec.ts` |
 | HT-05 (denegaciones auditadas) | ✅ | `tests/isolation/access.test.ts` |
 | Fronteras entre capas (lint) | ✅ | `tests/lint/boundaries.test.ts` |
-| FS-*, AI-*, JB-*, EX-*, WF-* | ⏳ | Con sus fases (F2–F5) |
+| HT-02 (proyecto A en la URL con una pieza de B) | ✅ F2 | `tests/e2e/route-isolation.spec.ts` |
+| FS-01 (archivo de B pedido desde A o con la URL de B ⇒ 404; sin sesión ⇒ 401), cabeceras seguras | ✅ F2 | `tests/e2e/route-isolation.spec.ts` |
+| FS-02 (clave siempre bajo el prefijo del proyecto) | ✅ F2 | CHECK en BD + `tests/integration/content.test.ts` |
+| FS-03 (sin acceso directo) | ✅ por diseño | El disco no se expone; solo la ruta autorizada sirve archivos |
+| E2E-01 (navegador real: recorrer A y manipular la URL hacia B) | ✅ F2 | `tests/e2e/browser.spec.ts` |
+| AI-*, JB-*, EX-*, WF-* | ⏳ | Con sus fases (F3–F5) |
 
-Comprobación de que las pruebas detectan fugas: al quitar a propósito el filtro `project_id` de dos consultas de canales, fallan SV-01 y SV-02/03 en esas funciones.
+Comprobación de que las pruebas detectan fugas: al quitar a propósito el filtro `project_id` de dos consultas de canales, fallan SV-01 y SV-02/03 en esas funciones; al quitarlo de la búsqueda de archivos, falla SV-02 de `getAssetFile` (y `removeAsset` sigue protegido por una segunda comprobación).

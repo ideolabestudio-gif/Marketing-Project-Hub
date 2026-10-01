@@ -40,5 +40,7 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
-      - name: Pruebas HTTP de aislamiento (E2E)
+      - name: Navegador para las pruebas E2E
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas HTTP y de navegador de aislamiento (E2E)
         run: npm run test:e2e

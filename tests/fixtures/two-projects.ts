@@ -6,6 +6,9 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { channels, clients, projectMemberships, projects, users } from "@/lib/db/schema";
+import { requireProjectAccess } from "@/modules/access/context";
+import { addComment, createItem, getItemDetail, saveVersion, uploadAsset } from "@/modules/content/service";
+import { openCycle } from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
 import { MARKER_A, MARKER_B } from "./markers";
 
@@ -73,23 +76,59 @@ export async function seedTwoProjects() {
     { projectId: projectB.id, userId: mix.id, role: "editor" },
   ]);
 
+  const actors = {
+    ana: toActor(ana),
+    edu: toActor(edu),
+    bea: toActor(bea),
+    mix: toActor(mix),
+    rev: toActor(rev),
+    admin: toActor(admin),
+  };
+  const contentA = await seedContent(actors.ana, projectA.id, channelA.id, MARKER_A);
+  const contentB = await seedContent(actors.bea, projectB.id, channelB.id, MARKER_B);
+
   return {
     users: { ana, edu, bea, mix, rev, admin },
-    actors: {
-      ana: toActor(ana),
-      edu: toActor(edu),
-      bea: toActor(bea),
-      mix: toActor(mix),
-      rev: toActor(rev),
-      admin: toActor(admin),
-    },
+    actors,
     clientA,
     clientB,
     projectA,
     projectB,
     channelA,
     channelB,
+    contentA,
+    contentB,
   };
+}
+
+/** PNG real de 1×1 píxel. */
+export const TINY_PNG = Uint8Array.from(
+  Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"),
+);
+
+/** El mismo periodo (2026-10) en ambos proyectos: el aislamiento no puede depender del mes. */
+export const FIXTURE_PERIOD = "2026-10";
+
+/**
+ * Contenido de un proyecto creado con los servicios reales: ciclo, pieza con dos
+ * versiones (texto y luego archivo) y un comentario. Todo lleva el marcador.
+ */
+async function seedContent(manager: Actor, projectId: string, channelId: string, marker: string) {
+  const ctx = await requireProjectAccess(manager, projectId);
+  const cycle = await openCycle(ctx, { period: FIXTURE_PERIOD });
+  const item = await createItem(ctx, {
+    cycleId: cycle.id,
+    channelId,
+    format: "post",
+    title: `Pieza ${marker}`,
+    plannedAt: `${FIXTURE_PERIOD}-05T10:00`,
+  });
+  await saveVersion(ctx, { itemId: item.id, body: `Copy ${marker} con #hashtag`, note: `v1 ${marker}` });
+  const v2 = await uploadAsset(ctx, { itemId: item.id, filename: `imagen-${marker}.png`, bytes: TINY_PNG });
+  const detail = await getItemDetail(ctx, item.id);
+  const asset = detail.currentAssets[0];
+  await addComment(ctx, { itemId: item.id, body: `Comentario ${marker}` });
+  return { cycle, item, latestVersionId: v2.id, asset };
 }
 
 export type Fixture = Awaited<ReturnType<typeof seedTwoProjects>>;

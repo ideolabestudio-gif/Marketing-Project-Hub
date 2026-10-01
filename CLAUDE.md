@@ -19,11 +19,14 @@ Aplicación interna de Ideolab para el ciclo mensual de redes sociales y email m
 - La UI (`src/app`, `src/components`) no importa `@/lib/db` ni ningún `repo.ts` (lo impide el lint).
 - Tablas nuevas con datos de cliente: `project_id NOT NULL` con FK a `projects`, `UNIQUE (project_id, id)` y FKs compuestas `(project_id, x_id)` hacia otras tablas de proyecto. Lo comprueba `tests/isolation/db-schema.test.ts`.
 - Esquema en `src/lib/db/schema/`; migraciones con `npm run db:generate` (nunca edites a mano una migración ya publicada).
+- Archivos: solo mediante `src/lib/storage` desde los servicios; se sirven únicamente por `/p/[projectId]/archivos/[assetId]` tras autorizar. Nunca URLs públicas.
+- Versiones de contenido, sus archivos y la auditoría son inmutables (triggers): cambiar algo = crear una fila nueva.
 - Textos de la UI en español.
 
 ## Al añadir funcionalidad
 - Cada función nueva exportada por un `service.ts` debe añadirse a `tests/isolation/service-cases.ts` (si no, falla la prueba de cobertura). Si recibe IDs de recursos, define su caso `foreign` con IDs del proyecto B.
-- Cada página nueva bajo `/p/[projectId]` queda cubierta automáticamente por `tests/e2e/route-isolation.spec.ts`; si tiene segmentos dinámicos adicionales, añade valores de ejemplo en `fill()`.
+- Cada página nueva bajo `/p/[projectId]` queda cubierta automáticamente por `tests/e2e/route-isolation.spec.ts`; si tiene segmentos dinámicos nuevos, añade su valor de ejemplo en `fill()` y en `tests/e2e/seed.ts`.
+- Datos de ejemplo para pruebas: amplía `tests/fixtures/two-projects.ts` en los DOS proyectos, con el marcador de cada uno.
 - Registra en auditoría (`recordAudit`) toda escritura relevante.
 
 ## Comandos

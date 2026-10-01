@@ -82,7 +82,7 @@ Necesito confirmación de Ideolab en estos puntos antes de implementar. Entre pa
 | D-03 | **Los clientes no entran** en la herramienta. Su aprobación la registra el equipo con evidencia | Menos superficie de ataque; se revisará después del hito |
 | D-04 | Publicaciones con **Metricool**; emails con **MailerLite** | Son los candidatos a las primeras integraciones (doc. 07), siempre tras verificarlas |
 | D-06 | **Render, región Frankfurt (UE)**: servicio web + PostgreSQL gestionado (doc. 09) | Sin servidores que mantener, despliegue desde GitHub, datos en la UE |
-| D-10 | **Pendiente**: cliente piloto | Tiene que elegirlo Ideolab. Recomendación: un cliente con volumen medio, 2–3 redes y newsletter, interlocutor ágil para aprobar y buena relación para tolerar el periodo de prueba |
+| D-10 | Cliente piloto: **Cerveza Byra** | Elegido por Ideolab |
 
 D-05, D-07, D-08 y D-09 mantienen la opción por defecto hasta que haga falta decidirlas (fases F2–F5).
 
