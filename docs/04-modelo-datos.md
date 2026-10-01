@@ -242,6 +242,14 @@ CREATE TABLE content_versions (
 );
 ```
 
-## 4.5 Endurecimiento opcional (fase posterior)
+## 4.5 Implementado en F2 (diferencias con el diseño)
+
+- `cycles`: `status` incluye `closed`, pero en F2 no se puede cerrar a mano (llega con el informe en F4). Un ciclo cerrado es de solo lectura.
+- `content_versions`: inmutable por trigger. `origin` solo admite `human` (CHECK) hasta que exista `ai_generations` en F5; entonces se añadirá `ai_generation_id` y se relajará el CHECK.
+- `assets`: `kind` = `file` (subido, con `sha256` y clave obligatoriamente bajo `projects/{project_id}/`, comprobado por CHECK) o `link` (enlace externo). Inmutable por trigger.
+- `content_version_assets`: los archivos se ligan a la **versión** (no a la pieza): lo aprobado en F3 incluirá exactamente esos archivos. Inmutable.
+- `comments`: sobre una pieza y ligados a la versión vigente en ese momento (`content_version_id`), con FKs compuestas en lugar de la FK polimórfica prevista.
+
+## 4.6 Endurecimiento opcional (fase posterior)
 
 Activar **Row Level Security** de PostgreSQL en todas las tablas con `project_id`, fijando `SET LOCAL app.project_ids = …` por transacción. No se activa en el MVP para no complicar el acceso a datos, pero el modelo ya lo permite sin cambios de esquema.

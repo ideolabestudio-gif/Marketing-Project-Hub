@@ -13,8 +13,8 @@ const NO_DB = {
   message: "Solo los repo.ts de cada módulo acceden a la base de datos.",
 };
 const NO_DB_SCHEMA = {
-  group: ["@/lib/db", "@/lib/db/*", "@/lib/db/**"],
-  message: "La UI no accede a la base de datos: usa los servicios de los módulos.",
+  group: ["@/lib/db", "@/lib/db/*", "@/lib/db/**", "@/lib/storage", "@/lib/storage/*"],
+  message: "La UI no accede a la base de datos ni al almacenamiento: usa los servicios de los módulos.",
 };
 
 const eslintConfig = defineConfig([

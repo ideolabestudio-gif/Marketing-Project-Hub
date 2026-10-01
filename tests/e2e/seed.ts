@@ -16,6 +16,18 @@ async function main() {
   const state: E2EState = {
     projectA: fx.projectA.id,
     projectB: fx.projectB.id,
+    a: {
+      projectId: fx.projectA.id,
+      period: fx.contentA.cycle.period,
+      itemId: fx.contentA.item.id,
+      assetId: fx.contentA.asset.id,
+    },
+    b: {
+      projectId: fx.projectB.id,
+      period: fx.contentB.cycle.period,
+      itemId: fx.contentB.item.id,
+      assetId: fx.contentB.asset.id,
+    },
     tokens: {
       ana: await token(fx.users.ana.id),
       edu: await token(fx.users.edu.id),

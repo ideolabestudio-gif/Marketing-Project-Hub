@@ -28,14 +28,15 @@ Por qué Render: no hay servidores que mantener, despliega solo al hacer push a 
 | `BOOTSTRAP_ADMIN_EMAILS` | Tu email de Google (o varios, separados por comas). Entrarán como administradores la primera vez |
 | `AUTH_GOOGLE_HOSTED_DOMAIN` | Solo si usáis Google Workspace: vuestro dominio (p. ej. `ideolab.es`). Si no, déjala vacía |
 
-3. Confirma. En cada despliegue se ejecuta `npm ci && npm run build`, y al arrancar `npm run db:migrate && npm run start` (las migraciones son idempotentes).
-4. Comprueba `https://<tu-servicio>/health` → `{"ok":true}`.
+3. El Blueprint crea también un **disco persistente** de 10 GB montado en `/var/data` para los archivos subidos (`STORAGE_DIR=/var/data/storage`). Requiere plan de pago; revisa en el panel que el disco tenga copias (instantáneas).
+4. Confirma. En cada despliegue se ejecuta `npm ci && npm run build`, y al arrancar `npm run db:migrate && npm run start` (las migraciones son idempotentes).
+5. Comprueba `https://<tu-servicio>/health` → `{"ok":true}`.
 
 ## 9.3 Primer acceso
 
 1. Entra en la URL y pulsa **Entrar con Google** con un email de `BOOTSTRAP_ADMIN_EMAILS`.
 2. En **Administración → Usuarios**, da de alta al resto del equipo (solo podrán entrar los emails dados de alta).
-3. En **Administración → Clientes y proyectos**, crea el cliente piloto y su proyecto, entra en **Miembros** y asigna roles (incluido el tuyo: el administrador no ve los datos de un proyecto si no es miembro).
+3. En **Administración → Clientes y proyectos**, crea el cliente piloto (Cerveza Byra) y su proyecto, entra en **Miembros** y asigna roles (incluido el tuyo: el administrador no ve los datos de un proyecto si no es miembro).
 4. En el proyecto, **Ajustes → Canales**: añade sus redes y la newsletter.
 
 ## 9.4 Copias de seguridad (criterio de F0)

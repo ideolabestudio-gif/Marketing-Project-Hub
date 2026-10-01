@@ -7,7 +7,7 @@ export type ActionState = { ok: boolean; message?: string } | undefined;
  * Ejecuta una acción y traduce los errores de dominio a un mensaje para el formulario.
  * Cualquier otro error (incluidos redirect/notFound de Next) se propaga.
  */
-export async function runAction(fn: () => Promise<void>, successMessage = "Guardado"): Promise<ActionState> {
+export async function runAction(fn: () => Promise<unknown>, successMessage = "Guardado"): Promise<ActionState> {
   try {
     await fn();
     return { ok: true, message: successMessage };

@@ -29,3 +29,13 @@ export async function projectContextForAction(
   const actor = await requireActor();
   return requireProjectAccess(actor, projectId, permission);
 }
+
+/** Para páginas: convierte NotFoundError/ForbiddenError de un servicio en un 404. */
+export async function orNotFound<T>(promise: Promise<T>): Promise<T> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (err instanceof NotFoundError || err instanceof ForbiddenError) notFound();
+    throw err;
+  }
+}

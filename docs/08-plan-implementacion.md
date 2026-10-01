@@ -32,15 +32,17 @@ La IA (F5) va después del hito a propósito: el ciclo debe funcionar sin IA. Si
 - [x] HT-01, HT-03, HT-04, HT-05, SV-05, SV-06, DB-06 pasan.
 - [x] Desactivar un usuario invalida sus sesiones activas.
 
-### F2 · Ciclo mensual y contenidos
-**Alcance:** abrir ciclo `AAAA-MM`, brief, vista de calendario y de lista, piezas por canal y formato, versiones inmutables con historial y comparación, subida de activos con URLs firmadas, comentarios.
+### F2 · Ciclo mensual y contenidos — ✅ hecho
+**Alcance:** abrir ciclo `AAAA-MM`, brief, vista de calendario y de lista, piezas por canal y formato, versiones inmutables con historial y comparación, subida de archivos servidos solo tras autorizar (y enlaces externos), comentarios.
 
 **Criterios de aceptación**
-- [ ] Se crea el ciclo de un mes para un proyecto; no se puede duplicar el mismo mes.
-- [ ] Se planifican piezas en el calendario con fecha en la zona horaria del proyecto.
-- [ ] Editar una pieza crea una versión nueva; las anteriores se pueden consultar y comparar.
-- [ ] Los activos solo se descargan con URL firmada y tras autorización (FS-01..03).
-- [ ] DB-01, DB-02, SV-01..04 y E2E-01 pasan.
+- [x] Se crea el ciclo de un mes para un proyecto; no se puede duplicar el mismo mes.
+- [x] Se planifican piezas en el calendario con fecha en la zona horaria del proyecto (probado con cambio de horario).
+- [x] Editar una pieza crea una versión nueva; las anteriores se pueden consultar y comparar (palabra a palabra, y archivos añadidos o quitados).
+- [x] Los archivos solo se descargan tras autorización, por una ruta que comprueba la membresía en cada petición (FS-01..03). Se descartan las URLs firmadas: no hacen falta con almacenamiento en disco propio.
+- [x] DB-01, DB-02, SV-01..04, HT-02 y E2E-01 pasan.
+
+Pendiente fuera del código: en Render, el disco persistente (`render.yaml`) necesita plan de pago.
 
 ### F3 · Revisión, aprobación y publicación manual
 **Alcance:** máquina de estados de revisión, aprobación interna, registro de aprobación del cliente con evidencia, separación de funciones, registro manual de publicación/programación (fecha, URL, ID externo), panel de pendientes.
@@ -101,6 +103,6 @@ Candidatos: RLS en PostgreSQL, portal de aprobación para clientes (D-03), adapt
 
 ## Próximos pasos
 
-1. **Ideolab**: crear el cliente OAuth en Google Cloud y el Blueprint en Render siguiendo el doc. 09 (unos 20 minutos), y elegir el **cliente piloto** (D-10).
-2. Comprobar en el entorno desplegado el login real con Google, configurar las copias de seguridad y probar una restauración (cierra F0).
-3. Empezar **F2 · Ciclo mensual y contenidos**.
+1. **Ideolab**: terminar la configuración de Render (doc. 09), comprobar el login real con Google y las copias de seguridad (cierra F0).
+2. Probar F2 con datos reales de **Cerveza Byra**: abrir el ciclo del mes, cargar las piezas y apuntar las fricciones.
+3. Empezar **F3 · Revisión, aprobación y publicación manual**.

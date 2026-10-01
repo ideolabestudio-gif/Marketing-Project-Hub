@@ -30,6 +30,12 @@ async function projectFingerprint(projectId: string): Promise<string> {
     db.execute(sql`SELECT * FROM projects WHERE id = ${projectId}`),
     db.execute(sql`SELECT * FROM channels WHERE project_id = ${projectId} ORDER BY id`),
     db.execute(sql`SELECT * FROM project_memberships WHERE project_id = ${projectId} ORDER BY user_id`),
+    db.execute(sql`SELECT * FROM cycles WHERE project_id = ${projectId} ORDER BY id`),
+    db.execute(sql`SELECT * FROM content_items WHERE project_id = ${projectId} ORDER BY id`),
+    db.execute(sql`SELECT * FROM content_versions WHERE project_id = ${projectId} ORDER BY id`),
+    db.execute(sql`SELECT * FROM content_version_assets WHERE project_id = ${projectId} ORDER BY content_version_id, position`),
+    db.execute(sql`SELECT * FROM assets WHERE project_id = ${projectId} ORDER BY id`),
+    db.execute(sql`SELECT * FROM comments WHERE project_id = ${projectId} ORDER BY id`),
   ]);
   return JSON.stringify(parts);
 }
