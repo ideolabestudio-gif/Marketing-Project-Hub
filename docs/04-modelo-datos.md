@@ -40,9 +40,9 @@ Notación: `PK` clave primaria, `FK(project_id, x)` FK compuesta, `U` única.
 
 ### Identidad y acceso
 
-**users** — `id PK`, `email U`, `name`, `is_admin bool default false`, `is_active bool`, `created_at`, `last_login_at`
-**sessions / accounts** — las que requiera la librería de autenticación (sesiones en BD, revocables).
-**allowed_emails** — `email PK`, `invited_by FK users`, `created_at` (lista de quién puede entrar).
+**users** — `id PK`, `email U` (en minúsculas), `name`, `google_sub U` (se vincula en el primer login), `is_admin bool default false`, `is_active bool`, `created_at`, `created_by`, `last_login_at`. Esta tabla **es** la lista de permitidos: un administrador da de alta el email y solo entonces puede iniciar sesión.
+
+**sessions** — `id PK` (SHA-256 del token; el token solo está en la cookie), `user_id FK`, `created_at`, `last_seen_at`, `expires_at`. Caducan a los 30 días o tras 8 h sin actividad; desactivar un usuario borra sus sesiones.
 
 **project_memberships**
 | Columna | Tipo | Notas |

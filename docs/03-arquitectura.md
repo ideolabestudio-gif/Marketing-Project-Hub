@@ -130,7 +130,16 @@ marketing-project-hub/
 └── docker-compose.yml            # Postgres + almacenamiento S3 local para desarrollo
 ```
 
-Reglas comprobadas automáticamente (lint con `eslint-plugin-boundaries` o `dependency-cruiser`):
+> **Estado tras F0–F1:** existen los módulos `identity`, `access`, `projects` y `audit`. Las
+> piezas comunes de la UI están en `src/lib/project-page.ts` (entrada obligatoria de toda página
+> o acción de proyecto) y `src/modules/identity/next.ts` (cookies y sesión en Next.js). Las
+> pruebas viven en `tests/isolation`, `tests/integration`, `tests/lint` y `tests/e2e`.
+>
+> Los repositorios pueden **leer** tablas de otros módulos mediante JOIN para listados
+> (p. ej. `access` lee `projects` para "mis proyectos"), pero solo **escriben** en las suyas.
+
+Reglas comprobadas automáticamente (`no-restricted-imports` en `eslint.config.mjs`, verificadas por `tests/lint/boundaries.test.ts`):
 - `src/app/**` no puede importar `src/lib/db/**` ni `modules/*/repo.ts`.
 - `modules/X/**` no puede importar `modules/Y/repo.ts` (solo `modules/Y/service.ts`).
-- Ningún módulo salvo `integrations` y los `providers/` puede hacer llamadas HTTP salientes.
+- Solo los `repo.ts` importan el cliente de base de datos.
+- Ningún módulo salvo `integrations` y los `providers/` puede hacer llamadas HTTP salientes (regla por automatizar cuando existan integraciones).

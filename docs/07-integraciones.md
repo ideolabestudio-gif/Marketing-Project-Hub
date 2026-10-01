@@ -27,10 +27,19 @@ Para cada proveedor, antes de implementar:
 7. **Modo de fallo**: qué pasa si caduca el token o la API cambia; cómo se vuelve a modo manual.
 8. **Decisión**: implementar / posponer / descartar, y capacidades que se habilitarán.
 
-## 7.3 Observaciones iniciales (sin verificar)
+## 7.3 Herramientas de Ideolab (confirmado) y observaciones sin verificar
 
-- En el entorno de trabajo de esta sesión hay disponible un **conector de Metricool**. Los nombres de sus herramientas sugieren funciones de programación de publicaciones, envío de publicaciones a revisión y consulta de analítica. Esto **no** confirma qué ofrece su API para una integración propia, en qué plan, ni con qué condiciones: debe pasar el protocolo anterior. Si Ideolab ya usa Metricool, es un buen candidato a primer adaptador, empezando por **lectura de métricas** y **envío a revisión** (no publicación directa).
-- Las APIs de plataformas sociales suelen requerir procesos de revisión de aplicación y permisos específicos que pueden tardar semanas; por eso no deben estar en el camino crítico del primer ciclo completo.
+Ideolab usa **Metricool** para programar publicaciones y **MailerLite** para email marketing. Ambos son los primeros candidatos a integración y ambos tienen que pasar el protocolo anterior antes de escribir código.
+
+| Herramienta | Uso en el Hub (propuesto) | Qué hay que verificar (no se da nada por supuesto) |
+|-------------|---------------------------|----------------------------------------------------|
+| Metricool | 1) Importar métricas de redes para el informe. 2) Enviar a Metricool como borrador o "pendiente de revisión" una pieza ya aprobada en el Hub | Si existe API para integraciones propias y en qué plan; cómo se autentica; si una cuenta de agencia accede a varias marcas y cómo se separan (encaje con el aislamiento por proyecto); qué métricas devuelve y con qué definición; si permite crear publicaciones sin publicarlas |
+| MailerLite | 1) Importar estadísticas de campañas enviadas (aperturas, clics, bajas…). 2) Más adelante, crear la campaña como borrador en MailerLite | API disponible y plan necesario; si se usa una clave de API por cuenta de cliente (encaja con credenciales por proyecto); qué estadísticas expone; que crear un borrador no implique programar ni enviar |
+
+Notas:
+- En el entorno de trabajo de estas sesiones hay disponible un conector de Metricool. Los nombres de sus herramientas sugieren funciones de programación, envío a revisión y analítica. Esto **no** confirma qué ofrece su API para una integración propia, ni en qué plan.
+- Las listas de suscriptores se quedan en MailerLite (supuesto S-04): el Hub solo guardaría estadísticas agregadas de campañas.
+- Las APIs de plataformas sociales suelen requerir revisión de aplicación y permisos que pueden tardar semanas; por eso no deben estar en el camino crítico del primer ciclo completo.
 
 ## 7.4 Orden recomendado
 

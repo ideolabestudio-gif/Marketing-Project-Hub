@@ -12,25 +12,25 @@ La IA (F5) va después del hito a propósito: el ciclo debe funcionar sin IA. Si
 
 ---
 
-### F0 · Cimientos
-**Alcance:** repositorio, Next.js + TypeScript estricto, Drizzle + migraciones, Docker Compose (Postgres + S3 local), lint con reglas de fronteras entre módulos, Vitest + Testcontainers, Playwright, CI en GitHub Actions, despliegue en entorno de pruebas (región UE), copias de seguridad de BD.
+### F0 · Cimientos — ✅ código hecho · ⏳ despliegue pendiente de cuentas
+**Alcance:** repositorio, Next.js + TypeScript estricto, Drizzle + migraciones, Docker Compose (Postgres local), lint con reglas de fronteras entre módulos, Vitest y Playwright contra PostgreSQL real, CI en GitHub Actions, despliegue en Render (Frankfurt), copias de seguridad de BD. El almacenamiento de ficheros (S3) se añade en F2, cuando haga falta.
 
 **Criterios de aceptación**
-- [ ] `docker compose up` + un comando levanta la app en local.
-- [ ] CI ejecuta lint, typecheck y pruebas; un PR con error de tipos o de lint falla.
-- [ ] Una importación prohibida (p. ej. `app/` → `lib/db`) hace fallar el lint.
-- [ ] Despliegue automático a pruebas desde la rama principal; migraciones aplicadas.
-- [ ] Copia de seguridad diaria configurada y **una restauración probada**.
+- [x] `docker compose up -d db` + `npm run db:migrate` + `npm run dev` levantan la app en local.
+- [x] CI ejecuta lint, tipos, comprobación de migraciones, pruebas, build y pruebas HTTP; un error de tipos o de lint hace fallar el PR.
+- [x] Una importación prohibida (p. ej. `app/` → `lib/db`) hace fallar el lint (`tests/lint/boundaries.test.ts`).
+- [ ] Despliegue automático desde `main`, con migraciones al arrancar (preparado en `render.yaml`; falta crear el servicio en Render, ver doc. 09).
+- [ ] Copia de seguridad diaria configurada y **una restauración probada** (tras crear la BD en Render).
 
-### F1 · Identidad, proyectos y aislamiento
+### F1 · Identidad, proyectos y aislamiento — ✅ hecho (falta probar el login real con Google tras el despliegue)
 **Alcance:** login con Google + lista de permitidos, sesiones, administración de clientes/proyectos/canales/usuarios/membresías, `requireProjectAccess`, matriz de permisos, auditoría, fixture de dos proyectos y **toda la infraestructura de pruebas de aislamiento** (doc. 06).
 
 **Criterios de aceptación**
-- [ ] Un email no permitido no puede entrar; el intento queda auditado.
-- [ ] El admin crea un cliente, un proyecto con zona horaria y canales, y asigna roles.
-- [ ] Un usuario solo ve en "mis proyectos" aquellos con membresía.
-- [ ] HT-01, HT-03, HT-04, HT-05, SV-05, SV-06, DB-06 pasan en CI.
-- [ ] Desactivar un usuario invalida sus sesiones activas.
+- [x] Un email no permitido no puede entrar; el intento queda auditado (lógica probada en `identity.test.ts`; el intercambio con Google se probará con credenciales reales).
+- [x] El admin crea un cliente, un proyecto con zona horaria y canales, y asigna roles (probado también en navegador).
+- [x] Un usuario solo ve en "mis proyectos" aquellos con membresía.
+- [x] HT-01, HT-03, HT-04, HT-05, SV-05, SV-06, DB-06 pasan.
+- [x] Desactivar un usuario invalida sus sesiones activas.
 
 ### F2 · Ciclo mensual y contenidos
 **Alcance:** abrir ciclo `AAAA-MM`, brief, vista de calendario y de lista, piezas por canal y formato, versiones inmutables con historial y comparación, subida de activos con URLs firmadas, comentarios.
@@ -99,11 +99,8 @@ Candidatos: RLS en PostgreSQL, portal de aprobación para clientes (D-03), adapt
 
 ---
 
-## Qué necesito para empezar F0
+## Próximos pasos
 
-Confirmación (o corrección) de las decisiones D-01 a D-10 del doc. 01, en especial:
-1. **D-01** Lenguaje del equipo (TypeScript ⇒ Next.js; Python ⇒ Django).
-2. **D-02** ¿Ideolab usa Google Workspace?
-3. **D-04** Herramientas actuales de programación, email marketing y analítica.
-4. **D-06** Preferencia de alojamiento.
-5. **D-10** Cliente piloto.
+1. **Ideolab**: crear el cliente OAuth en Google Cloud y el Blueprint en Render siguiendo el doc. 09 (unos 20 minutos), y elegir el **cliente piloto** (D-10).
+2. Comprobar en el entorno desplegado el login real con Google, configurar las copias de seguridad y probar una restauración (cierra F0).
+3. Empezar **F2 · Ciclo mensual y contenidos**.

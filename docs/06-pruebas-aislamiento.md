@@ -101,3 +101,22 @@ Las pruebas SV-01..03 se **generan** recorriendo el registro de servicios export
 - La suite `tests/isolation` y `WF-*` se ejecuta en cada PR y **bloquea el merge** si falla.
 - Cobertura obligatoria: todo servicio exportado y toda ruta bajo `/p/[projectId]` deben aparecer en las matrices generadas (la prueba falla si hay uno sin cubrir).
 - Cualquier tabla nueva debe pasar DB-06.
+
+## 6.5 Estado de implementación (tras F1)
+
+| Prueba | Estado | Dónde |
+|--------|--------|-------|
+| Fixture de dos proyectos con marcadores | ✅ | `tests/fixtures/two-projects.ts` |
+| DB-06 (toda tabla con `project_id` tiene FK a projects; toda FK hacia tabla de proyecto es compuesta; tablas referenciables por `(project_id, id)`) | ✅ | `tests/isolation/db-schema.test.ts` |
+| DB-07 (auditoría inmutable: UPDATE, DELETE y TRUNCATE prohibidos) | ✅ | `tests/isolation/db-schema.test.ts` |
+| DB-01..05 | ⏳ F2–F5 | Llegan con las tablas de contenidos, aprobaciones, métricas e IA; DB-06 obliga a que cumplan el patrón |
+| SV-01..03, generadas desde el registro de servicios; la prueba falla si un servicio nuevo no está clasificado | ✅ | `tests/isolation/service-isolation.test.ts` + `service-cases.ts` |
+| SV-05 (rol distinto en cada proyecto), SV-06 (retirar la membresía corta el acceso) | ✅ | `tests/isolation/access.test.ts` |
+| HT-01 (todas las páginas de `/p/[projectId]`, descubiertas leyendo el sistema de ficheros) | ✅ | `tests/e2e/route-isolation.spec.ts` |
+| HT-03 (matriz rol × permiso igual a la documentada y aplicada contra BD) | ✅ | `tests/isolation/access.test.ts` |
+| HT-04 (sin sesión, sesión falsa o usuario desactivado ⇒ login) | ✅ | `tests/e2e/route-isolation.spec.ts` |
+| HT-05 (denegaciones auditadas) | ✅ | `tests/isolation/access.test.ts` |
+| Fronteras entre capas (lint) | ✅ | `tests/lint/boundaries.test.ts` |
+| FS-*, AI-*, JB-*, EX-*, WF-* | ⏳ | Con sus fases (F2–F5) |
+
+Comprobación de que las pruebas detectan fugas: al quitar a propósito el filtro `project_id` de dos consultas de canales, fallan SV-01 y SV-02/03 en esas funciones.

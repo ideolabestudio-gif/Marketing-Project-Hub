@@ -2,7 +2,17 @@
 
 Aplicación web interna de Ideolab para gestionar el ciclo mensual de redes sociales y email marketing de varios clientes.
 
-> **Estado:** fase de diseño. Este repositorio contiene solo documentación y plan. No hay código de aplicación hasta que se confirme el plan.
+> **Estado:** F0 (cimientos) y F1 (acceso y aislamiento) implementadas. Siguiente: despliegue en Render (ver [doc. 09](docs/09-despliegue.md)) y F2 (ciclo mensual y contenidos).
+
+**Stack:** Next.js 16 + TypeScript · PostgreSQL + Drizzle ORM · login con Google (arctic) · Vitest + Playwright · Render (Frankfurt).
+
+```bash
+npm ci
+cp .env.example .env.local             # y rellénalo
+docker compose up -d db                  # PostgreSQL local
+npm run db:migrate && npm run dev        # http://localhost:3000
+npm run check                            # lint + tipos + pruebas
+```
 
 ## Documentación
 
@@ -15,7 +25,10 @@ Aplicación web interna de Ideolab para gestionar el ciclo mensual de redes soci
 | 5 | [Autenticación y autorización](docs/05-autenticacion-autorizacion.md) | Estrategia de acceso por proyecto y matriz de permisos |
 | 6 | [Pruebas de aislamiento](docs/06-pruebas-aislamiento.md) | Batería de pruebas para garantizar que no se mezclan datos de clientes |
 | 7 | [Integraciones](docs/07-integraciones.md) | Protocolo de verificación previo a cualquier integración externa |
-| 8 | [Plan de implementación](docs/08-plan-implementacion.md) | Fases incrementales con criterios de aceptación |
+| 8 | [Plan de implementación](docs/08-plan-implementacion.md) | Fases incrementales con criterios de aceptación y estado |
+| 9 | [Despliegue](docs/09-despliegue.md) | Google OAuth, Render, primer acceso, copias de seguridad y desarrollo local |
+
+Reglas para asistentes de IA: [CLAUDE.md](CLAUDE.md).
 
 ## Principios no negociables
 

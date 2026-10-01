@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint (incluye fronteras entre capas)
+        run: npm run lint
+      - name: Tipos
+        run: npm run typecheck
+      - name: Migraciones al día con el esquema
+        run: npx drizzle-kit check && npx drizzle-kit generate --name ci-check && test -z "$(git status --porcelain -- drizzle)"
+      - name: Pruebas (unitarias, integración y aislamiento contra PostgreSQL real)
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Pruebas HTTP de aislamiento (E2E)
+        run: npm run test:e2e

@@ -1,0 +1,39 @@
+# Blueprint de Render (región UE: Frankfurt). En Render: New → Blueprint → este repo.
+# Los nombres de plan pueden cambiar: revísalos en el panel antes de confirmar y elige
+# un plan de base de datos que incluya copias de seguridad.
+databases:
+  - name: mph-db
+    region: frankfurt
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    ipAllowList: [] # solo accesible desde servicios de Render
+
+services:
+  - type: web
+    name: marketing-project-hub
+    runtime: node
+    region: frankfurt
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run db:migrate && npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mph-db
+          property: connectionString
+      - key: APP_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: AUTH_GOOGLE_HOSTED_DOMAIN
+        sync: false
+      - key: BOOTSTRAP_ADMIN_EMAILS
+        sync: false

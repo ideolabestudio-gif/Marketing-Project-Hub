@@ -73,7 +73,20 @@ Necesito confirmación de Ideolab en estos puntos antes de implementar. Entre pa
 | D-09 | Política de retención de datos al terminar con un cliente | Archivar / exportar y borrar | Archivar (solo lectura) + exportación |
 | D-10 | Cliente piloto para el primer ciclo completo | — | Por designar |
 
-## 1.6 Riesgos
+## 1.6 Decisiones tomadas (1 de octubre de 2026)
+
+| ID | Decisión | Motivo |
+|----|----------|--------|
+| D-01 | **TypeScript + Next.js** (opción A del doc. 02) | El desarrollo será con asistentes de IA ("vibecoding"). El tipado estricto, las reglas de lint entre capas y las pruebas de aislamiento hacen de red de seguridad frente a código generado. Es además el stack más conocido por esas herramientas y usa un solo lenguaje |
+| D-02 | **Login con Google** + lista de emails dados de alta por un administrador. Si Ideolab usa Google Workspace, se puede limitar además al dominio (`AUTH_GOOGLE_HOSTED_DOMAIN`) | Sin contraseñas propias; funciona con Workspace y con cuentas de Google normales |
+| D-03 | **Los clientes no entran** en la herramienta. Su aprobación la registra el equipo con evidencia | Menos superficie de ataque; se revisará después del hito |
+| D-04 | Publicaciones con **Metricool**; emails con **MailerLite** | Son los candidatos a las primeras integraciones (doc. 07), siempre tras verificarlas |
+| D-06 | **Render, región Frankfurt (UE)**: servicio web + PostgreSQL gestionado (doc. 09) | Sin servidores que mantener, despliegue desde GitHub, datos en la UE |
+| D-10 | **Pendiente**: cliente piloto | Tiene que elegirlo Ideolab. Recomendación: un cliente con volumen medio, 2–3 redes y newsletter, interlocutor ágil para aprobar y buena relación para tolerar el periodo de prueba |
+
+D-05, D-07, D-08 y D-09 mantienen la opción por defecto hasta que haga falta decidirlas (fases F2–F5).
+
+## 1.7 Riesgos
 
 | ID | Riesgo | Prob. | Impacto | Mitigación |
 |----|--------|-------|---------|------------|

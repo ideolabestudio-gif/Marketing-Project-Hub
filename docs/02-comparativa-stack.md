@@ -64,12 +64,12 @@ Motivos a favor de A cuando el equipo es JS/TS:
 | Base de datos | PostgreSQL gestionado (región UE) | Relacional, FKs compuestas, RLS opcional, JSONB para instantáneas |
 | ORM / migraciones | Drizzle ORM + migraciones SQL versionadas | Cercano a SQL, migraciones revisables |
 | Validación | Zod | Validar toda entrada en el borde del servidor |
-| Autenticación | Better Auth o Auth.js (verificar estado de mantenimiento al empezar) con Google OAuth + lista de permitidos | Sesiones en BD, sin contraseñas propias |
-| Colas / trabajos | pg-boss (cola sobre PostgreSQL) | Evita Redis; suficiente para el volumen esperado |
+| Autenticación | Google OAuth (código + PKCE) con la librería **arctic** + sesiones propias en BD (token aleatorio; en BD solo su hash) | Flujo pequeño y auditable; sin depender de un framework de auth; sesiones revocables al instante |
+| Colas / trabajos | pg-boss (cola sobre PostgreSQL), cuando haga falta (F5) | Evita Redis; suficiente para el volumen esperado |
 | Ficheros | Almacenamiento compatible S3 en la UE, URLs firmadas de corta duración | Ficheros nunca públicos |
 | UI | Tailwind CSS + componentes shadcn/ui | Rápido y mantenible |
-| Pruebas | Vitest (unitarias/integración), Testcontainers (Postgres real), Playwright (E2E) | Aislamiento probado contra BD real |
-| Despliegue | Imagen Docker en PaaS con región UE (o VPS) + Postgres gestionado con copias de seguridad | Sin dependencia fuerte de un proveedor |
+| Pruebas | Vitest (unitarias/integración) y Playwright (HTTP/E2E), siempre contra PostgreSQL real (servicio de GitHub Actions en CI) | Aislamiento probado contra BD real |
+| Despliegue | Render (Frankfurt) con runtime Node nativo (`npm ci && npm run build` / `npm start`) + PostgreSQL gestionado con copias de seguridad. Ver doc. 09 | Mismos comandos que en local y en CI; sin Docker que mantener. Es un Node estándar, portable a otro proveedor |
 | CI | GitHub Actions: lint, typecheck, pruebas, pruebas de aislamiento | Bloquea merges si falla aislamiento |
 
 ### Coste orientativo
