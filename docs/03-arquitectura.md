@@ -39,6 +39,8 @@ Navegador ──────▶│  UI (rutas /p/[projectId]/…)               
 | 008 | Ninguna ruta de código publica/envía sin aprobación humana registrada y acción humana explícita | RE-05 |
 | 009 | Archivos en un **disco persistente de Render** detrás del puerto `StorageProvider` (`src/lib/storage`). Se sirven solo por `/p/[projectId]/archivos/[assetId]`, que autoriza cada descarga; no hay URLs públicas ni firmadas. El tipo se detecta por contenido (sin SVG/HTML) y el máximo es 25 MB | Sin otro proveedor que contratar; un adaptador S3 (p. ej. Cloudflare R2 en la UE) se puede añadir sin tocar los módulos si el volumen crece |
 | 010 | Los enlaces externos (Drive, Canva) se admiten como referencia, marcados como "pueden cambiar fuera del Hub" | Lo aprobable de verdad son los archivos subidos, que son inmutables |
+| 011 | Aprobaciones y publicaciones viven juntas en el módulo `review` (en lugar de `approvals` + `publishing` separados). El **estado de la pieza no se guarda**: se deduce de hechos inmutables (envíos y decisiones sobre su última versión, y publicaciones) | Un estado guardado puede desincronizarse; uno deducido no. Editar crea una versión sin aprobaciones, así que "editar obliga a reaprobar" sale solo |
+| 012 | Doble barrera para publicar: el servicio comprueba el estado y un **trigger de BD** rechaza registrar una publicación de una versión que no sea la última o no tenga las aprobaciones exigidas | Un error de código no basta para saltarse RE-05 |
 
 ## 3.2 Módulos y límites de responsabilidad
 

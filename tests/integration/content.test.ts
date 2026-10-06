@@ -120,8 +120,9 @@ describe("piezas", () => {
     const other = await openCycle(ctx, { period: "2026-11" });
     await createItem(ctx, { cycleId: other.id, channelId: fx.channelA.id, format: "post", title: "Noviembre" });
     const items = await listItems(ctx, fx.contentA.cycle.id);
-    expect(items.map((i) => i.title)).toEqual([fx.contentA.item.title]);
-    expect(items[0].latestVersion).toBe(2);
+    expect(items.map((i) => i.title)).not.toContain("Noviembre");
+    expect(items.map((i) => i.id)).toContain(fx.contentA.item.id);
+    expect(items.find((i) => i.id === fx.contentA.item.id)?.latestVersion).toBe(2);
   });
 });
 

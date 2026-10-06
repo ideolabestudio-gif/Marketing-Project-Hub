@@ -20,7 +20,9 @@ Aplicación interna de Ideolab para el ciclo mensual de redes sociales y email m
 - Tablas nuevas con datos de cliente: `project_id NOT NULL` con FK a `projects`, `UNIQUE (project_id, id)` y FKs compuestas `(project_id, x_id)` hacia otras tablas de proyecto. Lo comprueba `tests/isolation/db-schema.test.ts`.
 - Esquema en `src/lib/db/schema/`; migraciones con `npm run db:generate` (nunca edites a mano una migración ya publicada).
 - Archivos: solo mediante `src/lib/storage` desde los servicios; se sirven únicamente por `/p/[projectId]/archivos/[assetId]` tras autorizar. Nunca URLs públicas.
-- Versiones de contenido, sus archivos y la auditoría son inmutables (triggers): cambiar algo = crear una fila nueva.
+- Versiones de contenido, sus archivos, las decisiones de revisión y la auditoría son inmutables (triggers): cambiar algo = crear una fila nueva.
+- El estado de una pieza (en revisión, aprobada, programada…) NO se guarda: lo calcula `src/modules/review` a partir de hechos inmutables. No añadas columnas de estado que puedan desincronizarse.
+- Publicar = registrar lo que una persona hizo fuera del Hub. Un trigger de BD rechaza publicaciones sin las aprobaciones exigidas. `tests/lint/no-external-publishing.test.ts` falla si aparece `fetch`, http o un planificador en `src/`.
 - Textos de la UI en español.
 
 ## Al añadir funcionalidad

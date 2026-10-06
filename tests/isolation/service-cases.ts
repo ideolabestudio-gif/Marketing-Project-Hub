@@ -5,6 +5,7 @@ import * as cycles from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
 import * as identity from "@/modules/identity/service";
 import * as projects from "@/modules/projects/service";
+import * as review from "@/modules/review/service";
 import { FIXTURE_PERIOD, TINY_PNG, type Fixture } from "../fixtures/two-projects";
 
 /**
@@ -68,7 +69,12 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
   },
   "projects.updateProjectSettings": {
     kind: "project",
-    own: (ctx) => projects.updateProjectSettings(ctx, { timezone: "Europe/Madrid", locale: "es-ES" }),
+    own: (ctx) => projects.updateProjectSettings(ctx, {
+        timezone: "Europe/Madrid",
+        locale: "es-ES",
+        requireClientApproval: true,
+        separationOfDuties: true,
+      }),
     foreign: { none: "No recibe IDs: el proyecto sale del contexto" },
   },
   "projects.listChannels": {
@@ -203,6 +209,105 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     own: (ctx, fx) => content.addComment(ctx, { itemId: fx.contentA.item.id, body: "Bien" }),
     foreign: (ctx, fx) => content.addComment(ctx, { itemId: fx.contentB.item.id, body: "Intruso" }),
   },
+
+  // --- review (aprobaciones y publicaciones) ---
+  // ctxA es de Ana (responsable de A). Las piezas de reviewA las escribió Edu, así que
+  // Ana puede aprobarlas aunque la separación de funciones esté activa.
+  "review.getItemReview": {
+    kind: "project",
+    own: (ctx, fx) => review.getItemReview(ctx, fx.reviewA.scheduled.item.id),
+    foreign: (ctx, fx) => review.getItemReview(ctx, fx.reviewB.scheduled.item.id),
+  },
+  "review.listCycleStatuses": {
+    kind: "project",
+    own: (ctx, fx) => review.listCycleStatuses(ctx, fx.contentA.cycle.id),
+    foreign: (ctx, fx) => review.listCycleStatuses(ctx, fx.contentB.cycle.id),
+  },
+  "review.submitForReview": {
+    kind: "project",
+    own: (ctx, fx) => review.submitForReview(ctx, { itemId: fx.contentA.item.id, versionId: fx.contentA.latestVersionId }),
+    foreign: (ctx, fx) =>
+      review.submitForReview(ctx, { itemId: fx.contentB.item.id, versionId: fx.contentB.latestVersionId }),
+  },
+  "review.decideInternal": {
+    kind: "project",
+    own: (ctx, fx) =>
+      review.decideInternal(ctx, {
+        itemId: fx.reviewA.inReview.item.id,
+        versionId: fx.reviewA.inReview.versionId,
+        decision: "approved",
+      }),
+    foreign: (ctx, fx) =>
+      review.decideInternal(ctx, {
+        itemId: fx.reviewB.inReview.item.id,
+        versionId: fx.reviewB.inReview.versionId,
+        decision: "approved",
+      }),
+  },
+  "review.recordClientDecision": {
+    kind: "project",
+    own: async (ctx, fx) => {
+      const { item, versionId } = fx.reviewA.inReview;
+      await review.decideInternal(ctx, { itemId: item.id, versionId, decision: "approved" });
+      return review.recordClientDecision(ctx, {
+        itemId: item.id,
+        versionId,
+        decision: "approved",
+        approverName: "Cliente",
+        evidence: "Email: OK",
+      });
+    },
+    foreign: (ctx, fx) =>
+      review.recordClientDecision(ctx, {
+        itemId: fx.reviewB.inReview.item.id,
+        versionId: fx.reviewB.inReview.versionId,
+        decision: "approved",
+        approverName: "Intruso",
+        evidence: "Intruso",
+      }),
+  },
+  "review.recordPublication": {
+    kind: "project",
+    own: async (ctx, fx) => {
+      const { item, versionId } = fx.reviewA.inReview;
+      await review.decideInternal(ctx, { itemId: item.id, versionId, decision: "approved" });
+      await review.recordClientDecision(ctx, {
+        itemId: item.id,
+        versionId,
+        decision: "approved",
+        approverName: "Cliente",
+        evidence: "Email: OK",
+      });
+      return review.recordPublication(ctx, { itemId: item.id, versionId, status: "published", at: "2026-10-21T09:00" });
+    },
+    foreign: (ctx, fx) =>
+      review.recordPublication(ctx, {
+        itemId: fx.reviewB.scheduled.item.id,
+        versionId: fx.reviewB.scheduled.versionId,
+        status: "published",
+        at: "2026-10-21T09:00",
+      }),
+  },
+  "review.markPublished": {
+    kind: "project",
+    own: (ctx, fx) =>
+      review.markPublished(ctx, { publicationId: fx.reviewA.scheduled.publication.id, at: "2026-10-20T12:05" }),
+    foreign: (ctx, fx) =>
+      review.markPublished(ctx, { publicationId: fx.reviewB.scheduled.publication.id, at: "2026-10-20T12:05" }),
+  },
+  "review.cancelPublication": {
+    kind: "project",
+    own: (ctx, fx) =>
+      review.cancelPublication(ctx, { publicationId: fx.reviewA.scheduled.publication.id, reason: "Corregir copy" }),
+    foreign: (ctx, fx) =>
+      review.cancelPublication(ctx, { publicationId: fx.reviewB.scheduled.publication.id, reason: "Intruso" }),
+  },
+  "review.assertContentEditable": {
+    kind: "internal",
+    reason: "Comprobación usada por content; busca solo dentro del proyecto del contexto y no devuelve datos",
+  },
+  "review.listMyPendingWork": { kind: "actor", reason: "Probado en review.test.ts (cada usuario ve solo lo suyo)" },
+  "review.isLocked": { kind: "internal", reason: "Función pura sobre un estado" },
 
   // --- audit ---
   "audit.recordAudit": { kind: "internal", reason: "Solo escribe; lo usan los demás servicios" },

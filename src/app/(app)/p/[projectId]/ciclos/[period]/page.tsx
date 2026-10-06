@@ -4,20 +4,41 @@ import { ChannelFormatSelect } from "@/components/channel-format-select";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatPeriod, formatTimeInZone, formatInZone, monthGrid, zonedDay } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
-import { formatLabel, ITEM_STATUS_LABELS } from "@/modules/content/formats";
+import { formatLabel } from "@/modules/content/formats";
 import { listItems } from "@/modules/content/service";
 import { CYCLE_STATUS_LABELS, getCycleByPeriod, SELECTABLE_STATUSES } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
+import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
+import { listCycleStatuses } from "@/modules/review/service";
 import { createItemAction, setStatusAction, updateBriefAction } from "./actions";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+/** Color de cada pieza en el calendario según su estado. */
+const STATUS_STYLES: Record<WorkflowStatus, string> = {
+  idea: "bg-background",
+  draft: "bg-background",
+  in_review: "bg-amber-100 text-amber-950",
+  awaiting_client: "bg-amber-100 text-amber-950",
+  changes_requested: "bg-red-100 text-red-950",
+  approved: "bg-sky-100 text-sky-950",
+  scheduled: "bg-indigo-100 text-indigo-950",
+  published: "bg-green-100 text-green-950",
+  cancelled: "bg-background line-through opacity-60",
+};
 
 export default async function CyclePage({ params, searchParams }: PageProps<"/p/[projectId]/ciclos/[period]">) {
   const { projectId, period } = await params;
   const { vista } = await searchParams;
   const ctx = await projectContextForPage(projectId);
   const cycle = await orNotFound(getCycleByPeriod(ctx, period));
-  const [project, channels, items] = await Promise.all([getProject(ctx), listChannels(ctx), listItems(ctx, cycle.id)]);
+  const [project, channels, items, statuses] = await Promise.all([
+    getProject(ctx),
+    listChannels(ctx),
+    listItems(ctx, cycle.id),
+    listCycleStatuses(ctx, cycle.id),
+  ]);
+  const statusOf = (id: string): WorkflowStatus => statuses[id] ?? "idea";
 
   const closed = cycle.status === "closed";
   const canManage = hasPermission(ctx, "cycle.manage") && !closed;
@@ -161,8 +182,8 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
                                   <li key={item.id}>
                                     <Link
                                       href={`${base}/piezas/${item.id}`}
-                                      className={`block truncate rounded bg-background px-1 py-0.5 hover:underline ${item.status === "cancelled" ? "line-through opacity-60" : ""}`}
-                                      title={`${item.title} · ${item.channelName}`}
+                                      className={`block truncate rounded px-1 py-0.5 hover:underline ${STATUS_STYLES[statusOf(item.id)]}`}
+                                      title={`${item.title} · ${item.channelName} · ${WORKFLOW_LABELS[statusOf(item.id)]}`}
                                     >
                                       {formatTimeInZone(item.plannedAt!, tz)} {item.title}
                                     </Link>
@@ -178,6 +199,13 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
                 </tbody>
               </table>
             </div>
+            <ul className="flex flex-wrap gap-2 text-xs" aria-label="Leyenda de estados">
+              {(["draft", "in_review", "changes_requested", "approved", "scheduled", "published"] as const).map((st) => (
+                <li key={st} className={`rounded px-2 py-0.5 ${STATUS_STYLES[st]} ${st === "draft" ? "border border-border" : ""}`}>
+                  {WORKFLOW_LABELS[st]}
+                </li>
+              ))}
+            </ul>
             {undated.length > 0 && (
               <div className="text-sm">
                 <h3 className="font-medium">Sin fecha</h3>
@@ -219,7 +247,7 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
                   </td>
                   <td>{item.channelName}</td>
                   <td>{formatLabel(item.format)}</td>
-                  <td>{ITEM_STATUS_LABELS[item.status]}</td>
+                  <td>{WORKFLOW_LABELS[statusOf(item.id)]}</td>
                   <td>{item.latestVersion ? `v${item.latestVersion}` : "—"}</td>
                 </tr>
               ))}

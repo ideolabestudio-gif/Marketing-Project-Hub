@@ -250,6 +250,13 @@ CREATE TABLE content_versions (
 - `content_version_assets`: los archivos se ligan a la **versión** (no a la pieza): lo aprobado en F3 incluirá exactamente esos archivos. Inmutable.
 - `comments`: sobre una pieza y ligados a la versión vigente en ese momento (`content_version_id`), con FKs compuestas en lugar de la FK polimórfica prevista.
 
-## 4.6 Endurecimiento opcional (fase posterior)
+## 4.6 Implementado en F3 (diferencias con el diseño)
+
+- `approvals` guarda todos los hechos de revisión de una versión: `stage` = `submission` (envío a revisión), `internal` o `client`; `decision` = `submitted`, `approved` o `changes_requested` (se descarta `rejected`: para descartar una pieza se cancela). Inmutable por trigger. La respuesta del cliente exige `client_approver_name` y `evidence` (CHECK). Lleva `content_item_id` y una FK de tres columnas `(project_id, content_item_id, content_version_id)` hacia `content_versions`, así la BD garantiza que la versión es de esa pieza y de ese proyecto.
+- `publications`: registro manual (`method = manual`) de lo programado o publicado, con `authorized_by`. Un trigger exige al insertar que la versión sea la última y tenga aprobación interna (y del cliente si el proyecto lo exige); otro impide cambiar pieza, versión o autor y deja `cancelled` y `published` como estados finales. Como mucho una publicación activa por pieza (índice único parcial).
+- `projects` añade `require_client_approval` (por defecto sí) y `separation_of_duties` (por defecto sí).
+- `content_items.status` solo usa `idea`, `draft` y `cancelled`; el resto de estados se deducen (ADR 011).
+
+## 4.7 Endurecimiento opcional (fase posterior)
 
 Activar **Row Level Security** de PostgreSQL en todas las tablas con `project_id`, fijando `SET LOCAL app.project_ids = …` por transacción. No se activa en el MVP para no complicar el acceso a datos, pero el modelo ya lo permite sin cambios de esquema.

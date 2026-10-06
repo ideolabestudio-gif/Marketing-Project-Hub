@@ -12,7 +12,7 @@ test("un usuario recorre su proyecto y no puede entrar al de otro cliente cambia
   await context.addCookies([{ name: "mph_session", value: s.tokens.ana, url: baseURL! }]);
 
   await page.goto("/");
-  await page.getByRole("link", { name: new RegExp(MARKER_A) }).click();
+  await page.getByRole("link", { name: new RegExp(`Proyecto ${MARKER_A}`) }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(MARKER_A);
 
   await page.getByRole("link", { name: /octubre/i }).click();

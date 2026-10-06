@@ -7,9 +7,11 @@ import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ALLOWED_DESCRIPTION } from "@/modules/content/files";
-import { formatLabel, ITEM_STATUS_LABELS } from "@/modules/content/formats";
+import { formatLabel } from "@/modules/content/formats";
 import { getItemDetail } from "@/modules/content/service";
 import { getProject, listChannels } from "@/modules/projects/service";
+import { WORKFLOW_LABELS } from "@/modules/review/domain";
+import { getItemReview, isLocked } from "@/modules/review/service";
 import {
   addCommentAction,
   addLinkAction,
@@ -19,19 +21,26 @@ import {
   updateItemAction,
   uploadAssetAction,
 } from "./actions";
+import { ReviewSection } from "./review-section";
 
 export default async function ItemPage({ params }: PageProps<"/p/[projectId]/ciclos/[period]/piezas/[itemId]">) {
   const { projectId, period, itemId } = await params;
   const ctx = await projectContextForPage(projectId);
   const { item, current, currentAssets, versions, comments } = await orNotFound(getItemDetail(ctx, itemId));
   if (item.cyclePeriod !== period) notFound();
-  const [project, channels] = await Promise.all([getProject(ctx), listChannels(ctx)]);
+  const [project, channels, review] = await Promise.all([
+    getProject(ctx),
+    listChannels(ctx),
+    getItemReview(ctx, item.id),
+  ]);
 
   const tz = project.timezone;
   const cycleUrl = `/p/${projectId}/ciclos/${period}`;
   const cancelled = item.status === "cancelled";
-  const editable = hasPermission(ctx, "content.write") && item.cycleStatus !== "closed";
+  const locked = isLocked(review.status);
+  const editable = hasPermission(ctx, "content.write") && item.cycleStatus !== "closed" && !locked;
   const canEditContent = editable && !cancelled;
+  const editVoidsApproval = ["in_review", "awaiting_client", "approved"].includes(review.status);
   const canComment = hasPermission(ctx, "comment.write") && item.cycleStatus !== "closed";
   const isEmail = item.channelKind === "email";
 
@@ -43,7 +52,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
         </Link>
         <h1 className={`h1 mt-1 ${cancelled ? "line-through opacity-60" : ""}`}>{item.title}</h1>
         <div className="mt-2 flex flex-wrap gap-2">
-          <span className="badge">{ITEM_STATUS_LABELS[item.status]}</span>
+          <span className="badge">{WORKFLOW_LABELS[review.status]}</span>
           <span className="badge">
             {item.channelName} · {formatLabel(item.format)}
           </span>
@@ -51,6 +60,16 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           <span className="badge">{current ? `Versión ${current.versionNo}` : "Sin versiones"}</span>
         </div>
       </div>
+
+      <ReviewSection
+        ctx={ctx}
+        projectId={projectId}
+        itemId={item.id}
+        review={review}
+        tz={tz}
+        plannedAt={item.plannedAt}
+        cycleClosed={item.cycleStatus === "closed"}
+      />
 
       <section className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -61,6 +80,18 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             </Link>
           )}
         </div>
+        {canEditContent && editVoidsApproval && (
+          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+            Esta versión ya está en revisión o aprobada. Si guardas cambios se creará una versión nueva y habrá que
+            volver a revisarla y aprobarla.
+          </p>
+        )}
+        {locked && (
+          <p className="text-sm text-muted">
+            La pieza está {review.status === "published" ? "publicada" : "programada"}: el contenido no se puede
+            modificar{review.status === "scheduled" ? " (cancela la programación si necesitas corregir algo)" : ""}.
+          </p>
+        )}
         {canEditContent ? (
           <ActionForm
             action={saveVersionAction.bind(null, projectId, item.id)}

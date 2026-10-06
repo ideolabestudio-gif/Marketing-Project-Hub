@@ -9,6 +9,7 @@ import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
 import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
+import { assertContentEditable } from "@/modules/review/service";
 import { ALLOWED_DESCRIPTION, detectMimeType, MAX_UPLOAD_BYTES } from "./files";
 import { isValidFormat } from "./formats";
 import * as repo from "./repo";
@@ -149,7 +150,7 @@ export async function createItem(ctx: ProjectContext, input: z.input<typeof crea
   return item;
 }
 
-/** Carga la pieza y comprueba que se puede modificar (permiso, ciclo abierto, no cancelada). */
+/** Carga la pieza y comprueba que se puede modificar (permiso, ciclo abierto, no cancelada, no publicada). */
 async function loadItemForWrite(ctx: ProjectContext, itemId: string, opts: { allowCancelled?: boolean } = {}) {
   await authorize(ctx, "content.write");
   const item = await loadItem(ctx, itemId);
@@ -157,6 +158,8 @@ async function loadItemForWrite(ctx: ProjectContext, itemId: string, opts: { all
   if (item.status === "cancelled" && !opts.allowCancelled) {
     throw new ValidationError("La pieza está cancelada; reactívala para modificarla");
   }
+  // Lo programado o publicado debe seguir siendo exactamente lo aprobado.
+  await assertContentEditable(ctx, item.id);
   return item;
 }
 

@@ -6,6 +6,16 @@ Por qué Render: no hay servidores que mantener, despliega solo al hacer push a 
 
 > Los nombres de los planes y los precios cambian: revísalos en el panel de Render al crear los servicios. Para la base de datos, elige un plan de pago que incluya **copias de seguridad automáticas** (el gratuito no sirve para datos reales).
 
+## 9.0 Opción gratuita para probar (Render Free + Neon Free)
+
+Es la que está en uso ahora mismo para ver la aplicación. Sirve para probar y enseñar, **no para trabajo real con clientes**:
+
+- **Base de datos en Neon** (plan gratuito, región AWS Frankfurt). Desactiva "Connection pooling" y **quita `&channel_binding=require`** del final de la cadena de conexión (debe terminar en `?sslmode=require`).
+- **Aplicación en Render** como *Web Service* creado a mano (**no** con Blueprint, que crea servicios de pago): región Frankfurt, rama `main`, Build `npm ci && npm run build`, Start `npm run db:migrate && npm run start`, tipo **Free**, Health Check `/health`. Variables: `DATABASE_URL` (Neon), `APP_URL`, `BOOTSTRAP_ADMIN_EMAILS`, `NODE_VERSION=22`, `NEXT_TELEMETRY_DISABLED=1`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- Limitaciones: la app se duerme tras 15 minutos sin uso (la primera visita tarda ~1 minuto); **los archivos subidos se pierden** al reiniciarse (no hay disco); Neon gratuito solo permite recuperar las últimas horas.
+
+Para trabajo real, usar el Blueprint (`render.yaml`) de las secciones siguientes, con disco y copias de seguridad.
+
 ## 9.1 Crear el cliente OAuth de Google
 
 1. Entra en [Google Cloud Console](https://console.cloud.google.com/) con una cuenta de Ideolab y crea un proyecto (p. ej. "Marketing Project Hub").

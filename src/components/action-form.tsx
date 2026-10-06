@@ -17,7 +17,7 @@ export function ActionForm({ action, children, submitLabel, className, variant =
   return (
     <form action={formAction} className={className ?? "flex flex-wrap items-end gap-3"}>
       {children}
-      <button type="submit" disabled={pending} className={`btn btn-${variant}`}>
+      <button type="submit" disabled={pending} className={`btn btn-${variant} justify-self-start`}>
         {pending ? "…" : submitLabel}
       </button>
       {state?.message && (

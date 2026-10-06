@@ -21,7 +21,12 @@ export async function getProject(ctx: ProjectContext) {
   return project;
 }
 
-const settingsSchema = z.object({ timezone: timezoneSchema, locale: localeSchema });
+const settingsSchema = z.object({
+  timezone: timezoneSchema,
+  locale: localeSchema,
+  requireClientApproval: z.boolean(),
+  separationOfDuties: z.boolean(),
+});
 
 export async function updateProjectSettings(ctx: ProjectContext, input: z.input<typeof settingsSchema>) {
   await authorize(ctx, "project.settings");

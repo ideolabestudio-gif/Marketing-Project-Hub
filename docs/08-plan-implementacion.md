@@ -44,16 +44,18 @@ La IA (F5) va después del hito a propósito: el ciclo debe funcionar sin IA. Si
 
 Pendiente fuera del código: en Render, el disco persistente (`render.yaml`) necesita plan de pago.
 
-### F3 · Revisión, aprobación y publicación manual
-**Alcance:** máquina de estados de revisión, aprobación interna, registro de aprobación del cliente con evidencia, separación de funciones, registro manual de publicación/programación (fecha, URL, ID externo), panel de pendientes.
+### F3 · Revisión, aprobación y publicación manual — ✅ hecho
+**Alcance:** flujo de revisión (enviar → aprobación interna → respuesta del cliente con evidencia), separación de funciones, registro manual de programación/publicación (fecha, URL, ID externo), cancelación de programaciones, panel "Pendiente de mí", estados con color en el calendario. Opciones por proyecto: exigir o no al cliente y separación de funciones.
 
 **Criterios de aceptación**
-- [ ] Solo se puede registrar publicación de la **última versión aprobada** en las etapas exigidas.
-- [ ] Editar tras aprobar obliga a reaprobar.
-- [ ] La aprobación de cliente exige evidencia.
-- [ ] No existe en el código ninguna llamada externa de publicación (WF-08).
-- [ ] WF-01..04, DB-03 pasan.
-- [ ] Toda decisión y publicación queda en auditoría con usuario y hora.
+- [x] Solo se puede registrar publicación de la **última versión aprobada** en las etapas exigidas (servicio + trigger de BD).
+- [x] Editar tras aprobar obliga a reaprobar (la versión nueva nace sin aprobaciones); una pieza programada o publicada no se puede editar.
+- [x] La aprobación de cliente exige quién respondió y evidencia (servicio + CHECK de BD).
+- [x] No existe en el código ninguna llamada externa ni planificador (WF-08).
+- [x] WF-01..04 y DB-03 pasan.
+- [x] Toda decisión y publicación queda en auditoría con usuario y hora.
+
+Limitación conocida: la evidencia del cliente es texto (p. ej. resumen o enlace al email); adjuntar un archivo de evidencia queda para más adelante.
 
 ### F4 · Métricas e informe mensual
 **Alcance:** catálogo de métricas con definiciones, alta manual, importación CSV con mapeo y previsualización, correcciones como filas nuevas, informe con secciones de datos (renderizadas desde `metric_values`) y análisis humano, aprobación del informe, exportación HTML/PDF, cierre del ciclo con aprendizajes.
@@ -103,6 +105,6 @@ Candidatos: RLS en PostgreSQL, portal de aprobación para clientes (D-03), adapt
 
 ## Próximos pasos
 
-1. **Ideolab**: terminar la configuración de Render (doc. 09), comprobar el login real con Google y las copias de seguridad (cierra F0).
-2. Probar F2 con datos reales de **Cerveza Byra**: abrir el ciclo del mes, cargar las piezas y apuntar las fricciones.
-3. Empezar **F3 · Revisión, aprobación y publicación manual**.
+1. **Ideolab**: probar F2 y F3 con datos reales de **Cerveza Byra** (piezas, revisión, respuesta del cliente, registro de publicación) y apuntar las fricciones.
+2. Empezar **F4 · Métricas e informe mensual** (cierra el ciclo y lleva al hito del piloto).
+3. Pendiente de F0: copias de seguridad con restauración probada cuando se pase a un plan de pago.
