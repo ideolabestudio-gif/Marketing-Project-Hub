@@ -9,6 +9,12 @@ import { channels, clients, projectMemberships, projects, users } from "@/lib/db
 import { requireProjectAccess } from "@/modules/access/context";
 import { addComment, createItem, getItemDetail, saveVersion, uploadAsset } from "@/modules/content/service";
 import { openCycle } from "@/modules/cycles/service";
+import {
+  decideInternal,
+  recordClientDecision,
+  recordPublication,
+  submitForReview,
+} from "@/modules/review/service";
 import type { Actor } from "@/modules/identity/actor";
 import { MARKER_A, MARKER_B } from "./markers";
 
@@ -34,7 +40,7 @@ export async function seedTwoProjects() {
   await resetDatabase();
   const db = getDb();
 
-  const [ana, edu, bea, mix, rev, admin] = await db
+  const [ana, edu, bea, mix, rev, admin, rob] = await db
     .insert(users)
     .values([
       { email: "ana@ideolab.test", name: "Ana" },
@@ -43,6 +49,7 @@ export async function seedTwoProjects() {
       { email: "mix@ideolab.test", name: "Mix" },
       { email: "rev@ideolab.test", name: "Rev" },
       { email: "admin@ideolab.test", name: "Admin", isAdmin: true },
+      { email: "rob@ideolab.test", name: "Rob" },
     ])
     .returning();
 
@@ -74,6 +81,7 @@ export async function seedTwoProjects() {
     { projectId: projectA.id, userId: mix.id, role: "viewer" },
     { projectId: projectB.id, userId: bea.id, role: "manager" },
     { projectId: projectB.id, userId: mix.id, role: "editor" },
+    { projectId: projectB.id, userId: rob.id, role: "reviewer" },
   ]);
 
   const actors = {
@@ -83,12 +91,27 @@ export async function seedTwoProjects() {
     mix: toActor(mix),
     rev: toActor(rev),
     admin: toActor(admin),
+    rob: toActor(rob),
   };
   const contentA = await seedContent(actors.ana, projectA.id, channelA.id, MARKER_A);
   const contentB = await seedContent(actors.bea, projectB.id, channelB.id, MARKER_B);
+  const reviewA = await seedReview(
+    { manager: actors.ana, editor: actors.edu, reviewer: actors.rev },
+    projectA.id,
+    contentA.cycle.id,
+    channelA.id,
+    MARKER_A,
+  );
+  const reviewB = await seedReview(
+    { manager: actors.bea, editor: actors.mix, reviewer: actors.rob },
+    projectB.id,
+    contentB.cycle.id,
+    channelB.id,
+    MARKER_B,
+  );
 
   return {
-    users: { ana, edu, bea, mix, rev, admin },
+    users: { ana, edu, bea, mix, rev, admin, rob },
     actors,
     clientA,
     clientB,
@@ -98,6 +121,8 @@ export async function seedTwoProjects() {
     channelB,
     contentA,
     contentB,
+    reviewA,
+    reviewB,
   };
 }
 
@@ -129,6 +154,57 @@ async function seedContent(manager: Actor, projectId: string, channelId: string,
   const asset = detail.currentAssets[0];
   await addComment(ctx, { itemId: item.id, body: `Comentario ${marker}` });
   return { cycle, item, latestVersionId: v2.id, asset };
+}
+
+/**
+ * Flujo de revisión real en un proyecto:
+ * - `inReview`: pieza escrita por el editor y enviada a revisión (pendiente de aprobación interna).
+ * - `scheduled`: pieza escrita por el editor, aprobada por el revisor y por el cliente
+ *   (registrado por el responsable) y programada.
+ */
+async function seedReview(
+  people: { manager: Actor; editor: Actor; reviewer: Actor },
+  projectId: string,
+  cycleId: string,
+  channelId: string,
+  marker: string,
+) {
+  const asEditor = await requireProjectAccess(people.editor, projectId);
+  const asReviewer = await requireProjectAccess(people.reviewer, projectId);
+  const asManager = await requireProjectAccess(people.manager, projectId);
+
+  const inReview = await createItem(asEditor, { cycleId, channelId, format: "reel", title: `En revisión ${marker}` });
+  const inReviewVersion = await saveVersion(asEditor, { itemId: inReview.id, body: `Reel ${marker}` });
+  await submitForReview(asEditor, { itemId: inReview.id, versionId: inReviewVersion.id });
+
+  const scheduled = await createItem(asEditor, {
+    cycleId,
+    channelId,
+    format: "post",
+    title: `Programada ${marker}`,
+    plannedAt: `${FIXTURE_PERIOD}-20T12:00`,
+  });
+  const v = await saveVersion(asEditor, { itemId: scheduled.id, body: `Post aprobado ${marker}` });
+  await submitForReview(asEditor, { itemId: scheduled.id, versionId: v.id });
+  await decideInternal(asReviewer, { itemId: scheduled.id, versionId: v.id, decision: "approved" });
+  await recordClientDecision(asManager, {
+    itemId: scheduled.id,
+    versionId: v.id,
+    decision: "approved",
+    approverName: `Cliente ${marker}`,
+    evidence: `Email del cliente ${marker}: OK`,
+  });
+  const publication = await recordPublication(asManager, {
+    itemId: scheduled.id,
+    versionId: v.id,
+    status: "scheduled",
+    at: `${FIXTURE_PERIOD}-20T12:00`,
+    externalUrl: "https://example.com/post",
+  });
+  return {
+    inReview: { item: inReview, versionId: inReviewVersion.id },
+    scheduled: { item: scheduled, versionId: v.id, publication },
+  };
 }
 
 export type Fixture = Awaited<ReturnType<typeof seedTwoProjects>>;

@@ -21,7 +21,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
 
       <section className="card flex flex-col gap-3">
         <h2 className="h2">General</h2>
-        <ActionForm action={updateSettingsAction.bind(null, projectId)} submitLabel="Guardar">
+        <ActionForm action={updateSettingsAction.bind(null, projectId)} submitLabel="Guardar" className="grid gap-3">
           <label className="field">
             Zona horaria
             <input name="timezone" defaultValue={project.timezone} className="input" required />
@@ -29,6 +29,22 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
           <label className="field">
             Idioma
             <input name="locale" defaultValue={project.locale} className="input" required />
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="requireClientApproval" defaultChecked={project.requireClientApproval} />
+            <span>
+              Exigir la aprobación del cliente antes de publicar
+              <span className="block text-muted">
+                Si se desactiva, basta con la aprobación interna. Se registra siempre con evidencia.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="separationOfDuties" defaultChecked={project.separationOfDuties} />
+            <span>
+              Separación de funciones
+              <span className="block text-muted">Quien escribe una versión no puede aprobarla internamente.</span>
+            </span>
           </label>
         </ActionForm>
       </section>

@@ -84,6 +84,8 @@ export const contentVersions = pgTable(
   (t) => [
     unique("content_versions_project_id_id_uq").on(t.projectId, t.id),
     unique("content_versions_item_version_uq").on(t.contentItemId, t.versionNo),
+    // Permite que aprobaciones y publicaciones exijan en BD que la versión es de esa pieza.
+    unique("content_versions_project_item_id_uq").on(t.projectId, t.contentItemId, t.id),
     foreignKey({
       name: "content_versions_item_fk",
       columns: [t.projectId, t.contentItemId],

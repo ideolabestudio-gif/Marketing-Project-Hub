@@ -1,7 +1,15 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
-import { assets, comments, contentItems, contentVersionAssets, contentVersions } from "@/lib/db/schema";
+import {
+  approvals,
+  assets,
+  comments,
+  contentItems,
+  contentVersionAssets,
+  contentVersions,
+  publications,
+} from "@/lib/db/schema";
 import { seedTwoProjects, type Fixture } from "../fixtures/two-projects";
 
 /**
@@ -133,5 +141,55 @@ describe("inmutabilidad de lo aprobable", () => {
       ),
       CHECK_VIOLATION,
     );
+  });
+});
+
+describe("DB-03: aprobaciones y publicaciones no cruzan proyectos", () => {
+  it("una aprobación de A no puede apuntar a una versión de B", async () => {
+    await expectPgError(
+      getDb().insert(approvals).values({
+        projectId: fx.projectA.id,
+        contentItemId: fx.contentA.item.id,
+        contentVersionId: fx.contentB.latestVersionId,
+        stage: "submission",
+        decision: "submitted",
+        decidedBy: fx.users.ana.id,
+      }),
+      FK_VIOLATION,
+    );
+  });
+
+  it("una aprobación no puede mezclar la pieza de una versión con otra pieza del mismo proyecto", async () => {
+    await expectPgError(
+      getDb().insert(approvals).values({
+        projectId: fx.projectA.id,
+        contentItemId: fx.reviewA.inReview.item.id,
+        contentVersionId: fx.contentA.latestVersionId,
+        stage: "submission",
+        decision: "submitted",
+        decidedBy: fx.users.ana.id,
+      }),
+      FK_VIOLATION,
+    );
+  });
+
+  it("una publicación de A no puede usar una versión de B", async () => {
+    // El trigger de aprobaciones (BEFORE INSERT) actúa antes que la FK y ya la rechaza;
+    // cualquiera de las dos barreras basta.
+    const err = await getDb()
+      .insert(publications)
+      .values({
+        projectId: fx.projectA.id,
+        contentItemId: fx.reviewA.scheduled.item.id,
+        contentVersionId: fx.reviewB.scheduled.versionId,
+        status: "published",
+        publishedAt: new Date(),
+        authorizedBy: fx.users.ana.id,
+      })
+      .then(
+        () => null,
+        (e: { cause?: { code?: string } }) => e,
+      );
+    expect([FK_VIOLATION, CHECK_VIOLATION]).toContain(err?.cause?.code);
   });
 });

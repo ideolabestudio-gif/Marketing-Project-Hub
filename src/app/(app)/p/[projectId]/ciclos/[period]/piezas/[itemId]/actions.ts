@@ -13,6 +13,14 @@ import {
   updateItem,
   uploadAsset,
 } from "@/modules/content/service";
+import {
+  cancelPublication,
+  decideInternal,
+  markPublished,
+  recordClientDecision,
+  recordPublication,
+  submitForReview,
+} from "@/modules/review/service";
 
 // projectId e itemId llegan ligados con .bind(): se tratan como no fiables; los servicios
 // autorizan y buscan la pieza dentro del proyecto autorizado.
@@ -88,4 +96,108 @@ export async function addCommentAction(projectId: string, itemId: string, _: Act
     await addComment(ctx, { itemId, body: formString(formData, "body") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Comentario añadido");
+}
+
+// --- Revisión y publicación (el Hub solo REGISTRA; nunca publica ni envía) ---
+
+export async function submitForReviewAction(
+  projectId: string,
+  itemId: string,
+  versionId: string,
+  _: ActionState,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "content.write");
+    await submitForReview(ctx, { itemId, versionId, comment: formString(formData, "comment") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Enviada a revisión");
+}
+
+export async function decideInternalAction(
+  projectId: string,
+  itemId: string,
+  versionId: string,
+  _: ActionState,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "approval.internal");
+    await decideInternal(ctx, {
+      itemId,
+      versionId,
+      decision: formString(formData, "decision") as never,
+      comment: formString(formData, "comment"),
+    });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Decisión registrada");
+}
+
+export async function recordClientDecisionAction(
+  projectId: string,
+  itemId: string,
+  versionId: string,
+  _: ActionState,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "approval.client.record");
+    await recordClientDecision(ctx, {
+      itemId,
+      versionId,
+      decision: formString(formData, "decision") as never,
+      approverName: formString(formData, "approverName"),
+      evidence: formString(formData, "evidence"),
+      comment: formString(formData, "comment"),
+    });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Respuesta del cliente registrada");
+}
+
+export async function recordPublicationAction(
+  projectId: string,
+  itemId: string,
+  versionId: string,
+  _: ActionState,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "publish");
+    await recordPublication(ctx, {
+      itemId,
+      versionId,
+      status: formString(formData, "status") as never,
+      at: formString(formData, "at"),
+      externalUrl: formString(formData, "externalUrl"),
+      externalId: formString(formData, "externalId"),
+      note: formString(formData, "note"),
+    });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Publicación registrada");
+}
+
+export async function markPublishedAction(projectId: string, publicationId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "publish");
+    await markPublished(ctx, {
+      publicationId,
+      at: formString(formData, "at"),
+      externalUrl: formString(formData, "externalUrl"),
+      externalId: formString(formData, "externalId"),
+    });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Marcada como publicada");
+}
+
+export async function cancelPublicationAction(
+  projectId: string,
+  publicationId: string,
+  _: ActionState,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "publish");
+    await cancelPublication(ctx, { publicationId, reason: formString(formData, "reason") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Programación cancelada");
 }

@@ -15,6 +15,8 @@ export async function updateSettingsAction(projectId: string, _: ActionState, fo
     await updateProjectSettings(ctx, {
       timezone: formString(formData, "timezone"),
       locale: formString(formData, "locale"),
+      requireClientApproval: formData.get("requireClientApproval") === "on",
+      separationOfDuties: formData.get("separationOfDuties") === "on",
     });
     revalidatePath(`/p/${projectId}`, "layout");
   });

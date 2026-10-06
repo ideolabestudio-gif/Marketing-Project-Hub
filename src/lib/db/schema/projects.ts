@@ -37,6 +37,10 @@ export const projects = pgTable(
     locale: text("locale").notNull().default("es-ES"),
     status: recordStatus("status").notNull().default("active"),
     aiEnabled: boolean("ai_enabled").notNull().default(false),
+    /** Si es true, publicar exige también la aprobación del cliente (además de la interna). */
+    requireClientApproval: boolean("require_client_approval").notNull().default(true),
+    /** Si es true, quien escribe una versión no puede aprobarla internamente. */
+    separationOfDuties: boolean("separation_of_duties").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("projects_client_slug_uq").on(t.clientId, t.slug)],

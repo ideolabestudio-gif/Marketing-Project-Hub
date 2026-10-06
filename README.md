@@ -2,14 +2,14 @@
 
 Aplicación web interna de Ideolab para gestionar el ciclo mensual de redes sociales y email marketing de varios clientes.
 
-> **Estado:** F0 (cimientos) y F1 (acceso y aislamiento) implementadas. Siguiente: despliegue en Render (ver [doc. 09](docs/09-despliegue.md)) y F2 (ciclo mensual y contenidos).
+> **Estado:** F0–F3 implementadas (acceso y aislamiento, ciclo mensual y contenidos, revisión, aprobación y registro de publicación). Desplegada en Render (ver [doc. 09](docs/09-despliegue.md)). Siguiente: F4 (métricas e informe mensual).
 
 **Stack:** Next.js 16 + TypeScript · PostgreSQL + Drizzle ORM · login con Google (arctic) · Vitest + Playwright · Render (Frankfurt).
 
 ```bash
 npm ci
 cp .env.example .env.local             # y rellénalo
-docker compose up -d db                  # PostgreSQL local
+docker compose up -d db                  # PostgreSQL local (o uno instalado)
 npm run db:migrate && npm run dev        # http://localhost:3000
 npm run check                            # lint + tipos + pruebas
 ```

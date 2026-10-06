@@ -15,7 +15,7 @@ async function main() {
   const email = (process.argv[2] ?? "admin@ideolab.local").toLowerCase();
   const db = getDb();
   let [user] = await db.select().from(users).where(eq(users.email, email));
-  if (!user) [user] = await db.insert(users).values({ email, name: "Admin local", isAdmin: true }).returning();
+  if (!user) [user] = await db.insert(users).values({ email, name: email.split("@")[0], isAdmin: true }).returning();
   const { token } = await createSession(user.id);
   console.log(`Usuario: ${email}\nCookie mph_session=${token}`);
   process.exit(0);

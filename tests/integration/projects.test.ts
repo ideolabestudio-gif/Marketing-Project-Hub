@@ -63,7 +63,16 @@ describe("clientes, proyectos y canales", () => {
 
   it("actualiza los ajustes del proyecto", async () => {
     const ctx = await requireProjectAccess(fx.actors.ana, fx.projectA.id);
-    await updateProjectSettings(ctx, { timezone: "America/Mexico_City", locale: "es-MX" });
-    expect(await getProject(ctx)).toMatchObject({ timezone: "America/Mexico_City", locale: "es-MX" });
+    await updateProjectSettings(ctx, {
+      timezone: "America/Mexico_City",
+      locale: "es-MX",
+      requireClientApproval: false,
+      separationOfDuties: true,
+    });
+    expect(await getProject(ctx)).toMatchObject({
+      timezone: "America/Mexico_City",
+      locale: "es-MX",
+      requireClientApproval: false,
+    });
   });
 });
