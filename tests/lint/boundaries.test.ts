@@ -48,4 +48,11 @@ describe("fronteras entre capas (criterio F0)", () => {
     );
     expect(errors).toHaveLength(0);
   });
+
+  it("solo el módulo ai usa el proveedor de IA", async () => {
+    const code = 'import { getAiProvider } from "@/lib/ai";\nexport const x = getAiProvider;\n';
+    expect(await restrictedImportErrors("src/modules/content/service.ts", code)).toHaveLength(1);
+    expect(await restrictedImportErrors("src/app/ejemplo/page.tsx", code)).toHaveLength(1);
+    expect(await restrictedImportErrors("src/modules/ai/service.ts", code)).toHaveLength(0);
+  });
 });

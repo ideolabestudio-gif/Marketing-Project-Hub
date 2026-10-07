@@ -21,7 +21,7 @@ import {
   uploadAsset,
 } from "@/modules/content/service";
 import { closeCycle, openCycle, setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
-import { approveReport, updateReportSection } from "@/modules/reports/service";
+import { approveReport, markAiSectionReviewed, updateReportSection } from "@/modules/reports/service";
 import { FIXTURE_PERIOD, seedTwoProjects, TINY_PNG, type Fixture } from "../fixtures/two-projects";
 
 let fx: Fixture;
@@ -61,6 +61,7 @@ describe("ciclos", () => {
     for (const s of fx.metricsA.sections.filter((x) => x.kind === "human_analysis")) {
       await updateReportSection(ctx, { sectionId: s.id, title: s.title, body: "Análisis" });
     }
+    await markAiSectionReviewed(ctx, { sectionId: fx.aiA.aiSection.id });
     await approveReport(ctx, { reportId: fx.metricsA.report.id });
     await closeCycle(ctx, { cycleId: fx.contentA.cycle.id, learnings: "Aprendizajes del mes" });
     await expect(saveVersion(ctx, { itemId: fx.contentA.item.id, body: "x" })).rejects.toBeInstanceOf(ForbiddenError);

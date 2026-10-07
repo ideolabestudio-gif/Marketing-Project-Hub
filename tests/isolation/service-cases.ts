@@ -1,6 +1,7 @@
 import { NotFoundError } from "@/lib/errors";
 import type { ProjectContext } from "@/modules/access/context";
 import * as access from "@/modules/access/service";
+import * as ai from "@/modules/ai/service";
 import * as content from "@/modules/content/service";
 import * as cycles from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
@@ -79,6 +80,11 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
         requireClientApproval: true,
         separationOfDuties: true,
       }),
+    foreign: { none: "No recibe IDs: el proyecto sale del contexto" },
+  },
+  "projects.updateAiSettings": {
+    kind: "project",
+    own: (ctx) => projects.updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: 10 }),
     foreign: { none: "No recibe IDs: el proyecto sale del contexto" },
   },
   "projects.listChannels": {
@@ -338,6 +344,53 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
   // --- audit ---
   "audit.recordAudit": { kind: "internal", reason: "Solo escribe; lo usan los demás servicios" },
 
+  // --- ai ---
+  "ai.getAiStatus": {
+    kind: "project",
+    own: (ctx) => ai.getAiStatus(ctx),
+    foreign: { none: "No recibe IDs: el proyecto sale del contexto" },
+  },
+  "ai.generateCopyDraft": {
+    kind: "project",
+    own: (ctx, fx) => ai.generateCopyDraft(ctx, { itemId: fx.contentA.item.id }),
+    foreign: (ctx, fx) => ai.generateCopyDraft(ctx, { itemId: fx.contentB.item.id }),
+  },
+  "ai.generateIdeas": {
+    kind: "project",
+    own: (ctx, fx) => ai.generateIdeas(ctx, { cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => ai.generateIdeas(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.generateReportInterpretation": {
+    kind: "project",
+    own: (ctx, fx) => ai.generateReportInterpretation(ctx, { cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => ai.generateReportInterpretation(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.listGenerations": {
+    kind: "project",
+    own: (ctx, fx) => ai.listGenerations(ctx, { cycleId: fx.contentA.cycle.id, contentItemId: fx.contentA.item.id }),
+    foreign: async (ctx, fx) => {
+      await expectNotFound(ai.listGenerations(ctx, { cycleId: fx.contentA.cycle.id, contentItemId: fx.contentB.item.id }));
+      return ai.listGenerations(ctx, { cycleId: fx.contentB.cycle.id, purpose: "report_interpretation" });
+    },
+  },
+  "ai.applyCopyDraft": {
+    kind: "project",
+    own: (ctx, fx) => ai.applyCopyDraft(ctx, { generationId: fx.aiA.copyDraft.id, body: "Texto revisado" }),
+    foreign: (ctx, fx) => ai.applyCopyDraft(ctx, { generationId: fx.aiB.copyDraft.id, body: "Intruso" }),
+  },
+  "ai.applyReportInterpretation": {
+    kind: "project",
+    own: (ctx, fx) =>
+      ai.applyReportInterpretation(ctx, { generationId: fx.aiA.interpretation.id, title: "Lectura", body: "Texto" }),
+    foreign: (ctx, fx) =>
+      ai.applyReportInterpretation(ctx, { generationId: fx.aiB.interpretation.id, title: "X", body: "X" }),
+  },
+  "ai.resolveGeneration": {
+    kind: "project",
+    own: (ctx, fx) => ai.resolveGeneration(ctx, { generationId: fx.aiA.ideas.id, status: "used" }),
+    foreign: (ctx, fx) => ai.resolveGeneration(ctx, { generationId: fx.aiB.ideas.id, status: "discarded" }),
+  },
+
   // --- metrics ---
   "metrics.listMetricCatalog": {
     kind: "project",
@@ -477,6 +530,38 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     own: (ctx, fx) => reports.moveReportSection(ctx, { sectionId: fx.metricsA.sections[0].id, direction: "down" }),
     foreign: (ctx, fx) => reports.moveReportSection(ctx, { sectionId: fx.metricsB.sections[0].id, direction: "down" }),
   },
+  "reports.addAiInterpretationSection": {
+    kind: "project",
+    own: (ctx, fx) =>
+      reports.addAiInterpretationSection(ctx, {
+        cycleId: fx.contentA.cycle.id,
+        aiGenerationId: fx.aiA.interpretation.id,
+        title: "Lectura",
+        body: "Texto",
+      }),
+    // Ciclo propio + generación ajena (la FK compuesta lo impide), y ciclo ajeno.
+    foreign: async (ctx, fx) => {
+      await expectNotFound(
+        reports.addAiInterpretationSection(ctx, {
+          cycleId: fx.contentA.cycle.id,
+          aiGenerationId: fx.aiB.interpretation.id,
+          title: "X",
+          body: "X",
+        }),
+      );
+      return reports.addAiInterpretationSection(ctx, {
+        cycleId: fx.contentB.cycle.id,
+        aiGenerationId: fx.aiA.interpretation.id,
+        title: "X",
+        body: "X",
+      });
+    },
+  },
+  "reports.markAiSectionReviewed": {
+    kind: "project",
+    own: (ctx, fx) => reports.markAiSectionReviewed(ctx, { sectionId: fx.aiA.aiSection.id }),
+    foreign: (ctx, fx) => reports.markAiSectionReviewed(ctx, { sectionId: fx.aiB.aiSection.id }),
+  },
   "reports.approveReport": {
     kind: "project",
     own: (ctx, fx) => approveReportA(ctx, fx),
@@ -492,11 +577,12 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
   },
 };
 
-/** Completa el análisis pendiente del informe de A y lo aprueba. */
+/** Completa el análisis pendiente del informe de A, revisa lo de la IA y lo aprueba. */
 async function approveReportA(ctx: ProjectContext, fx: Fixture) {
   for (const s of fx.metricsA.sections.filter((x) => x.kind === "human_analysis")) {
     await reports.updateReportSection(ctx, { sectionId: s.id, title: s.title, body: "Análisis del equipo" });
   }
+  await reports.markAiSectionReviewed(ctx, { sectionId: fx.aiA.aiSection.id });
   return reports.approveReport(ctx, { reportId: fx.metricsA.report.id });
 }
 

@@ -1,5 +1,6 @@
 import {
   boolean,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -37,6 +38,8 @@ export const projects = pgTable(
     locale: text("locale").notNull().default("es-ES"),
     status: recordStatus("status").notNull().default("active"),
     aiEnabled: boolean("ai_enabled").notNull().default(false),
+    /** Gasto máximo de IA por mes natural (USD, como factura el proveedor). */
+    aiMonthlyLimitUsd: numeric("ai_monthly_limit_usd", { precision: 8, scale: 2, mode: "number" }).notNull().default(5),
     /** Si es true, publicar exige también la aprobación del cliente (además de la interna). */
     requireClientApproval: boolean("require_client_approval").notNull().default(true),
     /** Si es true, quien escribe una versión no puede aprobarla internamente. */

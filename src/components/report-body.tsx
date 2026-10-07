@@ -33,6 +33,16 @@ export function ReportBody({ view }: { view: View }) {
             <div className="whitespace-pre-wrap leading-relaxed">{section.body?.trim() || "—"}</div>
           )}
 
+          {section.kind === "ai_interpretation" && (
+            <>
+              <p className="text-xs text-muted">
+                Texto redactado con ayuda de IA a partir de las métricas registradas
+                {section.reviewedAt ? ` y revisado por el equipo el ${formatInZone(section.reviewedAt, tz)}` : " · PENDIENTE DE REVISIÓN"}.
+              </p>
+              <div className="whitespace-pre-wrap leading-relaxed">{section.body?.trim() || "—"}</div>
+            </>
+          )}
+
           {section.kind === "data" &&
             "metrics" in data &&
             data.metrics?.map(({ channel, hasPrevious, rows }) => (

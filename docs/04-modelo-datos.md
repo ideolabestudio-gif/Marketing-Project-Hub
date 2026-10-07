@@ -265,6 +265,13 @@ CREATE TABLE content_versions (
 - `reports`: `status` solo `draft` o `approved` (la entrega al cliente se hace fuera del Hub con el PDF). `report_sections`: `kind` = `data`, `publications` o `human_analysis`; `channel_id` opcional (nulo = todos los canales) en lugar de `data_query`, y `compare_previous`. Un trigger impide crear, cambiar o borrar secciones de un informe aprobado. `ai_generation_id` llegará con F5.
 - `cycles` añade `learnings`, `closed_at` y `closed_by`. Un trigger impide pasar a `closed` sin informe aprobado.
 
-## 4.8 Endurecimiento opcional (fase posterior)
+## 4.8 Implementado en F5 (diferencias con el diseño)
+
+- `ai_generations`: `cycle_id` obligatorio; `content_item_id` solo (y siempre) para `copy_draft` (CHECK). `purpose` = `copy_draft`, `ideas` o `report_interpretation` (los asuntos de email van dentro del borrador de un email, no hay `subject_lines`). Guarda además `instructions`, `error`, `input_tokens`, `output_tokens` y `cost_usd`. `status` = `draft` → `used` | `discarded` una sola vez, o `failed`; un trigger impide cambiar el resto de columnas y borrar.
+- `content_versions.ai_generation_id` con FK de tres columnas `(project_id, content_item_id, ai_generation_id)`: el borrador tiene que ser de la misma pieza. CHECK: `origin = 'ai_assisted'` si y solo si hay `ai_generation_id` (WF-05).
+- `report_sections`: nuevo `kind` `ai_interpretation` con `ai_generation_id` (CHECK: obligatorio en ese tipo y solo en ese), `reviewed_by` y `reviewed_at`. Editar el texto anula la revisión; el informe no se aprueba con secciones de IA sin revisar (WF-06).
+- `projects.ai_monthly_limit_usd` (por defecto 5). `ai_enabled` ya existía (por defecto `false`).
+
+## 4.9 Endurecimiento opcional (fase posterior)
 
 Activar **Row Level Security** de PostgreSQL en todas las tablas con `project_id`, fijando `SET LOCAL app.project_ids = …` por transacción. No se activa en el MVP para no complicar el acceso a datos, pero el modelo ya lo permite sin cambios de esquema.

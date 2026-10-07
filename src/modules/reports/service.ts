@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
-import { isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
+import { isForeignKeyViolation, isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
 import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
@@ -16,6 +16,7 @@ export const SECTION_KIND_LABELS = {
   data: "Datos (métricas registradas)",
   publications: "Contenido publicado",
   human_analysis: "Análisis del equipo",
+  ai_interpretation: "Interpretación asistida por IA",
 } as const;
 
 export type ReportSection = repo.SectionRow;
@@ -108,13 +109,63 @@ const updateSectionSchema = sectionSchema.extend({ sectionId: z.string() });
 export async function updateReportSection(ctx: ProjectContext, input: z.input<typeof updateSectionSchema>) {
   const data = parseInput(updateSectionSchema, input);
   const { section, report } = await loadEditableSection(ctx, data.sectionId);
+  const hasBody = section.kind === "human_analysis" || section.kind === "ai_interpretation";
+  const body = hasBody ? (data.body ?? "") : null;
   await repo.updateSection(ctx, section.id, {
     title: data.title,
-    body: section.kind === "human_analysis" ? (data.body ?? "") : null,
+    body,
     channelId: section.kind === "data" ? await resolveChannelId(ctx, data.channelId) : null,
     comparePrevious: data.comparePrevious,
+    // Si cambia el texto de la IA, hay que volver a revisarlo.
+    ...(section.kind === "ai_interpretation" && body !== section.body ? { reviewedBy: null, reviewedAt: null } : {}),
   });
   await audit(ctx, "report.section_updated", report.id, { sectionId: section.id });
+}
+
+const aiSectionSchema = z.object({
+  cycleId: z.string(),
+  aiGenerationId: z.string(),
+  title: z.string().trim().min(1, "Indica un título").max(150),
+  body: z.string().trim().min(1, "El texto está vacío").max(20000),
+});
+
+/**
+ * Añade al informe una interpretación generada por IA (la llama el módulo ai al
+ * "usar" una generación). Queda marcada y sin revisar: el informe no se aprueba
+ * hasta que una persona la revise.
+ */
+export async function addAiInterpretationSection(ctx: ProjectContext, input: z.input<typeof aiSectionSchema>) {
+  const data = parseInput(aiSectionSchema, input);
+  await authorize(ctx, "report.write");
+  const cycle = await getCycle(ctx, data.cycleId);
+  const current = await repo.findReportByCycle(ctx, cycle.id);
+  if (!current) throw new ValidationError("Crea primero el informe del mes");
+  const report = await loadEditableReport(ctx, current.id);
+  if (!isUuid(data.aiGenerationId)) throw new NotFoundError();
+  try {
+    const section = await repo.insertSection(ctx, report.id, {
+      kind: "ai_interpretation",
+      title: data.title,
+      body: data.body,
+      channelId: null,
+      comparePrevious: false,
+      aiGenerationId: data.aiGenerationId,
+    });
+    await audit(ctx, "report.ai_section_added", report.id, { sectionId: section.id, aiGenerationId: data.aiGenerationId });
+    return section;
+  } catch (err) {
+    if (isForeignKeyViolation(err)) throw new NotFoundError("Generación no encontrada");
+    throw err;
+  }
+}
+
+/** Una persona confirma que ha leído y comprobado la interpretación de la IA. */
+export async function markAiSectionReviewed(ctx: ProjectContext, input: { sectionId: string }) {
+  const { section, report } = await loadEditableSection(ctx, input.sectionId);
+  if (section.kind !== "ai_interpretation") throw new ValidationError("Solo se revisan las secciones de IA");
+  if (!section.body?.trim()) throw new ValidationError("La sección está vacía");
+  await repo.updateSection(ctx, section.id, { reviewedBy: ctx.actor.userId, reviewedAt: new Date() });
+  await audit(ctx, "report.ai_section_reviewed", report.id, { sectionId: section.id });
 }
 
 export async function deleteReportSection(ctx: ProjectContext, input: { sectionId: string }) {
@@ -141,9 +192,14 @@ export async function approveReport(ctx: ProjectContext, input: { reportId: stri
   if (report.status === "approved") throw new ValidationError("El informe ya está aprobado");
   const sections = await repo.listSections(ctx, report.id);
   if (sections.length === 0) throw new ValidationError("El informe no tiene secciones");
-  const empty = sections.filter((s) => s.kind === "human_analysis" && !s.body?.trim());
+  const empty = sections.filter((s) => (s.kind === "human_analysis" || s.kind === "ai_interpretation") && !s.body?.trim());
   if (empty.length > 0) {
     throw new ValidationError(`Completa o elimina las secciones de análisis vacías: ${empty.map((s) => s.title).join(", ")}`);
+  }
+  // WF-06: lo generado por IA no sale sin que una persona lo haya revisado.
+  const unreviewed = sections.filter((s) => s.kind === "ai_interpretation" && !s.reviewedBy);
+  if (unreviewed.length > 0) {
+    throw new ValidationError(`Revisa antes las secciones generadas con IA: ${unreviewed.map((s) => s.title).join(", ")}`);
   }
   await repo.updateReport(ctx, report.id, { status: "approved", approvedBy: ctx.actor.userId, approvedAt: new Date() });
   await audit(ctx, "report.approved", report.id);

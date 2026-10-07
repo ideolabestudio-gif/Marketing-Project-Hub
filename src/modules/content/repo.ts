@@ -162,7 +162,14 @@ export type NewAsset = Pick<AssetRow, "id" | "kind" | "storageKey" | "url" | "fi
  */
 export async function createVersion(
   ctx: ProjectContext,
-  input: { itemId: string; content: VersionContent; note: string | null; assetIds: string[]; newAsset?: NewAsset },
+  input: {
+    itemId: string;
+    content: VersionContent;
+    note: string | null;
+    assetIds: string[];
+    newAsset?: NewAsset;
+    aiGenerationId?: string | null;
+  },
 ): Promise<VersionRow> {
   return getDb().transaction(async (tx) => {
     const [{ current }] = await tx
@@ -184,6 +191,8 @@ export async function createVersion(
         versionNo: (current ?? 0) + 1,
         ...input.content,
         note: input.note,
+        origin: input.aiGenerationId ? "ai_assisted" : "human",
+        aiGenerationId: input.aiGenerationId ?? null,
         createdBy: ctx.actor.userId,
       })
       .returning();

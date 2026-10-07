@@ -26,6 +26,7 @@ import {
   addReportSection,
   approveReport,
   getReportView,
+  markAiSectionReviewed,
   reopenReport,
   updateReportSection,
 } from "@/modules/reports/service";
@@ -52,6 +53,7 @@ async function fillAnalysisAndApprove() {
   for (const s of fx.metricsA.sections.filter((x) => x.kind === "human_analysis")) {
     await updateReportSection(ctx, { sectionId: s.id, title: s.title, body: "Análisis del equipo" });
   }
+  await markAiSectionReviewed(ctx, { sectionId: fx.aiA.aiSection.id });
   await approveReport(ctx, { reportId: fx.metricsA.report.id });
 }
 
@@ -243,6 +245,7 @@ describe("resumen e informe", () => {
     for (const s of fx.metricsA.sections.filter((x) => x.kind === "human_analysis")) {
       await updateReportSection(edu, { sectionId: s.id, title: s.title, body: "Texto del editor" });
     }
+    await markAiSectionReviewed(edu, { sectionId: fx.aiA.aiSection.id });
     await expect(approveReport(edu, { reportId: fx.metricsA.report.id })).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
       updateReportSection(rev, { sectionId: fx.metricsA.sections[0].id, title: "x", body: "x" }),

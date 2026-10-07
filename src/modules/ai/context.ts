@@ -1,0 +1,127 @@
+import { formatChange, formatMetric } from "@/lib/format";
+import { formatInZone, formatPeriod } from "@/lib/time";
+import type { ProjectContext } from "@/modules/access/context";
+import { getItemDetail, listItems } from "@/modules/content/service";
+import { formatLabel } from "@/modules/content/formats";
+import { getCycle } from "@/modules/cycles/service";
+import { getProject, listChannels } from "@/modules/projects/service";
+import { getMetricSummary } from "@/modules/metrics/service";
+import { listCyclePublications } from "@/modules/review/service";
+
+/**
+ * Construcción del contexto que recibe la IA. Todo se lee a través de los servicios
+ * con el ProjectContext, así que solo puede contener datos del proyecto del contexto
+ * (un ID de otro proyecto falla con NotFoundError antes de llamar al proveedor).
+ * `inputRefs` deja constancia de qué filas se usaron.
+ */
+export type BuiltContext = { cycleId: string; data: string; inputRefs: Record<string, string[]> };
+
+function block(lines: (string | null | undefined | false)[]): string {
+  return lines.filter((l): l is string => typeof l === "string" && l.trim() !== "").join("\n");
+}
+
+function brief(cycle: { objectives: string | null; keyDates: string | null; notes: string | null }) {
+  return block([
+    cycle.objectives && `Objetivos del mes: ${cycle.objectives}`,
+    cycle.keyDates && `Fechas clave: ${cycle.keyDates}`,
+    cycle.notes && `Notas: ${cycle.notes}`,
+  ]) || "Brief del mes: (vacío)";
+}
+
+export async function copyDraftContext(ctx: ProjectContext, itemId: string): Promise<BuiltContext> {
+  const detail = await getItemDetail(ctx, itemId);
+  const { item, current } = detail;
+  const [project, cycle] = await Promise.all([getProject(ctx), getCycle(ctx, item.cycleId)]);
+  const data = block([
+    `Cliente: ${project.clientName}`,
+    `Proyecto: ${project.name}`,
+    `Idioma: ${project.locale}`,
+    `Mes: ${formatPeriod(cycle.period, project.locale)}`,
+    brief(cycle),
+    "",
+    `Pieza: ${item.title}`,
+    `Canal: ${item.channelName} (${item.channelKind === "email" ? "email" : "red social"}, ${item.channelPlatform})`,
+    `Formato: ${formatLabel(item.format)}`,
+    item.plannedAt && `Fecha prevista: ${formatInZone(item.plannedAt, project.timezone, project.locale)}`,
+    current && `Versión actual (v${current.versionNo}):`,
+    current?.emailSubject && `Asunto: ${current.emailSubject}`,
+    current?.emailPreheader && `Preencabezado: ${current.emailPreheader}`,
+    current?.body,
+  ]);
+  return {
+    cycleId: cycle.id,
+    data,
+    inputRefs: {
+      project: [ctx.projectId],
+      cycle: [cycle.id],
+      contentItem: [item.id],
+      ...(current ? { contentVersion: [current.id] } : {}),
+    },
+  };
+}
+
+export async function ideasContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
+  const [project, cycle, channels] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId), listChannels(ctx)]);
+  const items = await listItems(ctx, cycle.id);
+  const active = channels.filter((c) => c.isActive);
+  const data = block([
+    `Cliente: ${project.clientName}`,
+    `Proyecto: ${project.name}`,
+    `Idioma: ${project.locale}`,
+    `Mes: ${formatPeriod(cycle.period, project.locale)}`,
+    brief(cycle),
+    "",
+    "Canales:",
+    ...active.map((c) => `- ${c.displayName} (${c.kind === "email" ? "email" : "red social"}, ${c.platform})`),
+    "",
+    items.length ? "Piezas ya planificadas:" : "Todavía no hay piezas planificadas.",
+    ...items.map((i) => `- ${i.title} · ${i.channelName} · ${formatLabel(i.format)}`),
+  ]);
+  return {
+    cycleId: cycle.id,
+    data,
+    inputRefs: { project: [ctx.projectId], cycle: [cycle.id], channel: active.map((c) => c.id), contentItem: items.map((i) => i.id) },
+  };
+}
+
+/**
+ * Para la interpretación del informe: SOLO métricas registradas (con su variación,
+ * calculada de forma determinista) y lo publicado. Ni el análisis del equipo ni
+ * textos anteriores de la IA.
+ */
+export async function reportContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
+  const [project, cycle] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId)]);
+  const [summary, publications] = await Promise.all([
+    getMetricSummary(ctx, { cycleId: cycle.id }),
+    listCyclePublications(ctx, cycle.id),
+  ]);
+  const lines: string[] = [
+    `Cliente: ${project.clientName}`,
+    `Proyecto: ${project.name}`,
+    `Idioma: ${project.locale}`,
+    `Mes: ${formatPeriod(cycle.period, project.locale)}`,
+  ];
+  const active = summary.filter(({ channel, rows }) => channel.isActive || rows.some((r) => r.value !== null));
+  for (const { channel, hasPrevious, rows } of active) {
+    lines.push("", `Métricas de ${channel.displayName}${hasPrevious ? " (este mes · mes anterior · variación)" : ""}:`);
+    for (const r of rows) {
+      const unit = r.definition.unit;
+      lines.push(
+        `- ${r.definition.label}: ${formatMetric(r.value, unit)}` +
+          (hasPrevious ? ` · ${formatMetric(r.previous, unit)} · ${formatChange(r.change)}` : ""),
+      );
+    }
+  }
+  lines.push("", `Piezas publicadas o programadas en el mes: ${publications.length}`);
+  for (const p of publications) lines.push(`- ${p.title} · ${p.channelName} · ${formatLabel(p.format)}`);
+  return {
+    cycleId: cycle.id,
+    data: lines.join("\n"),
+    inputRefs: {
+      project: [ctx.projectId],
+      cycle: [cycle.id],
+      channel: active.map((a) => a.channel.id),
+      contentItem: publications.map((p) => p.itemId),
+    },
+  };
+}

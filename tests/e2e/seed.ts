@@ -5,10 +5,12 @@ import { dirname } from "node:path";
 import { getDb } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { createSession } from "@/modules/identity/session";
+import { installFakeAi } from "../fixtures/fake-ai";
 import { seedTwoProjects } from "../fixtures/two-projects";
 import { E2E_STATE_FILE, type E2EState } from "./state";
 
 async function main() {
+  installFakeAi();
   const fx = await seedTwoProjects();
   const [inactive] = await getDb().insert(users).values({ email: "baja@ideolab.test", isActive: false }).returning();
   const token = async (userId: string) => (await createSession(userId)).token;

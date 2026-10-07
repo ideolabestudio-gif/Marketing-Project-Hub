@@ -25,6 +25,7 @@ Aplicación interna de Ideolab para el ciclo mensual de redes sociales y email m
 - Publicar = registrar lo que una persona hizo fuera del Hub. Un trigger de BD rechaza publicaciones sin las aprobaciones exigidas. `tests/lint/no-external-publishing.test.ts` falla si aparece `fetch`, http o un planificador en `src/`.
 - Métricas: solo valores registrados por personas o importados (con `source` y `source_detail`); nunca se calculan estimaciones. Corregir = fila nueva con `supersedes_id`. El catálogo (`metric_definitions`) es global y solo lo edita la administración.
 - Informes: las secciones de datos se pintan desde `metric_values`; si falta un dato se muestra "sin dato". Un informe aprobado y un ciclo cerrado son de solo lectura (triggers).
+- IA: solo `src/modules/ai` usa `@/lib/ai` (lint) y solo `src/lib/ai/anthropic.ts` sale a la red. El contexto se lee con los servicios y el `ProjectContext`. Lo generado va a `ai_generations` y solo llega a una versión (`origin = ai_assisted`) o a una sección `ai_interpretation` por una acción humana; esas secciones exigen revisión antes de aprobar. En pruebas se usa `tests/fixtures/fake-ai.ts`: nunca llames a la API real en los tests.
 - Textos de la UI en español.
 
 ## Al añadir funcionalidad

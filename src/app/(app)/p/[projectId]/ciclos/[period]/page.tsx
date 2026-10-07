@@ -11,6 +11,7 @@ import { getProject, listChannels } from "@/modules/projects/service";
 import { getReport } from "@/modules/reports/service";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
 import { listCycleStatuses } from "@/modules/review/service";
+import { IdeasSection } from "./ideas-section";
 import { closeCycleAction, createItemAction, reopenCycleAction, setStatusAction, updateBriefAction } from "./actions";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -189,6 +190,8 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
           )}
         </section>
       )}
+
+      <IdeasSection ctx={ctx} projectId={projectId} cycleId={cycle.id} writable={canWrite} tz={tz} />
 
       <section className="card flex flex-col gap-4">
         <div className="flex items-center gap-4">

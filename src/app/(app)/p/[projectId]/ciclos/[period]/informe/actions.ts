@@ -8,6 +8,7 @@ import {
   approveReport,
   createReport,
   deleteReportSection,
+  markAiSectionReviewed,
   moveReportSection,
   reopenReport,
   updateReportSection,
@@ -80,4 +81,12 @@ export async function reopenReportAction(projectId: string, reportId: string, _:
     await reopenReport(ctx, { reportId, reason: formString(formData, "reason") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Informe reabierto");
+}
+
+export async function markAiSectionReviewedAction(projectId: string, sectionId: string) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "report.write");
+    await markAiSectionReviewed(ctx, { sectionId });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Marcada como revisada");
 }

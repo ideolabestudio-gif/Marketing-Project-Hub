@@ -9,7 +9,9 @@ import { channels, clients, projectMemberships, projects, users } from "@/lib/db
 import { requireProjectAccess } from "@/modules/access/context";
 import { addComment, createItem, getItemDetail, saveVersion, uploadAsset } from "@/modules/content/service";
 import { openCycle } from "@/modules/cycles/service";
+import { applyReportInterpretation, generateCopyDraft, generateIdeas, generateReportInterpretation } from "@/modules/ai/service";
 import { recordMetricValue, uploadMetricCsv } from "@/modules/metrics/service";
+import { updateAiSettings } from "@/modules/projects/service";
 import { createReport, getReport, updateReportSection } from "@/modules/reports/service";
 import {
   decideInternal,
@@ -115,6 +117,8 @@ export async function seedTwoProjects() {
 
   const metricsA = await seedMetrics(actors.ana, projectA.id, contentA.cycle.id, channelA.id, MARKER_A);
   const metricsB = await seedMetrics(actors.bea, projectB.id, contentB.cycle.id, channelB.id, MARKER_B);
+  const aiA = await seedAi(actors.ana, projectA.id, contentA.cycle.id, contentA.item.id, MARKER_A);
+  const aiB = await seedAi(actors.bea, projectB.id, contentB.cycle.id, contentB.item.id, MARKER_B);
 
   return {
     users: { ana, edu, bea, mix, rev, admin, rob },
@@ -131,6 +135,8 @@ export async function seedTwoProjects() {
     reviewB,
     metricsA,
     metricsB,
+    aiA,
+    aiB,
   };
 }
 
@@ -246,6 +252,25 @@ async function seedMetrics(manager: Actor, projectId: string, cycleId: string, c
     report: report.report,
     sections: report.sections,
   };
+}
+
+/**
+ * IA activada, con un borrador de texto, ideas y dos interpretaciones del informe (una
+ * ya añadida como sección, sin revisar, y otra pendiente). Requiere el proveedor falso.
+ */
+async function seedAi(manager: Actor, projectId: string, cycleId: string, itemId: string, marker: string) {
+  const ctx = await requireProjectAccess(manager, projectId);
+  await updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: 5 });
+  const copyDraft = await generateCopyDraft(ctx, { itemId, instructions: `Indicaciones ${marker}` });
+  const ideas = await generateIdeas(ctx, { cycleId, instructions: `Ideas ${marker}` });
+  const usedInterpretation = await generateReportInterpretation(ctx, { cycleId });
+  const aiSection = await applyReportInterpretation(ctx, {
+    generationId: usedInterpretation.id,
+    title: `Lectura IA ${marker}`,
+    body: `Interpretación ${marker}`,
+  });
+  const interpretation = await generateReportInterpretation(ctx, { cycleId, instructions: `Lectura ${marker}` });
+  return { copyDraft, ideas, interpretation, aiSection };
 }
 
 export type Fixture = Awaited<ReturnType<typeof seedTwoProjects>>;

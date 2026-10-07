@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
+import { AiGenerationMeta } from "@/components/ai-generation-meta";
 import { ReportBody } from "@/components/report-body";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, formatPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
+import { getAiStatus, listGenerations } from "@/modules/ai/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { getReport, getReportView, SECTION_KIND_LABELS, type ReportSection } from "@/modules/reports/service";
@@ -12,10 +14,12 @@ import {
   approveReportAction,
   createReportAction,
   deleteSectionAction,
+  markAiSectionReviewedAction,
   moveSectionAction,
   reopenReportAction,
   updateSectionAction,
 } from "./actions";
+import { applyInterpretationAction, generateInterpretationAction, resolveGenerationAction } from "../../../ai-actions";
 
 type Channel = Awaited<ReturnType<typeof listChannels>>[number];
 
@@ -40,7 +44,7 @@ function SectionFields({ section, channels }: { section?: ReportSection; channel
           </select>
         </label>
       )}
-      {(kind === undefined || kind === "human_analysis") && (
+      {(kind === undefined || kind === "human_analysis" || kind === "ai_interpretation") && (
         <label className="field">
           Texto {kind === undefined && "(solo secciones de análisis)"}
           <textarea name="body" className="input min-h-32" defaultValue={section?.body ?? ""} />
@@ -99,7 +103,13 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
   const { report, sections } = current;
   const approved = report.status === "approved";
   const editable = canWrite && !approved;
-  const view = await getReportView(ctx, cycle.id);
+  const [view, ai, interpretations] = await Promise.all([
+    getReportView(ctx, cycle.id),
+    getAiStatus(ctx),
+    listGenerations(ctx, { cycleId: cycle.id, purpose: "report_interpretation" }),
+  ]);
+  const drafts = interpretations.filter((g) => g.status === "draft");
+  const canGenerate = ai.enabled && ai.configured && editable && hasPermission(ctx, "ai.generate");
   const activeChannels = channels.filter((c) => c.isActive || sections.some((s) => s.channelId === c.id));
 
   return (
@@ -135,7 +145,21 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
           {sections.map((s, i) => (
             <div key={s.id} className="card flex flex-col gap-3" aria-label={`Sección ${s.title}`}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="badge">{SECTION_KIND_LABELS[s.kind]}</span>
+                <span className={s.kind === "ai_interpretation" ? "rounded bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900" : "badge"}>
+                  {SECTION_KIND_LABELS[s.kind]}
+                </span>
+                {s.kind === "ai_interpretation" &&
+                  (s.reviewedAt ? (
+                    <span className="text-xs text-green-700">Revisada el {formatInZone(s.reviewedAt, project.timezone)}</span>
+                  ) : (
+                    <ActionForm
+                      action={markAiSectionReviewedAction.bind(null, projectId, s.id)}
+                      submitLabel="La he revisado"
+                      variant="secondary"
+                    >
+                      <span className="text-xs text-amber-800">Sin revisar: compruébala contra los datos.</span>
+                    </ActionForm>
+                  ))}
                 <div className="ml-auto flex gap-2">
                   {i > 0 && (
                     <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "up")} submitLabel="↑" variant="secondary">
@@ -177,6 +201,55 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
               <SectionFields channels={activeChannels} />
             </ActionForm>
           </div>
+        </section>
+      )}
+
+      {(canGenerate || (editable && drafts.length > 0)) && (
+        <section className="card flex flex-col gap-3" aria-label="Interpretación con IA">
+          <h2 className="h2">Interpretación con IA</h2>
+          <p className="text-sm text-muted">
+            La IA recibe solo las métricas registradas de este proyecto (y las publicaciones del mes) y propone una
+            lectura. Si la añades al informe, aparece marcada como asistida por IA y hay que revisarla antes de aprobar.
+          </p>
+          {canGenerate && (
+            <ActionForm action={generateInterpretationAction.bind(null, projectId, cycle.id)} submitLabel="Generar interpretación">
+              <label className="field grow">
+                Indicaciones (opcional)
+                <input name="instructions" className="input" placeholder="Céntrate en Instagram" />
+              </label>
+            </ActionForm>
+          )}
+          {drafts.map((g) => (
+            <div key={g.id} className="flex flex-col gap-2 rounded-md border border-violet-200 p-3">
+              <AiGenerationMeta generation={g} tz={project.timezone} />
+              {g.unverifiedNumbers.length > 0 && (
+                <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-900">
+                  Cifras que no están en los datos registrados: {g.unverifiedNumbers.join(", ")}. Corrígelas o quítalas.
+                </p>
+              )}
+              <ActionForm
+                action={applyInterpretationAction.bind(null, projectId, g.id)}
+                submitLabel="Añadir al informe"
+                className="grid gap-2"
+              >
+                <label className="field">
+                  Título de la sección
+                  <input name="title" className="input" defaultValue="Lectura de los resultados" required />
+                </label>
+                <label className="field">
+                  Texto (puedes editarlo)
+                  <textarea name="body" className="input min-h-40" defaultValue={g.output} />
+                </label>
+              </ActionForm>
+              <ActionForm
+                action={resolveGenerationAction.bind(null, projectId, g.id, "discarded")}
+                submitLabel="Descartar"
+                variant="secondary"
+              >
+                {null}
+              </ActionForm>
+            </div>
+          ))}
         </section>
       )}
 

@@ -41,7 +41,8 @@ export async function findSection(ctx: ProjectContext, sectionId: string): Promi
   return row;
 }
 
-type NewSection = Pick<SectionRow, "kind" | "title" | "body" | "channelId" | "comparePrevious">;
+type NewSection = Pick<SectionRow, "kind" | "title" | "body" | "channelId" | "comparePrevious"> &
+  Partial<Pick<SectionRow, "aiGenerationId">>;
 
 export async function createReportWithSections(
   ctx: ProjectContext,
@@ -77,7 +78,9 @@ export async function insertSection(ctx: ProjectContext, reportId: string, secti
 export async function updateSection(
   ctx: ProjectContext,
   sectionId: string,
-  values: Partial<Pick<SectionRow, "title" | "body" | "channelId" | "comparePrevious" | "position">>,
+  values: Partial<
+    Pick<SectionRow, "title" | "body" | "channelId" | "comparePrevious" | "position" | "reviewedBy" | "reviewedAt">
+  >,
 ): Promise<void> {
   await getDb()
     .update(reportSections)

@@ -36,6 +36,11 @@ export function isUniqueViolation(err: unknown): boolean {
   return pgCode(err) === "23505";
 }
 
+/** Código de error de PostgreSQL para violación de FK (p. ej. un ID de otro proyecto). */
+export function isForeignKeyViolation(err: unknown): boolean {
+  return pgCode(err) === "23503";
+}
+
 function pgCode(err: unknown): string | undefined {
   let current: unknown = err;
   for (let i = 0; i < 3 && current && typeof current === "object"; i++) {

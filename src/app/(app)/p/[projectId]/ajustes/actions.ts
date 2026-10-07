@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { projectContextForAction } from "@/lib/project-page";
-import { createChannel, setChannelActive, updateProjectSettings } from "@/modules/projects/service";
+import { createChannel, setChannelActive, updateAiSettings, updateProjectSettings } from "@/modules/projects/service";
 
 // El projectId llega ligado con .bind() desde la página. Como cualquier dato del
 // cliente puede manipularse, la seguridad no depende de su origen: siempre se
@@ -44,4 +44,15 @@ export async function setChannelActiveAction(
     await setChannelActive(ctx, { channelId, active });
     revalidatePath(`/p/${projectId}`, "layout");
   }, active ? "Canal activado" : "Canal desactivado");
+}
+
+export async function updateAiSettingsAction(projectId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "project.settings");
+    await updateAiSettings(ctx, {
+      aiEnabled: formData.get("aiEnabled") === "on",
+      aiMonthlyLimitUsd: formString(formData, "aiMonthlyLimitUsd").replace(",", "."),
+    });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Ajustes de IA guardados");
 }
