@@ -20,7 +20,8 @@ import {
   updateItem,
   uploadAsset,
 } from "@/modules/content/service";
-import { openCycle, setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
+import { closeCycle, openCycle, setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
+import { approveReport, updateReportSection } from "@/modules/reports/service";
 import { FIXTURE_PERIOD, seedTwoProjects, TINY_PNG, type Fixture } from "../fixtures/two-projects";
 
 let fx: Fixture;
@@ -46,11 +47,22 @@ describe("ciclos", () => {
     );
   });
 
-  it("no se puede cerrar a mano en F2 y un ciclo cerrado queda en solo lectura", async () => {
+  it("solo se cierra con el informe aprobado y un ciclo cerrado queda en solo lectura", async () => {
     await expect(
       setCycleStatus(ctx, { cycleId: fx.contentA.cycle.id, status: "closed" as never }),
     ).rejects.toBeInstanceOf(ValidationError);
-    await getDb().update(cycles).set({ status: "closed" }).where(eq(cycles.id, fx.contentA.cycle.id));
+    // Ni siquiera escribiendo directamente en BD: un trigger exige el informe aprobado.
+    await expect(
+      getDb().update(cycles).set({ status: "closed" }).where(eq(cycles.id, fx.contentA.cycle.id)),
+    ).rejects.toMatchObject({ cause: { code: "23514" } });
+    await expect(closeCycle(ctx, { cycleId: fx.contentA.cycle.id, learnings: "Aprendizajes del mes" })).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    for (const s of fx.metricsA.sections.filter((x) => x.kind === "human_analysis")) {
+      await updateReportSection(ctx, { sectionId: s.id, title: s.title, body: "Análisis" });
+    }
+    await approveReport(ctx, { reportId: fx.metricsA.report.id });
+    await closeCycle(ctx, { cycleId: fx.contentA.cycle.id, learnings: "Aprendizajes del mes" });
     await expect(saveVersion(ctx, { itemId: fx.contentA.item.id, body: "x" })).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
       createItem(ctx, { cycleId: fx.contentA.cycle.id, channelId: fx.channelA.id, format: "post", title: "x" }),

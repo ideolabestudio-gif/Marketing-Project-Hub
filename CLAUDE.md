@@ -23,6 +23,8 @@ Aplicación interna de Ideolab para el ciclo mensual de redes sociales y email m
 - Versiones de contenido, sus archivos, las decisiones de revisión y la auditoría son inmutables (triggers): cambiar algo = crear una fila nueva.
 - El estado de una pieza (en revisión, aprobada, programada…) NO se guarda: lo calcula `src/modules/review` a partir de hechos inmutables. No añadas columnas de estado que puedan desincronizarse.
 - Publicar = registrar lo que una persona hizo fuera del Hub. Un trigger de BD rechaza publicaciones sin las aprobaciones exigidas. `tests/lint/no-external-publishing.test.ts` falla si aparece `fetch`, http o un planificador en `src/`.
+- Métricas: solo valores registrados por personas o importados (con `source` y `source_detail`); nunca se calculan estimaciones. Corregir = fila nueva con `supersedes_id`. El catálogo (`metric_definitions`) es global y solo lo edita la administración.
+- Informes: las secciones de datos se pintan desde `metric_values`; si falta un dato se muestra "sin dato". Un informe aprobado y un ciclo cerrado son de solo lectura (triggers).
 - Textos de la UI en español.
 
 ## Al añadir funcionalidad

@@ -257,6 +257,14 @@ CREATE TABLE content_versions (
 - `projects` añade `require_client_approval` (por defecto sí) y `separation_of_duties` (por defecto sí).
 - `content_items.status` solo usa `idea`, `draft` y `cancelled`; el resto de estados se deducen (ADR 011).
 
-## 4.7 Endurecimiento opcional (fase posterior)
+## 4.7 Implementado en F4 (diferencias con el diseño)
+
+- `metric_definitions`: catálogo global (no es dato de cliente) con `key` (`social.*` o `email.*`), `kind` (tipo de canal), `label`, `unit`, `description` (qué mide), `source_note`, `default_aggregation` (resumen propuesto al importar), `position` e `is_active`. Lo siembra la migración con 19 métricas y lo edita la administración; la clave y la unidad no cambian, y desactivar una métrica conserva sus datos.
+- `metric_values` (inmutable por trigger): `channel_id` obligatorio (métricas por canal y mes; `content_item_id` queda para métricas por pieza más adelante), `value numeric(20,4)`, `source` (`manual`, `csv_import`, `integration`), `import_id` (obligatorio si y solo si la fuente es CSV, por CHECK), `source_detail` (archivo, columna y cálculo), `note` (motivo de la corrección), `supersedes_id` (FK compuesta al valor que corrige; único) y `captured_by/at`. El valor vigente es el que nadie corrige.
+- `metric_imports`: el CSV original (`raw_csv`, hasta 1 MB), canal, ciclo, número de filas y `status` (`pending` → `applied` o `discarded`, una sola vez). Un trigger impide modificar el contenido y borrar.
+- `reports`: `status` solo `draft` o `approved` (la entrega al cliente se hace fuera del Hub con el PDF). `report_sections`: `kind` = `data`, `publications` o `human_analysis`; `channel_id` opcional (nulo = todos los canales) en lugar de `data_query`, y `compare_previous`. Un trigger impide crear, cambiar o borrar secciones de un informe aprobado. `ai_generation_id` llegará con F5.
+- `cycles` añade `learnings`, `closed_at` y `closed_by`. Un trigger impide pasar a `closed` sin informe aprobado.
+
+## 4.8 Endurecimiento opcional (fase posterior)
 
 Activar **Row Level Security** de PostgreSQL en todas las tablas con `project_id`, fijando `SET LOCAL app.project_ids = …` por transacción. No se activa en el MVP para no complicar el acceso a datos, pero el modelo ya lo permite sin cambios de esquema.

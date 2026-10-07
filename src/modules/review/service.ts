@@ -93,6 +93,13 @@ export async function listCycleStatuses(ctx: ProjectContext, cycleId: string): P
   return Object.fromEntries(statusesFrom(rows, flags.requireClientApproval).map((r) => [r.id, r.status]));
 }
 
+/** Lo programado y publicado en el ciclo (para el informe). Datos del propio Hub. */
+export async function listCyclePublications(ctx: ProjectContext, cycleId: string) {
+  await authorize(ctx, "project.read");
+  const cycle = await getCycle(ctx, cycleId);
+  return repo.listActivePublicationsForCycle(ctx, cycle.id);
+}
+
 /**
  * Lanza un error si el contenido de la pieza no se puede modificar porque ya está
  * programada o publicada. La usa el módulo de contenidos antes de cualquier cambio.

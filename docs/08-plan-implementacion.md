@@ -57,15 +57,17 @@ Pendiente fuera del código: en Render, el disco persistente (`render.yaml`) nec
 
 Limitación conocida: la evidencia del cliente es texto (p. ej. resumen o enlace al email); adjuntar un archivo de evidencia queda para más adelante.
 
-### F4 · Métricas e informe mensual
+### F4 · Métricas e informe mensual — ✅ hecho
 **Alcance:** catálogo de métricas con definiciones, alta manual, importación CSV con mapeo y previsualización, correcciones como filas nuevas, informe con secciones de datos (renderizadas desde `metric_values`) y análisis humano, aprobación del informe, exportación HTML/PDF, cierre del ciclo con aprendizajes.
 
 **Criterios de aceptación**
-- [ ] Toda métrica muestra su fuente (manual/CSV/integración) y quién la registró.
-- [ ] Una corrección no borra el valor anterior; el historial es visible.
-- [ ] Si falta una métrica, el informe muestra "sin dato", nunca un valor estimado (WF-07).
-- [ ] El informe exportado solo contiene datos del proyecto (EX-01).
-- [ ] Cerrar el ciclo lo deja en solo lectura.
+- [x] Toda métrica muestra su fuente (manual/CSV/integración) y quién la registró; las importadas, además, el archivo, la columna y el cálculo.
+- [x] Una corrección no borra el valor anterior; el historial es visible (y corregir a mano exige motivo).
+- [x] Si falta una métrica, el informe muestra "sin dato", nunca un valor estimado (WF-07).
+- [x] El informe exportado solo contiene datos del proyecto (EX-01).
+- [x] Cerrar el ciclo exige el informe aprobado y lo deja en solo lectura (servicio + trigger); reabrir queda auditado.
+
+Decisiones: catálogo de 19 métricas editable por la administración; importador CSV genérico (ADR 013), pendiente de probar con exportaciones reales de Metricool y MailerLite; PDF desde el navegador (ADR 014).
 
 ### ★ HITO · Ciclo completo de un cliente piloto
 **Criterios de aceptación**
@@ -105,6 +107,7 @@ Candidatos: RLS en PostgreSQL, portal de aprobación para clientes (D-03), adapt
 
 ## Próximos pasos
 
-1. **Ideolab**: probar F2 y F3 con datos reales de **Cerveza Byra** (piezas, revisión, respuesta del cliente, registro de publicación) y apuntar las fricciones.
-2. Empezar **F4 · Métricas e informe mensual** (cierra el ciclo y lleva al hito del piloto).
-3. Pendiente de F0: copias de seguridad con restauración probada cuando se pase a un plan de pago.
+1. **Ideolab · HITO del piloto**: gestionar un mes real de **Cerveza Byra** completo en el Hub (planificación → revisión → publicación → métricas → informe → cierre) y apuntar las fricciones.
+2. Subir al Hub una exportación CSV real de Metricool y otra de MailerLite para comprobar que el importador genérico las lee bien (y ajustar las propuestas de columnas).
+3. Con la lista de fricciones, decidir qué automatizar primero (F5 IA, F6–F7 integraciones).
+4. Pendiente de F0: copias de seguridad con restauración probada cuando se pase a un plan de pago.

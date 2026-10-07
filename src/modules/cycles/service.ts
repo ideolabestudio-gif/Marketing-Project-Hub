@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ConflictError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { isValidPeriod } from "@/lib/time";
 import { isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
@@ -112,5 +112,59 @@ export async function setCycleStatus(ctx: ProjectContext, input: z.input<typeof 
     entityType: "cycle",
     entityId: cycle.id,
     data: { from: cycle.status, to: data.status },
+  });
+}
+
+const closeSchema = z.object({
+  cycleId: z.string(),
+  learnings: z.string().trim().min(10, "Anota los aprendizajes del mes (al menos una frase)").max(5000),
+});
+
+/**
+ * Cierra el ciclo: exige el informe aprobado (también lo exige un trigger de BD) y
+ * deja todo el mes en solo lectura.
+ */
+export async function closeCycle(ctx: ProjectContext, input: z.input<typeof closeSchema>): Promise<void> {
+  await authorize(ctx, "cycle.manage");
+  const data = parseInput(closeSchema, input);
+  const cycle = await getCycle(ctx, data.cycleId);
+  assertCycleWritable(cycle);
+  if (!(await repo.hasApprovedReport(ctx, cycle.id))) {
+    throw new ValidationError("Para cerrar el ciclo, el informe del mes tiene que estar aprobado");
+  }
+  await repo.updateCycle(ctx, cycle.id, {
+    status: "closed",
+    learnings: data.learnings,
+    closedAt: new Date(),
+    closedBy: ctx.actor.userId,
+  });
+  await recordAudit({
+    action: "cycle.closed",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "cycle",
+    entityId: cycle.id,
+  });
+}
+
+const reopenSchema = z.object({
+  cycleId: z.string(),
+  reason: z.string().trim().min(3, "Indica el motivo").max(500),
+});
+
+/** Reabre un ciclo cerrado (queda auditado con su motivo). */
+export async function reopenCycle(ctx: ProjectContext, input: z.input<typeof reopenSchema>): Promise<void> {
+  await authorize(ctx, "cycle.manage");
+  const data = parseInput(reopenSchema, input);
+  const cycle = await getCycle(ctx, data.cycleId);
+  if (cycle.status !== "closed") throw new ValidationError("El ciclo no está cerrado");
+  await repo.updateCycle(ctx, cycle.id, { status: "reporting", closedAt: null, closedBy: null });
+  await recordAudit({
+    action: "cycle.reopened",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "cycle",
+    entityId: cycle.id,
+    data: { reason: data.reason },
   });
 }

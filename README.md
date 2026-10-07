@@ -2,7 +2,7 @@
 
 Aplicación web interna de Ideolab para gestionar el ciclo mensual de redes sociales y email marketing de varios clientes.
 
-> **Estado:** F0–F3 implementadas (acceso y aislamiento, ciclo mensual y contenidos, revisión, aprobación y registro de publicación). Desplegada en Render (ver [doc. 09](docs/09-despliegue.md)). Siguiente: F4 (métricas e informe mensual).
+> **Estado:** F0–F4 implementadas (acceso y aislamiento, ciclo mensual y contenidos, revisión y registro de publicación, métricas con importación CSV, informe mensual en PDF y cierre del ciclo). Desplegada en Render (ver [doc. 09](docs/09-despliegue.md)). Siguiente: **hito del piloto** con un mes real de Cerveza Byra.
 
 **Stack:** Next.js 16 + TypeScript · PostgreSQL + Drizzle ORM · login con Google (arctic) · Vitest + Playwright · Render (Frankfurt).
 

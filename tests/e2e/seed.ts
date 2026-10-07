@@ -21,12 +21,14 @@ async function main() {
       period: fx.contentA.cycle.period,
       itemId: fx.contentA.item.id,
       assetId: fx.contentA.asset.id,
+      importId: fx.metricsA.csvImport.id,
     },
     b: {
       projectId: fx.projectB.id,
       period: fx.contentB.cycle.period,
       itemId: fx.contentB.item.id,
       assetId: fx.contentB.asset.id,
+      importId: fx.metricsB.csvImport.id,
     },
     tokens: {
       ana: await token(fx.users.ana.id),

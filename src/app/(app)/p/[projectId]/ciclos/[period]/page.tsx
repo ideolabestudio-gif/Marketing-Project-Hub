@@ -8,9 +8,10 @@ import { formatLabel } from "@/modules/content/formats";
 import { listItems } from "@/modules/content/service";
 import { CYCLE_STATUS_LABELS, getCycleByPeriod, SELECTABLE_STATUSES } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
+import { getReport } from "@/modules/reports/service";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
 import { listCycleStatuses } from "@/modules/review/service";
-import { createItemAction, setStatusAction, updateBriefAction } from "./actions";
+import { closeCycleAction, createItemAction, reopenCycleAction, setStatusAction, updateBriefAction } from "./actions";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -32,17 +33,20 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
   const { vista } = await searchParams;
   const ctx = await projectContextForPage(projectId);
   const cycle = await orNotFound(getCycleByPeriod(ctx, period));
-  const [project, channels, items, statuses] = await Promise.all([
+  const [project, channels, items, statuses, report] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     listItems(ctx, cycle.id),
     listCycleStatuses(ctx, cycle.id),
+    getReport(ctx, cycle.id),
   ]);
   const statusOf = (id: string): WorkflowStatus => statuses[id] ?? "idea";
 
   const closed = cycle.status === "closed";
   const canManage = hasPermission(ctx, "cycle.manage") && !closed;
   const canWrite = hasPermission(ctx, "content.write") && !closed;
+  const isManager = hasPermission(ctx, "cycle.manage");
+  const reportApproved = report?.report.status === "approved";
   const view = vista === "lista" ? "lista" : "calendario";
   const base = `/p/${projectId}/ciclos/${period}`;
   const tz = project.timezone;
@@ -70,6 +74,14 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
             <span className="badge">{items.length} piezas</span>
             <span className="badge">Horario: {tz}</span>
           </div>
+          <nav className="mt-3 flex gap-4 text-sm">
+            <Link href={`${base}/metricas`} className="link">
+              Métricas
+            </Link>
+            <Link href={`${base}/informe`} className="link">
+              Informe {report ? (reportApproved ? "(aprobado)" : "(borrador)") : "(sin crear)"}
+            </Link>
+          </nav>
         </div>
         {canManage && (
           <ActionForm action={setStatusAction.bind(null, projectId, cycle.id)} submitLabel="Cambiar estado" variant="secondary">
@@ -83,6 +95,41 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
           </ActionForm>
         )}
       </div>
+
+      {closed ? (
+        <section className="card flex flex-col gap-3">
+          <h2 className="h2">Ciclo cerrado</h2>
+          <p className="text-sm text-muted">
+            {cycle.closedAt && `Cerrado el ${formatInZone(cycle.closedAt, tz)}. `}El mes queda en solo lectura.
+          </p>
+          <h3 className="font-medium">Aprendizajes</h3>
+          <p className="whitespace-pre-wrap text-sm">{cycle.learnings || "—"}</p>
+          {isManager && (
+            <ActionForm action={reopenCycleAction.bind(null, projectId, cycle.id)} submitLabel="Reabrir ciclo" variant="secondary">
+              <input name="reason" className="input" placeholder="Motivo para reabrir" required />
+            </ActionForm>
+          )}
+        </section>
+      ) : (
+        canManage && (
+          <section className="card flex flex-col gap-3">
+            <h2 className="h2">Cerrar el ciclo</h2>
+            {reportApproved ? (
+              <ActionForm action={closeCycleAction.bind(null, projectId, cycle.id)} submitLabel="Cerrar ciclo" className="grid gap-3">
+                <label className="field">
+                  Aprendizajes del mes (qué funcionó, qué cambiar el mes que viene)
+                  <textarea name="learnings" className="input min-h-24" required />
+                </label>
+              </ActionForm>
+            ) : (
+              <p className="text-sm text-muted">
+                Para cerrar el mes, el <Link href={`${base}/informe`} className="link">informe</Link> tiene que estar
+                aprobado. Al cerrarlo, todo el ciclo queda en solo lectura.
+              </p>
+            )}
+          </section>
+        )
+      )}
 
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Brief del mes</h2>

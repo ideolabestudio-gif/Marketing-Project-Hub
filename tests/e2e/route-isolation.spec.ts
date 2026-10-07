@@ -28,7 +28,8 @@ function fill(route: string, ids: ProjectSample, res: ProjectSample = ids): stri
   const url = route
     .replace("[projectId]", ids.projectId)
     .replace("[period]", res.period)
-    .replace("[itemId]", res.itemId);
+    .replace("[itemId]", res.itemId)
+    .replace("[importId]", res.importId);
   if (url.includes("[")) throw new Error(`Añade un valor de ejemplo para los segmentos dinámicos de ${route}`);
   return url;
 }
@@ -54,8 +55,8 @@ for (const route of PROJECT_PAGES) {
     expect(body).not.toContain(MARKER_B);
   });
 
-  if (route.includes("[itemId]")) {
-    test(`${route}: proyecto A con una pieza de B da 404 (HT-02)`, async ({ request }) => {
+  if (route.includes("[itemId]") || route.includes("[importId]")) {
+    test(`${route}: proyecto A con un recurso de B da 404 (HT-02)`, async ({ request }) => {
       const s = readState();
       const res = await request.get(fill(route, s.a, s.b), { headers: sessionCookie(s.tokens.ana), maxRedirects: 0 });
       expect(res.status()).toBe(404);

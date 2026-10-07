@@ -102,7 +102,7 @@ Las pruebas SV-01..03 se **generan** recorriendo el registro de servicios export
 - Cobertura obligatoria: todo servicio exportado y toda ruta bajo `/p/[projectId]` deben aparecer en las matrices generadas (la prueba falla si hay uno sin cubrir).
 - Cualquier tabla nueva debe pasar DB-06.
 
-## 6.5 Estado de implementación (tras F1)
+## 6.5 Estado de implementación (tras F4)
 
 | Prueba | Estado | Dónde |
 |--------|--------|-------|
@@ -111,7 +111,8 @@ Las pruebas SV-01..03 se **generan** recorriendo el registro de servicios export
 | DB-07 (auditoría inmutable: UPDATE, DELETE y TRUNCATE prohibidos) | ✅ | `tests/isolation/db-schema.test.ts` |
 | DB-01, DB-02 y referencias cruzadas de piezas y comentarios; CHECK de la clave de archivo; inmutabilidad de versiones y archivos | ✅ F2 | `tests/isolation/db-content.test.ts` |
 | DB-03 (aprobaciones y publicaciones no cruzan proyectos ni piezas) | ✅ F3 | `tests/isolation/db-content.test.ts` |
-| DB-04, DB-05 | ⏳ F4–F5 | Con métricas e IA; DB-06 obliga a que cumplan el patrón |
+| DB-04 (valor de A con canal o ciclo de B), DB-07 para `metric_values`, importaciones y secciones de informe aprobado | ✅ F4 | `tests/integration/metrics-reports.test.ts` |
+| DB-05 | ⏳ F5 | Con IA; DB-06 obliga a que cumpla el patrón |
 | SV-01..03, generadas desde el registro de servicios; la prueba falla si un servicio nuevo no está clasificado | ✅ | `tests/isolation/service-isolation.test.ts` + `service-cases.ts` |
 | SV-05 (rol distinto en cada proyecto), SV-06 (retirar la membresía corta el acceso) | ✅ | `tests/isolation/access.test.ts` |
 | HT-01 (todas las páginas de `/p/[projectId]`, descubiertas leyendo el sistema de ficheros) | ✅ | `tests/e2e/route-isolation.spec.ts` |
@@ -127,6 +128,7 @@ Las pruebas SV-01..03 se **generan** recorriendo el registro de servicios export
 | WF-01..04 (sin publicar sin aprobación, lo publicado es lo aprobado, evidencia del cliente, separación de funciones), con comprobación también contra la BD | ✅ F3 | `tests/integration/review.test.ts` |
 | WF-08 (sin llamadas de red ni planificadores en `src/`) | ✅ F3 | `tests/lint/no-external-publishing.test.ts` |
 | Panel "pendiente de mí" solo con tareas de los proyectos propios | ✅ F3 | `tests/integration/review.test.ts` |
-| AI-*, JB-*, EX-*, WF-05..07 | ⏳ | Con sus fases (F4–F5) |
+| WF-07 ("sin dato", nunca estimado) y EX-01 (el informe renderizado de A no contiene marcadores de B) | ✅ F4 | `tests/integration/metrics-reports.test.ts` + HT-01 sobre `/informe/imprimir` |
+| AI-*, JB-*, EX-02, WF-05..06 | ⏳ | Con sus fases (F5) |
 
-Comprobación de que las pruebas detectan fugas: al quitar a propósito el filtro `project_id` de dos consultas de canales, fallan SV-01 y SV-02/03 en esas funciones; al quitarlo de la búsqueda de archivos, falla SV-02 de `getAssetFile` (y `removeAsset` sigue protegido por una segunda comprobación).
+Comprobación de que las pruebas detectan fugas: al quitar a propósito el filtro `project_id` de dos consultas de canales, fallan SV-01 y SV-02/03 en esas funciones; al quitarlo de la búsqueda de archivos, falla SV-02 de `getAssetFile` (y `removeAsset` sigue protegido por una segunda comprobación); al quitarlo de la búsqueda de importaciones CSV, falla SV-03 de `discardMetricImport` (las demás funciones de importación siguen protegidas porque el canal tampoco es del proyecto).
