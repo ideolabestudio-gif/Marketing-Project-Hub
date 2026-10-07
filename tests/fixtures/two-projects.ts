@@ -9,6 +9,10 @@ import { channels, clients, projectMemberships, projects, users } from "@/lib/db
 import { requireProjectAccess } from "@/modules/access/context";
 import { addComment, createItem, getItemDetail, saveVersion, uploadAsset } from "@/modules/content/service";
 import { openCycle } from "@/modules/cycles/service";
+import { applyReportInterpretation, generateCopyDraft, generateIdeas, generateReportInterpretation } from "@/modules/ai/service";
+import { recordMetricValue, uploadMetricCsv } from "@/modules/metrics/service";
+import { updateAiSettings } from "@/modules/projects/service";
+import { createReport, getReport, updateReportSection } from "@/modules/reports/service";
 import {
   decideInternal,
   recordClientDecision,
@@ -25,7 +29,8 @@ export async function resetDatabase(): Promise<void> {
   await getDb().transaction(async (tx) => {
     await tx.execute(sql`SET LOCAL session_replication_role = replica`);
     const rows = await tx.execute<{ tablename: string }>(
-      sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
+      // El catálogo de métricas es global (no es dato de cliente) y lo siembra la migración.
+      sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'metric_definitions'`,
     );
     const names = rows.map((r) => `"${r.tablename}"`).join(", ");
     if (names) await tx.execute(sql.raw(`TRUNCATE ${names} CASCADE`));
@@ -110,6 +115,11 @@ export async function seedTwoProjects() {
     MARKER_B,
   );
 
+  const metricsA = await seedMetrics(actors.ana, projectA.id, contentA.cycle.id, channelA.id, MARKER_A);
+  const metricsB = await seedMetrics(actors.bea, projectB.id, contentB.cycle.id, channelB.id, MARKER_B);
+  const aiA = await seedAi(actors.ana, projectA.id, contentA.cycle.id, contentA.item.id, MARKER_A);
+  const aiB = await seedAi(actors.bea, projectB.id, contentB.cycle.id, contentB.item.id, MARKER_B);
+
   return {
     users: { ana, edu, bea, mix, rev, admin, rob },
     actors,
@@ -123,6 +133,10 @@ export async function seedTwoProjects() {
     contentB,
     reviewA,
     reviewB,
+    metricsA,
+    metricsB,
+    aiA,
+    aiB,
   };
 }
 
@@ -205,6 +219,58 @@ async function seedReview(
     inReview: { item: inReview, versionId: inReviewVersion.id },
     scheduled: { item: scheduled, versionId: v.id, publication },
   };
+}
+
+/**
+ * Métricas e informe de un proyecto: un valor manual corregido (con historial), una
+ * importación CSV pendiente y un informe en borrador con análisis escrito.
+ */
+async function seedMetrics(manager: Actor, projectId: string, cycleId: string, channelId: string, marker: string) {
+  const ctx = await requireProjectAccess(manager, projectId);
+  const first = await recordMetricValue(ctx, { cycleId, channelId, metricKey: "social.followers", value: "1.200" });
+  const followers = await recordMetricValue(ctx, {
+    cycleId,
+    channelId,
+    metricKey: "social.followers",
+    value: "1.250",
+    note: `Corrección ${marker}`,
+  });
+  const csvImport = await uploadMetricCsv(ctx, {
+    cycleId,
+    channelId,
+    filename: `metricas-${marker}.csv`,
+    text: `Fecha;Alcance;Seguidores;Nota\n2026-10-01;1.000;1.240;${marker}\n2026-10-02;500;1.250;${marker}\n`,
+  });
+  await createReport(ctx, { cycleId });
+  const report = (await getReport(ctx, cycleId))!;
+  const summary = report.sections.find((x) => x.kind === "human_analysis")!;
+  await updateReportSection(ctx, { sectionId: summary.id, title: summary.title, body: `Resumen ${marker}` });
+  return {
+    firstValueId: first.id,
+    followersValueId: followers.id,
+    csvImport,
+    report: report.report,
+    sections: report.sections,
+  };
+}
+
+/**
+ * IA activada, con un borrador de texto, ideas y dos interpretaciones del informe (una
+ * ya añadida como sección, sin revisar, y otra pendiente). Requiere el proveedor falso.
+ */
+async function seedAi(manager: Actor, projectId: string, cycleId: string, itemId: string, marker: string) {
+  const ctx = await requireProjectAccess(manager, projectId);
+  await updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: 5 });
+  const copyDraft = await generateCopyDraft(ctx, { itemId, instructions: `Indicaciones ${marker}` });
+  const ideas = await generateIdeas(ctx, { cycleId, instructions: `Ideas ${marker}` });
+  const usedInterpretation = await generateReportInterpretation(ctx, { cycleId });
+  const aiSection = await applyReportInterpretation(ctx, {
+    generationId: usedInterpretation.id,
+    title: `Lectura IA ${marker}`,
+    body: `Interpretación ${marker}`,
+  });
+  const interpretation = await generateReportInterpretation(ctx, { cycleId, instructions: `Lectura ${marker}` });
+  return { copyDraft, ideas, interpretation, aiSection };
 }
 
 export type Fixture = Awaited<ReturnType<typeof seedTwoProjects>>;

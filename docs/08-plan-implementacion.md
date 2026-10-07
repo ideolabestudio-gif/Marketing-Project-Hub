@@ -57,15 +57,17 @@ Pendiente fuera del código: en Render, el disco persistente (`render.yaml`) nec
 
 Limitación conocida: la evidencia del cliente es texto (p. ej. resumen o enlace al email); adjuntar un archivo de evidencia queda para más adelante.
 
-### F4 · Métricas e informe mensual
+### F4 · Métricas e informe mensual — ✅ hecho
 **Alcance:** catálogo de métricas con definiciones, alta manual, importación CSV con mapeo y previsualización, correcciones como filas nuevas, informe con secciones de datos (renderizadas desde `metric_values`) y análisis humano, aprobación del informe, exportación HTML/PDF, cierre del ciclo con aprendizajes.
 
 **Criterios de aceptación**
-- [ ] Toda métrica muestra su fuente (manual/CSV/integración) y quién la registró.
-- [ ] Una corrección no borra el valor anterior; el historial es visible.
-- [ ] Si falta una métrica, el informe muestra "sin dato", nunca un valor estimado (WF-07).
-- [ ] El informe exportado solo contiene datos del proyecto (EX-01).
-- [ ] Cerrar el ciclo lo deja en solo lectura.
+- [x] Toda métrica muestra su fuente (manual/CSV/integración) y quién la registró; las importadas, además, el archivo, la columna y el cálculo.
+- [x] Una corrección no borra el valor anterior; el historial es visible (y corregir a mano exige motivo).
+- [x] Si falta una métrica, el informe muestra "sin dato", nunca un valor estimado (WF-07).
+- [x] El informe exportado solo contiene datos del proyecto (EX-01).
+- [x] Cerrar el ciclo exige el informe aprobado y lo deja en solo lectura (servicio + trigger); reabrir queda auditado.
+
+Decisiones: catálogo de 19 métricas editable por la administración; importador CSV genérico (ADR 013), pendiente de probar con exportaciones reales de Metricool y MailerLite; PDF desde el navegador (ADR 014).
 
 ### ★ HITO · Ciclo completo de un cliente piloto
 **Criterios de aceptación**
@@ -73,16 +75,18 @@ Limitación conocida: la evidencia del cliente es texto (p. ej. resumen o enlace
 - [ ] Lista de fricciones recogida y priorizada con el equipo.
 - [ ] Decisión explícita sobre qué automatizar primero (IA, métricas, programación) basada en tiempo real invertido.
 
-### F5 · Borradores con IA
+### F5 · Borradores con IA — ✅ hecho (falta configurar la clave en Render)
 **Alcance:** puerto `AiProvider` con implementación `disabled` y una real (según D-07), plantillas de prompt versionadas, `context-builder` de un solo proyecto, generación de borradores de copy/asuntos de email/ideas e interpretación de informe, almacenamiento en `ai_generations`, UI que marca claramente lo generado por IA, límite de gasto por proyecto.
 
 **Criterios de aceptación**
-- [ ] La IA está desactivada por defecto por proyecto.
-- [ ] Una generación nunca modifica contenidos ni informes por sí sola (AI-03).
-- [ ] Usar un borrador crea una versión `ai_assisted` vinculada a la generación (WF-05).
-- [ ] La interpretación IA del informe aparece en una sección distinta y marcada; el informe no se aprueba sin revisarla (WF-06).
-- [ ] La IA solo recibe métricas registradas; no se le pide producir cifras nuevas.
-- [ ] AI-01, AI-02, AI-04, JB-01, JB-02 pasan.
+- [x] La IA está desactivada por defecto por proyecto (y en el servidor si no hay clave).
+- [x] Una generación nunca modifica contenidos ni informes por sí sola (AI-03).
+- [x] Usar un borrador crea una versión `ai_assisted` vinculada a la generación (WF-05, también en BD).
+- [x] La interpretación IA del informe aparece en una sección distinta y marcada; el informe no se aprueba sin revisarla (WF-06).
+- [x] La IA solo recibe métricas registradas; no se le pide producir cifras nuevas y se señalan las que no estaban en los datos.
+- [x] AI-01, AI-02, AI-04 pasan. JB-01/JB-02 no aplican: no hay trabajos en segundo plano.
+
+Decisiones: Claude (`claude-opus-5-5`) como proveedor (D-07, ADR 015); límite de gasto mensual por proyecto (5 USD por defecto); tres usos: borrador de texto de una pieza, ideas del mes e interpretación del informe.
 
 ### F6 · Verificación de integraciones (sin código de producción)
 **Alcance:** informes de verificación (doc. 07) de las herramientas que use Ideolab (D-04), con pruebas reales en cuentas de prueba.
@@ -105,6 +109,8 @@ Candidatos: RLS en PostgreSQL, portal de aprobación para clientes (D-03), adapt
 
 ## Próximos pasos
 
-1. **Ideolab**: probar F2 y F3 con datos reales de **Cerveza Byra** (piezas, revisión, respuesta del cliente, registro de publicación) y apuntar las fricciones.
-2. Empezar **F4 · Métricas e informe mensual** (cierra el ciclo y lleva al hito del piloto).
-3. Pendiente de F0: copias de seguridad con restauración probada cuando se pase a un plan de pago.
+1. **Ideolab · HITO del piloto**: gestionar un mes real de **Cerveza Byra** completo en el Hub (planificación → revisión → publicación → métricas → informe → cierre) y apuntar las fricciones.
+2. Subir al Hub una exportación CSV real de Metricool y otra de MailerLite para comprobar que el importador genérico las lee bien (y ajustar las propuestas de columnas).
+3. Para usar la IA: configurar `AI_PROVIDER` y `ANTHROPIC_API_KEY` en Render (doc. 09) y activarla en el proyecto de Byra.
+4. Con la lista de fricciones, decidir qué automatizar después (F6–F7 integraciones).
+5. Pendiente de F0: copias de seguridad con restauración probada cuando se pase a un plan de pago.

@@ -54,7 +54,12 @@ export default async function VersionsPage({
           <tbody>
             {versions.map((v) => (
               <tr key={v.id}>
-                <td>v{v.versionNo}</td>
+                <td className="whitespace-nowrap">
+                  v{v.versionNo}
+                  {v.origin === "ai_assisted" && (
+                    <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-900">IA</span>
+                  )}
+                </td>
                 <td className="whitespace-nowrap">{formatInZone(v.createdAt, project.timezone)}</td>
                 <td>{v.authorName ?? v.authorEmail}</td>
                 <td>{v.note ?? "—"}</td>

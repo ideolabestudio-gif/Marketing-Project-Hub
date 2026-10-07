@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { assetStorageKey, getStorage } from "@/lib/storage";
 import { periodOfWallTime, wallTimeToUtc } from "@/lib/time";
-import { isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
+import { isForeignKeyViolation, isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
 import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
@@ -226,6 +226,8 @@ const versionSchema = z.object({
     .transform((v) => v || null)
     .pipe(httpUrl.nullable()),
   note: optionalText(500),
+  /** Solo desde el módulo ai (useCopyDraft): la versión parte de ese borrador. */
+  aiGenerationId: z.string().optional(),
 });
 
 async function nextVersion(
@@ -238,6 +240,7 @@ async function nextVersion(
   },
   note: string | null,
   audit: { action: string; data?: Record<string, unknown> },
+  aiGenerationId: string | null = null,
 ) {
   const prev = await repo.findVersion(ctx, item.id);
   const prevAssets = prev ? await repo.listVersionAssets(ctx, prev.id) : [];
@@ -255,7 +258,7 @@ async function nextVersion(
     throw new ValidationError(prev ? "No hay cambios respecto a la versión actual" : "La versión está vacía");
   }
   try {
-    const version = await repo.createVersion(ctx, { itemId: item.id, note, ...next });
+    const version = await repo.createVersion(ctx, { itemId: item.id, note, aiGenerationId, ...next });
     await recordAudit({
       action: audit.action,
       actorId: ctx.actor.userId,
@@ -267,6 +270,7 @@ async function nextVersion(
     return version;
   } catch (err) {
     if (isUniqueViolation(err)) throw new ConflictError("Alguien ha guardado otra versión a la vez. Recarga y repite.");
+    if (aiGenerationId && isForeignKeyViolation(err)) throw new NotFoundError("Borrador no encontrado");
     throw err;
   }
 }
@@ -281,9 +285,18 @@ export async function saveVersion(ctx: ProjectContext, input: z.input<typeof ver
     emailPreheader: item.channelKind === "email" ? data.emailPreheader : null,
     linkUrl: data.linkUrl,
   };
-  return nextVersion(ctx, item, (prev) => ({ content, assetIds: prev.assetIds }), data.note, {
-    action: "content_version.created",
-  });
+  if (data.aiGenerationId !== undefined && !isUuid(data.aiGenerationId)) throw new NotFoundError();
+  return nextVersion(
+    ctx,
+    item,
+    (prev) => ({ content, assetIds: prev.assetIds }),
+    data.note,
+    {
+      action: "content_version.created",
+      data: data.aiGenerationId ? { aiGenerationId: data.aiGenerationId } : undefined,
+    },
+    data.aiGenerationId ?? null,
+  );
 }
 
 const MAX_ASSETS_PER_VERSION = 20;

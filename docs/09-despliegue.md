@@ -11,7 +11,7 @@ Por qué Render: no hay servidores que mantener, despliega solo al hacer push a 
 Es la que está en uso ahora mismo para ver la aplicación. Sirve para probar y enseñar, **no para trabajo real con clientes**:
 
 - **Base de datos en Neon** (plan gratuito, región AWS Frankfurt). Desactiva "Connection pooling" y **quita `&channel_binding=require`** del final de la cadena de conexión (debe terminar en `?sslmode=require`).
-- **Aplicación en Render** como *Web Service* creado a mano (**no** con Blueprint, que crea servicios de pago): región Frankfurt, rama `main`, Build `npm ci && npm run build`, Start `npm run db:migrate && npm run start`, tipo **Free**, Health Check `/health`. Variables: `DATABASE_URL` (Neon), `APP_URL`, `BOOTSTRAP_ADMIN_EMAILS`, `NODE_VERSION=22`, `NEXT_TELEMETRY_DISABLED=1`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- **Aplicación en Render** como *Web Service* creado a mano (**no** con Blueprint, que crea servicios de pago): región Frankfurt, rama `main`, Build `npm ci && npm run build`, Start `npm run db:migrate && npm run start`, tipo **Free**, Health Check `/health`. Variables: `DATABASE_URL` (Neon), `APP_URL`, `BOOTSTRAP_ADMIN_EMAILS`, `NODE_VERSION=22`, `NEXT_TELEMETRY_DISABLED=1`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y, si queréis IA, `AI_PROVIDER` y `ANTHROPIC_API_KEY` (ver 9.2).
 - Limitaciones: la app se duerme tras 15 minutos sin uso (la primera visita tarda ~1 minuto); **los archivos subidos se pierden** al reiniciarse (no hay disco); Neon gratuito solo permite recuperar las últimas horas.
 
 Para trabajo real, usar el Blueprint (`render.yaml`) de las secciones siguientes, con disco y copias de seguridad.
@@ -41,6 +41,16 @@ Para trabajo real, usar el Blueprint (`render.yaml`) de las secciones siguientes
 3. El Blueprint crea también un **disco persistente** de 10 GB montado en `/var/data` para los archivos subidos (`STORAGE_DIR=/var/data/storage`). Requiere plan de pago; revisa en el panel que el disco tenga copias (instantáneas).
 4. Confirma. En cada despliegue se ejecuta `npm ci && npm run build`, y al arrancar `npm run db:migrate && npm run start` (las migraciones son idempotentes).
 5. Comprueba `https://<tu-servicio>/health` → `{"ok":true}`.
+
+### Borradores con IA (opcional, F5)
+
+La IA está apagada si no se configura nada. Para activarla:
+
+1. Crea una clave de API en la consola de Anthropic (console.anthropic.com → API Keys) y fija allí un límite de gasto de la organización como red de seguridad.
+2. En Render, añade las variables `AI_PROVIDER=anthropic` y `ANTHROPIC_API_KEY=<la clave>` (secreta). Opcional: `AI_MODEL` (por defecto `claude-opus-5-5`).
+3. En cada proyecto, **Ajustes → Borradores con IA**: actívala y fija el límite de gasto mensual (por defecto 5 USD).
+
+Los textos de los proyectos con IA activada se envían a Anthropic para generar los borradores. Antes de activarla para un cliente, comprobad que vuestro contrato con él lo permite.
 
 ## 9.3 Primer acceso
 

@@ -117,3 +117,12 @@ export function formatInZone(date: Date, timeZone: string, locale = "es-ES"): st
 export function formatTimeInZone(date: Date, timeZone: string, locale = "es-ES"): string {
   return new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit" }).format(date);
 }
+
+/** Mes anterior a un periodo AAAA-MM. */
+export function previousPeriod(period: string): string {
+  const m = PERIOD_RE.exec(period);
+  if (!m) throw new Error(`Periodo no válido: ${period}`);
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  return mo === 1 ? `${y - 1}-12` : `${y}-${pad(mo - 1)}`;
+}

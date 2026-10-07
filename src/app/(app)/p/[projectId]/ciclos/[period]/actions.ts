@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { projectContextForAction } from "@/lib/project-page";
 import { createItem } from "@/modules/content/service";
-import { setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
+import { closeCycle, reopenCycle, setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
 
 export async function updateBriefAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
   return runAction(async () => {
@@ -52,4 +52,20 @@ export async function createItemAction(
   }, "Pieza creada");
   if (result?.ok && itemId) redirect(`/p/${projectId}/ciclos/${period}/piezas/${itemId}`);
   return result;
+}
+
+export async function closeCycleAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "cycle.manage");
+    await closeCycle(ctx, { cycleId, learnings: formString(formData, "learnings") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Ciclo cerrado");
+}
+
+export async function reopenCycleAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "cycle.manage");
+    await reopenCycle(ctx, { cycleId, reason: formString(formData, "reason") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Ciclo reabierto");
 }

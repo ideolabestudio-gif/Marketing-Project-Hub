@@ -21,6 +21,7 @@ import {
   updateItemAction,
   uploadAssetAction,
 } from "./actions";
+import { AiSection } from "./ai-section";
 import { ReviewSection } from "./review-section";
 
 export default async function ItemPage({ params }: PageProps<"/p/[projectId]/ciclos/[period]/piezas/[itemId]">) {
@@ -139,6 +140,16 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           <p className="text-sm text-muted">Sin contenido todavía.</p>
         )}
       </section>
+
+      <AiSection
+        ctx={ctx}
+        projectId={projectId}
+        cycleId={item.cycleId}
+        itemId={item.id}
+        isEmail={isEmail}
+        canEditContent={canEditContent}
+        tz={tz}
+      />
 
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Archivos y enlaces</h2>

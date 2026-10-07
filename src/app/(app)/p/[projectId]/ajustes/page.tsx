@@ -2,13 +2,14 @@ import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { projectContextForPage } from "@/lib/project-page";
 import { PLATFORMS, PLATFORM_KEYS } from "@/modules/projects/catalog";
+import { getAiStatus } from "@/modules/ai/service";
 import { getProject, listChannels } from "@/modules/projects/service";
-import { createChannelAction, setChannelActiveAction, updateSettingsAction } from "./actions";
+import { createChannelAction, setChannelActiveAction, updateAiSettingsAction, updateSettingsAction } from "./actions";
 
 export default async function ProjectSettingsPage({ params }: PageProps<"/p/[projectId]/ajustes">) {
   const { projectId } = await params;
   const ctx = await projectContextForPage(projectId, "project.settings");
-  const [project, channels] = await Promise.all([getProject(ctx), listChannels(ctx)]);
+  const [project, channels, ai] = await Promise.all([getProject(ctx), listChannels(ctx), getAiStatus(ctx)]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,6 +46,44 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
               Separación de funciones
               <span className="block text-muted">Quien escribe una versión no puede aprobarla internamente.</span>
             </span>
+          </label>
+        </ActionForm>
+      </section>
+
+      <section className="card flex flex-col gap-3">
+        <h2 className="h2">Borradores con IA</h2>
+        <p className="text-sm text-muted">
+          Si se activa, el equipo puede pedir borradores de textos, ideas para el mes y una primera lectura de las
+          métricas para el informe. La IA solo recibe datos de este proyecto, se envían al proveedor ({ai.model}) para
+          generar el texto, y todo lo que produce queda marcado y necesita revisión humana. No publica ni envía nada.
+        </p>
+        {!ai.configured && (
+          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+            El servidor no tiene configurado un proveedor de IA (variables AI_PROVIDER y ANTHROPIC_API_KEY). Puedes
+            dejarlo activado, pero no se podrá generar nada hasta configurarlo.
+          </p>
+        )}
+        <p className="text-sm">
+          Gasto este mes:{" "}
+          <strong>
+            {ai.spentUsd.toLocaleString("es-ES", { style: "currency", currency: "USD" })} de{" "}
+            {ai.limitUsd.toLocaleString("es-ES", { style: "currency", currency: "USD" })}
+          </strong>
+        </p>
+        <ActionForm action={updateAiSettingsAction.bind(null, projectId)} submitLabel="Guardar" className="grid gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="aiEnabled" defaultChecked={ai.enabled} />
+            Activar la IA en este proyecto
+          </label>
+          <label className="field max-w-xs">
+            Límite de gasto al mes (USD)
+            <input
+              name="aiMonthlyLimitUsd"
+              className="input"
+              inputMode="decimal"
+              defaultValue={String(ai.limitUsd).replace(".", ",")}
+              required
+            />
           </label>
         </ActionForm>
       </section>

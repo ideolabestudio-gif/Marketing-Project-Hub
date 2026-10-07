@@ -42,6 +42,29 @@ export async function updateProjectSettings(ctx: ProjectContext, input: z.input<
   });
 }
 
+const aiSettingsSchema = z.object({
+  aiEnabled: z.boolean(),
+  aiMonthlyLimitUsd: z.coerce
+    .number("Indica un importe")
+    .min(0, "El límite no puede ser negativo")
+    .max(500, "Como máximo 500 USD al mes"),
+});
+
+/** Activa o desactiva la IA en el proyecto y fija su gasto máximo mensual. */
+export async function updateAiSettings(ctx: ProjectContext, input: z.input<typeof aiSettingsSchema>) {
+  await authorize(ctx, "project.settings");
+  const data = parseInput(aiSettingsSchema, input);
+  await repo.updateProject(ctx, data);
+  await recordAudit({
+    action: "project.ai_settings_updated",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "project",
+    entityId: ctx.projectId,
+    data,
+  });
+}
+
 export async function listChannels(ctx: ProjectContext) {
   await authorize(ctx, "project.read");
   return repo.listChannels(ctx);

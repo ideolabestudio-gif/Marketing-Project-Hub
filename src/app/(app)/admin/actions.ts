@@ -5,6 +5,7 @@ import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { adminRemoveMembership, adminSetMembership } from "@/modules/access/service";
 import { requireAdminActor } from "@/modules/identity/next";
 import { adminInviteUser, adminSetUserActive } from "@/modules/identity/service";
+import { adminCreateMetricDefinition, adminUpdateMetricDefinition } from "@/modules/metrics/service";
 import { adminCreateClient, adminCreateProject, adminSetProjectStatus } from "@/modules/projects/service";
 
 export async function createClientAction(_: ActionState, formData: FormData) {
@@ -74,4 +75,38 @@ export async function removeMembershipAction(projectId: string, userId: string) 
     await adminRemoveMembership(actor, { projectId, userId });
     revalidatePath(`/admin/proyectos/${projectId}`);
   }, "Miembro retirado");
+}
+
+function definitionFields(formData: FormData) {
+  return {
+    label: formString(formData, "label"),
+    description: formString(formData, "description"),
+    sourceNote: formString(formData, "sourceNote"),
+    defaultAggregation: formString(formData, "defaultAggregation") as "sum" | "last" | "average" | "max",
+    position: formString(formData, "position") || undefined,
+  };
+}
+
+export async function createMetricDefinitionAction(_: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const actor = await requireAdminActor();
+    await adminCreateMetricDefinition(actor, {
+      key: formString(formData, "key"),
+      unit: formString(formData, "unit") as "count" | "percent" | "currency" | "seconds",
+      ...definitionFields(formData),
+    });
+    revalidatePath("/admin/metricas");
+  }, "Métrica creada");
+}
+
+export async function updateMetricDefinitionAction(key: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const actor = await requireAdminActor();
+    await adminUpdateMetricDefinition(actor, {
+      key,
+      isActive: formData.get("isActive") === "on",
+      ...definitionFields(formData),
+    });
+    revalidatePath("/admin/metricas");
+  }, "Métrica guardada");
 }

@@ -13,6 +13,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+import { aiGenerations } from "./ai";
 import { cycles } from "./cycles";
 import { users } from "./identity";
 import { channels, projects } from "./projects";
@@ -74,8 +75,9 @@ export const contentVersions = pgTable(
     emailPreheader: text("email_preheader"),
     linkUrl: text("link_url"),
     note: text("note"),
-    // En F5 se añadirá ai_generation_id y se relajará el CHECK para 'ai_assisted'.
     origin: contentOrigin("origin").notNull().default("human"),
+    /** Borrador de IA del que parte la versión (obligatorio si origin = ai_assisted). */
+    aiGenerationId: uuid("ai_generation_id"),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
@@ -91,7 +93,16 @@ export const contentVersions = pgTable(
       columns: [t.projectId, t.contentItemId],
       foreignColumns: [contentItems.projectId, contentItems.id],
     }),
-    check("content_versions_origin_human_ck", sql`${t.origin} = 'human'`),
+    // El borrador tiene que ser de la misma pieza (y proyecto).
+    foreignKey({
+      name: "content_versions_ai_generation_fk",
+      columns: [t.projectId, t.contentItemId, t.aiGenerationId],
+      foreignColumns: [aiGenerations.projectId, aiGenerations.contentItemId, aiGenerations.id],
+    }),
+    check(
+      "content_versions_origin_ai_ck",
+      sql`(${t.origin} = 'ai_assisted') = (${t.aiGenerationId} IS NOT NULL)`,
+    ),
     check("content_versions_version_no_ck", sql`${t.versionNo} >= 1`),
   ],
 );

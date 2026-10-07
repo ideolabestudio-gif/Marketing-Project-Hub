@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { cycles } from "@/lib/db/schema";
+import { cycles, reports } from "@/lib/db/schema";
 import type { ProjectContext } from "@/modules/access/context";
 
 export type CycleRow = typeof cycles.$inferSelect;
@@ -38,10 +38,22 @@ export async function insertCycle(ctx: ProjectContext, period: string): Promise<
 export async function updateCycle(
   ctx: ProjectContext,
   cycleId: string,
-  values: Partial<Pick<CycleRow, "objectives" | "keyDates" | "notes" | "status">>,
+  values: Partial<
+    Pick<CycleRow, "objectives" | "keyDates" | "notes" | "status" | "learnings" | "closedAt" | "closedBy">
+  >,
 ): Promise<void> {
   await getDb()
     .update(cycles)
     .set(values)
     .where(and(eq(cycles.projectId, ctx.projectId), eq(cycles.id, cycleId)));
+}
+
+/** Lectura (JOIN de solo lectura a reports): ¿tiene el ciclo un informe aprobado? */
+export async function hasApprovedReport(ctx: ProjectContext, cycleId: string): Promise<boolean> {
+  const [row] = await getDb()
+    .select({ id: reports.id })
+    .from(reports)
+    .where(and(eq(reports.projectId, ctx.projectId), eq(reports.cycleId, cycleId), eq(reports.status, "approved")))
+    .limit(1);
+  return Boolean(row);
 }

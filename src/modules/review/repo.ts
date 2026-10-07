@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { approvals, contentItems, contentVersions, cycles, projects, publications, users } from "@/lib/db/schema";
+import { approvals, channels, contentItems, contentVersions, cycles, projects, publications, users } from "@/lib/db/schema";
 import type { ProjectContext } from "@/modules/access/context";
 
 // Lee content_items/content_versions/cycles/projects con JOIN (solo lectura).
@@ -211,4 +211,33 @@ export async function listWorkflowRows(ctx: ProjectContext, opts: { cycleId?: st
       ),
     );
   return { items, latestVersions, events, activePublications };
+}
+
+/** Publicaciones activas (programadas o publicadas) de las piezas de un ciclo. */
+export async function listActivePublicationsForCycle(ctx: ProjectContext, cycleId: string) {
+  return getDb()
+    .select({
+      itemId: contentItems.id,
+      title: contentItems.title,
+      format: contentItems.format,
+      channelName: channels.displayName,
+      status: publications.status,
+      scheduledAt: publications.scheduledAt,
+      publishedAt: publications.publishedAt,
+      externalUrl: publications.externalUrl,
+    })
+    .from(publications)
+    .innerJoin(
+      contentItems,
+      and(eq(contentItems.projectId, publications.projectId), eq(contentItems.id, publications.contentItemId)),
+    )
+    .innerJoin(channels, and(eq(channels.projectId, contentItems.projectId), eq(channels.id, contentItems.channelId)))
+    .where(
+      and(
+        eq(publications.projectId, ctx.projectId),
+        eq(contentItems.cycleId, cycleId),
+        ne(publications.status, "cancelled"),
+      ),
+    )
+    .orderBy(asc(publications.publishedAt), asc(publications.scheduledAt));
 }

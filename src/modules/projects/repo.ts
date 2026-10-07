@@ -15,6 +15,7 @@ export async function getProjectWithClient(ctx: ProjectContext) {
       locale: projects.locale,
       status: projects.status,
       aiEnabled: projects.aiEnabled,
+      aiMonthlyLimitUsd: projects.aiMonthlyLimitUsd,
       requireClientApproval: projects.requireClientApproval,
       separationOfDuties: projects.separationOfDuties,
       clientName: clients.name,
@@ -29,7 +30,10 @@ export async function getProjectWithClient(ctx: ProjectContext) {
 export async function updateProject(
   ctx: ProjectContext,
   values: Partial<
-    Pick<typeof projects.$inferInsert, "timezone" | "locale" | "requireClientApproval" | "separationOfDuties">
+    Pick<
+      typeof projects.$inferInsert,
+      "timezone" | "locale" | "requireClientApproval" | "separationOfDuties" | "aiEnabled" | "aiMonthlyLimitUsd"
+    >
   >,
 ) {
   await getDb().update(projects).set(values).where(eq(projects.id, ctx.projectId));

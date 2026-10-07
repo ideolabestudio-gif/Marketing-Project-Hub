@@ -17,18 +17,30 @@ const NO_DB_SCHEMA = {
   message: "La UI no accede a la base de datos ni al almacenamiento: usa los servicios de los módulos.",
 };
 
+const NO_AI_PROVIDER = {
+  group: ["@/lib/ai", "@/lib/ai/*"],
+  message: "Solo el módulo ai llama al proveedor de IA (con el contexto de un único proyecto).",
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
     files: ["src/app/**", "src/components/**"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [NO_DB_SCHEMA, NO_REPO_FROM_OTHER_MODULES] }],
+      "no-restricted-imports": ["error", { patterns: [NO_DB_SCHEMA, NO_REPO_FROM_OTHER_MODULES, NO_AI_PROVIDER] }],
     },
   },
   {
     files: ["src/modules/**", "src/lib/**"],
-    ignores: ["src/modules/*/repo.ts", "src/lib/db/**"],
+    ignores: ["src/modules/*/repo.ts", "src/lib/db/**", "src/modules/ai/**", "src/lib/ai/**"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [NO_DB, NO_REPO_FROM_OTHER_MODULES, NO_AI_PROVIDER] }],
+    },
+  },
+  {
+    files: ["src/modules/ai/**", "src/lib/ai/**"],
+    ignores: ["src/modules/*/repo.ts"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [NO_DB, NO_REPO_FROM_OTHER_MODULES] }],
     },
