@@ -1,6 +1,6 @@
 # Vigilancia competitiva — Estudio de viabilidad (fase 0)
 
-> Fecha: 08/10/2026 · Estado: **pendiente de validación** · No se ha escrito código.
+> Fecha: 08/10/2026 · Estado: **pendiente de validación** · No se ha escrito código de la aplicación. Actualizado el 08/10/2026 con los resultados del PoC (ver recuadro más abajo).
 >
 > Este documento estudia una **aplicación nueva e independiente** del Marketing Project Hub. Se guarda aquí solo porque es el repositorio disponible; el producto debe vivir en su propio repositorio (ver §3.4).
 
@@ -8,6 +8,20 @@
 - ✅ **Verificado**: comprobado en documentación oficial o en una consulta real durante este estudio.
 - 🟡 **Por confirmar**: fuentes secundarias coherentes, pero hay que confirmarlo con una prueba real antes de construir el conector.
 - ❌ **No posible** por la vía oficial.
+
+> ### Actualización 08/10/2026 — resultados del PoC con Metricool
+>
+> Informe completo: [`02-poc-metricool.md`](02-poc-metricool.md). Los cambios de este documento están marcados en su sitio con **CORREGIDO (PoC 08/10)** o **ACTUALIZADO (PoC 08/10)**; el texto original se conserva ~~tachado~~.
+>
+> | # | Qué cambia | Dónde |
+> |---|---|---|
+> | 1 | Lo «verificado» de Metricool era el **catálogo de campos**, no datos reales. Con datos reales, los competidores devuelven **0 filas**: no hay ninguno añadido en la marca. | §2.2, §2.3 Instagram y Facebook, Fuentes |
+> | 2 | La frecuencia de Metricool pasa de «desconocida» a **diaria, de madrugada** (documentado, no probado). | §2.1, §9 |
+> | 3 | Requisitos nuevos para competidores: Instagram conectado **vía Facebook**; X solo con **complemento de pago**; YouTube solo en planes de pago (máx. 10); plan gratuito: 5 competidores por red, **no borrables**. | §2.3 Instagram |
+> | 4 | Por el conector de Metricool, **Bluesky no da publicaciones de competidores** y **YouTube solo da el título** del vídeo. | §2.3 Instagram, §5 |
+> | 5 | El conector de Metricool (MCP) funciona con **cualquier plan**; la API REST sigue exigiendo Advanced o Custom. No está comprobado qué plan tenemos. | §2.3 Instagram, §5 |
+> | 6 | Metricool **no expone cuándo detecta** cada publicación; la latencia solo se puede medir por sondeo. | §9 |
+> | 7 | La prueba de concepto está **empezada y bloqueada** a falta de añadir los competidores en Metricool. | §7, §11 |
 
 ---
 
@@ -46,7 +60,7 @@ Restricciones que tomo como requisitos, no como preferencias:
 | **Web sin RSS** | ✅ Sí, con cuidado | `sitemap.xml` (`lastmod`) y, como último recurso, detección de cambios en 1–3 páginas concretas (blog, prensa) respetando `robots.txt` | 0 € | 1–24 h | Frágil si cambia el HTML; frecuencia baja por respeto al sitio. |
 | **YouTube** | ✅ Sí | Notificaciones push oficiales (WebSub) + feed RSS del canal; YouTube Data API para detalles | 0 € (cuota gratuita 10.000 unidades/día) | **Casi tiempo real** (push) | El feed RSS muestra ~15 últimos vídeos; directos aparecen al terminar. |
 | **X (Twitter)** | ✅ Sí | API oficial de X, lectura del timeline de cada cuenta | **Pago por uso: 0,005 $ por post leído** | 5–15 min (sondeo) | Prepago de créditos; coste lineal con el volumen. |
-| **Instagram** | 🟡 Sí, con condiciones | Opción A: **Metricool (competidores)**, que ya usáis. Opción B: Instagram Graph API — *Business Discovery* | A: incluido en plan Advanced. B: 0 € | A: la de Metricool (probablemente diaria, por confirmar). B: 15–60 min | Solo cuentas **profesionales** (empresa/creador) públicas. Sin stories. B exige cuenta IG profesional propia vinculada a página de Facebook y app de Meta. |
+| **Instagram** | 🟡 Sí, con condiciones | Opción A: **Metricool (competidores)**, que ya usáis. Opción B: Instagram Graph API — *Business Discovery* | A: incluido en plan Advanced. B: 0 € | A: ~~la de Metricool (probablemente diaria, por confirmar)~~ **ACTUALIZADO (PoC 08/10):** diaria, de madrugada, según la ayuda de Metricool — documentado, no probado. B: 15–60 min | Solo cuentas **profesionales** (empresa/creador) públicas. Sin stories. B exige cuenta IG profesional propia vinculada a página de Facebook y app de Meta. |
 | **Facebook (páginas)** | 🟡 Difícil por API directa | Opción A: **Metricool (competidores)**. Opción B: Graph API con *Page Public Content Access* | A: incluido. B: 0 € pero requiere verificación de empresa + revisión de Meta | A: la de Metricool. B: 15–60 min | B: aprobación incierta y lenta. |
 | **LinkedIn (páginas de empresa)** | ❌ No por API | **Modo manual asistido** (ver §2.3) | 0 € | Manual | La API oficial solo permite leer páginas que tú administras. No hay vía oficial para leer páginas de terceros. |
 | **TikTok** | ❌ No (orgánico) | Modo manual. Anuncios: *Commercial Content API* (solo UE) | 0 € | Manual | La *Research API* es solo para academia/ONG; prohíbe uso comercial. |
@@ -63,7 +77,7 @@ Restricciones que tomo como requisitos, no como preferencias:
 |---|---|
 | ¿Puedo monitorizar una cuenta de Instagram de otra empresa? | **Sí, si es una cuenta profesional** (empresa o creador) pública. Con la API *Business Discovery* de Instagram consultas el perfil y sus publicaciones recientes usando **tu** cuenta profesional. Cuentas personales: no. 🟡 |
 | ¿Puedo saber cuándo publica? | Sí, pero **por sondeo** (consultar cada X minutos), no por aviso push. Fecha de publicación incluida (`timestamp`). |
-| ¿Puedo acceder al texto/caption? | Sí. ✅ Verificado en Metricool: sus datos de "publicaciones de competidores" de Instagram y Facebook incluyen **texto, fecha con hora, URL, imagen, likes, comentarios**. Por Business Discovery: campo `caption` según documentación de Meta 🟡 (confirmar en prueba). |
+| ¿Puedo acceder al texto/caption? | Sí, sobre el papel. ~~✅ Verificado en Metricool: sus datos de "publicaciones de competidores" de Instagram y Facebook incluyen **texto, fecha con hora, URL, imagen, likes, comentarios**.~~ **CORREGIDO (PoC 08/10):** lo verificado es que esos **campos existen en el catálogo** del conector. No se ha obtenido todavía ninguna publicación real de un competidor (0 filas: no hay competidores añadidos). Por Business Discovery: campo `caption` según documentación de Meta 🟡 (confirmar en prueba). |
 | ¿Puedo analizar hashtags? | Sí: los hashtags vienen dentro del texto. Buscar *por* hashtag en todo Instagram es otra API (máx. 30 hashtags distintos cada 7 días) y no es el objetivo principal. |
 | ¿Puedo monitorizar LinkedIn de una empresa? | **No con la API oficial.** La *Community Management API* solo da acceso a páginas que administras y requiere ser partner. Los proveedores que lo ofrecen hacen scraping (Proxycurl cerró en 2025 tras una demanda de LinkedIn). Solución: modo manual asistido. |
 | ¿Puedo monitorizar X? | **Sí**, con la API oficial de pago por uso (0,005 $ por post devuelto). Lectura del timeline de cada cuenta. ✅ (precio en docs.x.com) |
@@ -93,13 +107,21 @@ Restricciones que tomo como requisitos, no como preferencias:
 
 #### Instagram — 🟡 prioridad 2
 Dos vías legales; recomiendo **empezar por Metricool** porque ya lo pagáis y es un intermediario con acuerdos con Meta.
-- **A. Metricool (competidores):** ✅ verificado en vuestra conexión de Metricool que el conector "competitor posts" de Instagram y Facebook devuelve: competidor, id de post, imagen, **texto**, **fecha y hora**, likes, comentarios, interacciones, engagement y **URL**. Metricool admite competidores en Instagram, Facebook, X, YouTube, Twitch y Bluesky (no LinkedIn ni TikTok). Acceso por API solo en plan **Advanced** o superior.
-  🟡 Por confirmar: cada cuánto actualiza Metricool los datos de competidores, cuántos competidores por marca admite vuestro plan y si los términos de su API permiten este uso.
+- **A. Metricool (competidores):** ~~✅ verificado en vuestra conexión de Metricool que el conector "competitor posts" de Instagram y Facebook devuelve: competidor, id de post, imagen, **texto**, **fecha y hora**, likes, comentarios, interacciones, engagement y **URL**. Metricool admite competidores en Instagram, Facebook, X, YouTube, Twitch y Bluesky (no LinkedIn ni TikTok). Acceso por API solo en plan **Advanced** o superior.~~
+  ~~🟡 Por confirmar: cada cuánto actualiza Metricool los datos de competidores, cuántos competidores por marca admite vuestro plan y si los términos de su API permiten este uso.~~
+  **CORREGIDO (PoC 08/10):**
+  - Los campos anteriores **existen en el catálogo** del conector (probado), más un conector aparte para reels. **No hay datos reales todavía**: la marca no tiene competidores añadidos y las consultas devuelven 0 filas.
+  - Redes con competidores según la ayuda de Metricool: Facebook, Instagram, Threads, X, Bluesky, YouTube y Twitch. No LinkedIn ni TikTok (probado: no existe conector de competidores para ellas).
+  - Condiciones: Instagram debe estar conectado a Metricool **a través de Facebook**; solo cuentas profesionales. X: solo planes de pago y con **complemento de pago**. YouTube: solo planes de pago, máx. 10 canales. Plan gratuito: 5 competidores por red, **no editables ni borrables**; planes de pago: hasta 100.
+  - Por el conector, **Bluesky solo da datos agregados** del competidor (sin publicaciones) y **YouTube solo el título** del vídeo, sin descripción.
+  - Frecuencia: sincronización **diaria de madrugada** (documentado, no probado). No hay campo que diga cuándo detectó Metricool cada publicación.
+  - Acceso: el conector (MCP) funciona con **cualquier plan**; la API REST exige **Advanced o Custom**. Qué plan tenemos: no verificado.
+  - Sigue por confirmar: si los términos de su API permiten este uso.
 - **B. Instagram Graph API — Business Discovery:** consulta `business_discovery.username(empresaA){media{caption,permalink,timestamp,…}}` con el token de vuestra cuenta profesional. Requiere: cuenta IG profesional propia vinculada a una página de Facebook, app de Meta y permisos `instagram_basic` / `pages_read_engagement`. Para uso interno (solo usuarios con rol en la app) probablemente baste el acceso estándar sin revisión de app 🟡. Límite de llamadas ligado a la cuenta (cifras contradictorias entre fuentes: 200/h o fórmula por impresiones) → sondeo cada 15–60 min es seguro para decenas de cuentas.
 - **No disponible en ninguna vía:** stories, cuentas personales, contenido privado.
 
 #### Facebook — 🟡 prioridad 3
-- **A. Metricool** (igual que Instagram). ✅ datos verificados.
+- **A. Metricool** (igual que Instagram). ~~✅ datos verificados.~~ **CORREGIDO (PoC 08/10):** campos verificados en catálogo (texto, fecha con hora, enlace); sin datos reales todavía. Solo páginas, no perfiles personales.
 - **B. Graph API** con la funcionalidad *Page Public Content Access* (documentación oficial actualizada en julio 2026): exige **verificación de empresa** y **revisión de app**; sin ello solo se leen páginas cuyos administradores tienen rol en la app. Aprobación incierta. Solo tiene sentido si Metricool no cubre la frecuencia necesaria.
 
 #### LinkedIn — ❌ modo manual asistido
@@ -217,7 +239,7 @@ El Marketing Project Hub prohíbe por diseño las llamadas HTTP salientes y los 
 | **Google Cloud (YouTube Data API)** | Detalle de vídeos, resolver `@handle` → `channel_id` | API key | 0 € (10.000 unidades/día) | Baja |
 | **YouTube WebSub** (hub de Google) | Push de vídeos nuevos | Ninguna (URL pública HTTPS) | 0 € | Media |
 | **X API** | Timeline de cuentas | Cuenta de desarrollador + créditos | 0,005 $/post | Baja |
-| **Metricool API** | Posts de competidores en Instagram/Facebook (y X/YouTube como respaldo) | Token de usuario + `blogId` | Incluido en plan Advanced (ya contratado o a contratar; desde ~43–53 €/mes según tramo) | Baja |
+| **Metricool API** | Posts de competidores en Instagram/Facebook (y X/YouTube como respaldo). **ACTUALIZADO (PoC 08/10):** YouTube solo da el título; X exige complemento de pago | Token de usuario + `blogId` | Incluido en plan Advanced (ya contratado o a contratar; desde ~43–53 €/mes según tramo). **ACTUALIZADO (PoC 08/10):** plan actual no verificado; para el PoC basta el conector MCP, disponible en cualquier plan | Baja |
 | **Meta (Instagram Graph API)** *(alternativa a Metricool)* | Business Discovery | App de Meta + cuenta IG profesional + página FB | 0 € | Media |
 | **Email transaccional** (Resend/Postmark) | Alertas por email | API key | 0 € hasta ~3.000 emails/mes | Baja |
 | **Slack** | Alertas | Incoming webhook | 0 € | Baja |
@@ -286,6 +308,8 @@ Por publicación con Haiku: ~1.500 tokens de entrada (texto + keywords aplicable
 - Una llamada a X con 1 cuenta para confirmar el coste facturado.
 Resultado: un informe por fuente en `docs/` (como exige la metodología del Hub para integraciones) antes de escribir cada conector definitivo.
 
+**ACTUALIZADO (PoC 08/10):** la parte de Metricool está empezada con cuatro supermercados (Lidl, Mercadona, Carrefour, ALDI) en Instagram y documentada en [`02-poc-metricool.md`](02-poc-metricool.md). Demostrado con la cuenta propia: obtención de publicaciones, detección exacta, ausencia de falsos positivos y alerta. **Pendiente**: obtener publicaciones de competidores y medir la latencia; requiere añadir los competidores en Metricool. RSS, YouTube, Business Discovery y X: sin empezar.
+
 **Fuera del MVP:** Instagram, Facebook y X (fase 2), Slack/Telegram/Teams/webhook (fase 2), estadísticas y comparativa (fase 3), Reddit, TikTok anuncios, multiusuario avanzado.
 
 ---
@@ -308,7 +332,7 @@ Resultado: un informe por fuente en `docs/` (como exige la metodología del Hub 
 |---|---|---|
 | **LinkedIn y TikTok sin API** — probablemente donde más publican algunos competidores B2B | Alto | Modo manual asistido de un clic; vigilar web/prensa como señal paralela; revisar la situación cada 6 meses. Comunicarlo con claridad en la UI. |
 | **Cambios de políticas/precios** de Meta, X o Reddit (ya ocurrió: X pasó a pago por uso, Reddit exige aprobación, Teams retiró conectores) | Alto | Conectores aislados tras una interfaz común; límites de gasto; alerta interna si una fuente falla N veces; cada fuente puede pasar a "manual" sin romper nada. |
-| **Frecuencia real de Metricool** desconocida (puede ser diaria) | Medio | Medirla en la prueba de concepto; si es insuficiente para keywords críticas, usar Business Discovery para esas cuentas. |
+| ~~**Frecuencia real de Metricool** desconocida (puede ser diaria)~~ **ACTUALIZADO (PoC 08/10):** **Metricool sincroniza una vez al día, de madrugada** (documentado, no probado), y no indica cuándo detectó cada publicación | ~~Medio~~ **Alto** si se quieren avisos el mismo día | Medirla por sondeo horario durante 3–5 días; si es insuficiente para keywords críticas, usar Business Discovery para esas cuentas. |
 | **Falsos positivos semánticos** (alertas que no interesan) | Medio | Umbral de confianza configurable; keywords críticas solo alertan de inmediato con coincidencia exacta **o** semántica ≥ 85 %; botón "no relevante" que alimenta ejemplos negativos en el prompt. |
 | **Falsos negativos** (se pierde algo importante) | Medio | Coincidencia exacta siempre activa además de la semántica; histórico re-analizable si se añade una keyword nueva. |
 | **Deduplicación imperfecta** (textos adaptados por red) | Bajo | Huella + similitud + confirmación por IA en la zona gris; la UI muestra "también publicado en…". |
@@ -388,7 +412,8 @@ Fecha:       08/10/2026 — 10:15
 3. **X:** ¿aceptas el coste de pago por uso (estimado 5–10 $/mes en el escenario base)?
 4. **LinkedIn:** ¿te sirve el modo manual asistido, sabiendo que es la única vía legal hoy?
 5. **Repositorio:** ¿creamos un repositorio nuevo para esta aplicación (recomendado)?
-6. Una lista de **3 empresas reales** con sus cuentas para la prueba de concepto.
+6. ~~Una lista de **3 empresas reales** con sus cuentas para la prueba de concepto.~~ **ACTUALIZADO (PoC 08/10):** resuelto: Lidl (`lidlespana`), Mercadona (`mercadona`), Carrefour (`carrefoures`) y ALDI (`aldi.es`) en Instagram.
+7. **Nuevo (PoC 08/10):** confirmar el plan de Metricool y el tipo de conexión de Instagram, y añadir esos cuatro competidores (ver `02-poc-metricool.md`, §I).
 
 ---
 
@@ -404,5 +429,5 @@ Fecha:       08/10/2026 — 10:15
 - Reddit — política y precios (fuentes secundarias): https://www.redditapis.com/reddit-responsible-builder-policy · https://octolens.com/blog/reddit-api-pricing
 - Microsoft Teams — retirada de conectores Office 365: https://o365reports.com/office-365-connectors-retirement-in-teams-and-migration-to-workflows/
 - Metricool — planes y API: https://help.metricool.com/plans-add-ons-and-api-access-explained-xux1u · https://www.upload-post.com/metricool-pricing/
-- Metricool — campos de "competitor posts": verificados directamente con la conexión de Metricool (`getAnalyticsAvailableMetrics`, conectores Instagram y Facebook).
+- Metricool — campos de "competitor posts": verificados directamente con la conexión de Metricool (`getAnalyticsAvailableMetrics`, conectores Instagram y Facebook). **CORREGIDO (PoC 08/10):** esa llamada devuelve el catálogo de campos, no datos. Las consultas de datos (`getAnalyticsDataByMetrics`) se hicieron el 08/10 y están en `02-poc-metricool.md`.
 - Anthropic — modelos y precios: documentación de la API de Claude (octubre 2026).

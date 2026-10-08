@@ -1,0 +1,8 @@
+{
+  "accounts": [
+    {"competitor": "Lidl",      "network": "instagram", "account": "lidlespana",  "keywords": ["receta", "nuevo producto"]},
+    {"competitor": "Mercadona", "network": "instagram", "account": "mercadona",   "keywords": ["novedad", "Hacendado"]},
+    {"competitor": "Carrefour", "network": "instagram", "account": "carrefoures", "keywords": ["oferta", "receta"]},
+    {"competitor": "ALDI",      "network": "instagram", "account": "aldi.es",     "keywords": ["receta", "novedad"]}
+  ]
+}
