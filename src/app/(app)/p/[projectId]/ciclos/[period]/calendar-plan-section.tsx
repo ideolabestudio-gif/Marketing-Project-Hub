@@ -1,9 +1,15 @@
 import { ActionForm } from "@/components/action-form";
 import { AiGenerationMeta } from "@/components/ai-generation-meta";
+import { CopyButton } from "@/components/copy-button";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
-import { getAiStatus, listGenerations } from "@/modules/ai/service";
+import { getAiStatus, getCalendarPlanChatPrompt, listGenerations } from "@/modules/ai/service";
 import { formatLabel } from "@/modules/content/formats";
-import { applyCalendarPlanAction, generateCalendarPlanAction, resolveGenerationAction } from "../../ai-actions";
+import {
+  applyCalendarPlanAction,
+  generateCalendarPlanAction,
+  importCalendarPlanAction,
+  resolveGenerationAction,
+} from "../../ai-actions";
 
 /**
  * Propuesta de calendario con IA. La IA solo propone: las piezas se crean cuando una
@@ -28,9 +34,14 @@ export async function CalendarPlanSection({
     getAiStatus(ctx),
     listGenerations(ctx, { cycleId, purpose: "calendar_plan" }),
   ]);
-  if (!status.enabled && generations.length === 0) return null;
   const canGenerate = status.enabled && status.configured && writable && hasPermission(ctx, "ai.generate");
   const canApply = writable && hasPermission(ctx, "content.write");
+  // Sin API: el texto para el chat de Claude (null si no hay canales activos).
+  const chatPrompt =
+    writable && hasPermission(ctx, "ai.generate")
+      ? await getCalendarPlanChatPrompt(ctx, { cycleId }).catch(() => null)
+      : null;
+  if (!canGenerate && !chatPrompt && generations.length === 0) return null;
   const drafts = generations.filter((g) => g.status === "draft");
   const past = generations.filter((g) => g.status !== "draft");
 
@@ -38,12 +49,10 @@ export async function CalendarPlanSection({
     <section id="calendario-ia" className="card flex flex-col gap-3" aria-label="Calendario con IA">
       <h2 className="h2">Calendario con IA</h2>
       <p className="text-sm text-muted">
-        La IA propone piezas con fecha, canal y formato a partir del brief, lo ya planificado y el mes anterior. No se
+        Claude propone piezas con fecha, canal y formato a partir del brief, lo ya planificado y el mes anterior. No se
         crea nada hasta que marques las que quieres y pulses «Añadir al calendario».
       </p>
-      {status.enabled && !status.configured && (
-        <p className="text-sm text-muted">La IA no está configurada en el servidor.</p>
-      )}
+
       {canGenerate && (
         <ActionForm action={generateCalendarPlanAction.bind(null, projectId, cycleId)} submitLabel="Proponer calendario">
           <label className="field grow">
@@ -51,6 +60,30 @@ export async function CalendarPlanSection({
             <input name="instructions" className="input" placeholder="3 posts por semana; campaña de Navidad el día 5" />
           </label>
         </ActionForm>
+      )}
+      {chatPrompt && (
+        <details className="flex flex-col gap-3 rounded-md border border-border p-3" open={!canGenerate}>
+          <summary className="cursor-pointer text-sm font-medium">Prepararlo con tu chat de Claude (sin API)</summary>
+          <ol className="mt-3 flex list-decimal flex-col gap-3 pl-5 text-sm">
+            <li className="flex flex-col gap-2">
+              Copia este texto y pégalo en un chat nuevo de Claude. Puedes añadir al final lo que quieras («3 posts por
+              semana», «campaña de Navidad el día 5»…).
+              <textarea readOnly className="input font-mono text-xs" rows={6} value={chatPrompt} />
+              <CopyButton text={chatPrompt} label="Copiar texto para Claude" />
+            </li>
+            <li className="flex flex-col gap-2">
+              Pega aquí la respuesta completa del chat. Si cambias los canales del proyecto entre medias, vuelve a copiar el
+              texto.
+              <ActionForm
+                action={importCalendarPlanAction.bind(null, projectId, cycleId)}
+                submitLabel="Revisar propuesta"
+                className="grid gap-3"
+              >
+                <textarea name="output" className="input font-mono text-xs" rows={6} required />
+              </ActionForm>
+            </li>
+          </ol>
+        </details>
       )}
       {drafts.map((g) => {
         const proposals = g.plan?.proposals ?? [];

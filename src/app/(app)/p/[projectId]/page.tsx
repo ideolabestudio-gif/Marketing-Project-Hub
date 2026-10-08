@@ -24,9 +24,8 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
   ]);
   const next = nextPeriod(new Date(), project.timezone);
   const nextCycle = cycles.find((c) => c.period === next);
+  const useApi = ai.enabled && ai.configured;
   const canPrepare =
-    ai.enabled &&
-    ai.configured &&
     hasPermission(ctx, "ai.generate") &&
     hasPermission(ctx, "content.write") &&
     (nextCycle ? nextCycle.status !== "closed" : hasPermission(ctx, "cycle.manage"));
@@ -54,17 +53,22 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
         <section className="card flex flex-col gap-3" aria-label="Preparar el calendario del mes que viene">
           <h2 className="h2">Preparar el calendario de {formatPeriod(next, project.locale).toLocaleLowerCase(project.locale)}</h2>
           <p className="text-sm text-muted">
-            {nextCycle ? "" : "Se abrirá el ciclo del mes. "}La IA propone las piezas a partir del brief, los canales y lo
-            que se hizo el mes anterior. Tú eliges cuáles añadir; no se publica nada.
+            {nextCycle ? "" : "Se abrirá el ciclo del mes. "}
+            {useApi
+              ? "La IA propone las piezas a partir del brief, los canales y lo que se hizo el mes anterior."
+              : "Te llevará al ciclo con el texto para pedir la propuesta a tu chat de Claude y pegar su respuesta."}{" "}
+            Tú eliges qué piezas añadir; no se publica nada.
           </p>
           <ActionForm
             action={prepareNextMonthCalendarAction.bind(null, projectId)}
             submitLabel="Preparar calendario del mes que viene"
           >
-            <label className="field grow">
-              Indicaciones (opcional)
-              <input name="instructions" className="input" placeholder="3 posts por semana; campaña de Navidad el día 5" />
-            </label>
+            {useApi ? (
+              <label className="field grow">
+                Indicaciones (opcional)
+                <input name="instructions" className="input" placeholder="3 posts por semana; campaña de Navidad el día 5" />
+              </label>
+            ) : null}
           </ActionForm>
         </section>
       )}

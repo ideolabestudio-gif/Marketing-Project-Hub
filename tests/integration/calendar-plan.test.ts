@@ -8,6 +8,8 @@ import { requireProjectAccess, type ProjectContext } from "@/modules/access/cont
 import {
   applyCalendarPlan,
   generateCalendarPlan,
+  getCalendarPlanChatPrompt,
+  importCalendarPlan,
   listGenerations,
   prepareNextMonthCalendar,
   resolveGeneration,
@@ -175,13 +177,68 @@ describe("«prepara el calendario del mes que viene»", () => {
     expect(again.cycle.id).toBe(cycle.id);
   });
 
-  it("un editor no puede abrir el ciclo; con la IA desactivada no se abre nada", async () => {
+  it("un editor no puede abrir el ciclo, y un revisor no puede preparar nada", async () => {
     const cyclesBefore = (await listCycles(ctx)).length;
     const edu = await requireProjectAccess(fx.actors.edu, fx.projectA.id);
     await expect(prepareNextMonthCalendar(edu, {})).rejects.toThrow(/pide a la persona responsable/);
-    await updateAiSettings(ctx, { aiEnabled: false, aiMonthlyLimitUsd: 5 });
-    await expect(prepareNextMonthCalendar(ctx, {})).rejects.toBeInstanceOf(ForbiddenError);
+    const rev = await requireProjectAccess(fx.actors.rev, fx.projectA.id);
+    await expect(prepareNextMonthCalendar(rev, {})).rejects.toBeInstanceOf(ForbiddenError);
     expect(await listCycles(ctx)).toHaveLength(cyclesBefore);
     expect(fakeAi.requests).toHaveLength(0);
+  });
+
+  it("sin IA activada abre el ciclo pero no llama al proveedor (la propuesta se pega desde el chat)", async () => {
+    await updateAiSettings(ctx, { aiEnabled: false, aiMonthlyLimitUsd: 5 });
+    const { cycle, generation } = await prepareNextMonthCalendar(ctx, {});
+    expect(generation).toBeNull();
+    expect(cycle.period).toBe(nextPeriod(new Date(), "Europe/Madrid"));
+    expect(fakeAi.requests).toHaveLength(0);
+  });
+});
+
+describe("sin API: preparar con el chat de Claude y pegar la respuesta", () => {
+  it("el texto para el chat lleva las instrucciones, el formato y solo datos del proyecto", async () => {
+    await updateAiSettings(ctx, { aiEnabled: false, aiMonthlyLimitUsd: 5 });
+    const prompt = await getCalendarPlanChatPrompt(ctx, { cycleId: fx.contentA.cycle.id });
+    expect(prompt).toContain("Vas a proponer el calendario");
+    expect(prompt).toContain('{"pieces": [');
+    expect(prompt).toContain(`C1 · IG ${MARKER_A}`);
+    expect(prompt).not.toContain(MARKER_B);
+    expect(fakeAi.requests).toHaveLength(0);
+  });
+
+  it("la respuesta pegada (aunque traiga texto alrededor) queda como propuesta sin coste y sin crear piezas", async () => {
+    await updateAiSettings(ctx, { aiEnabled: false, aiMonthlyLimitUsd: 5 });
+    const before = JSON.stringify(await itemsOf(fx.projectA.id));
+    const pasted = "Aquí tienes:\n```json\n" + calendarPlanReply("pegada") + "\n```\n¡Suerte!";
+    const generation = await importCalendarPlan(ctx, { cycleId: fx.contentA.cycle.id, output: pasted });
+    expect(generation).toMatchObject({ purpose: "calendar_plan", provider: "chat", costUsd: 0, status: "draft" });
+    expect(JSON.stringify(await itemsOf(fx.projectA.id))).toBe(before);
+
+    const listed = (await listGenerations(ctx, { cycleId: fx.contentA.cycle.id, purpose: "calendar_plan" })).find(
+      (g) => g.id === generation.id,
+    );
+    expect(listed?.plan?.proposals).toHaveLength(2);
+    const items = await applyCalendarPlan(ctx, {
+      generationId: generation.id,
+      entries: [{ index: 1, title: "Post pegado", plannedAt: `${FIXTURE_PERIOD}-12T10:00` }],
+    });
+    expect(items[0]).toMatchObject({ title: "Post pegado", aiGenerationId: generation.id });
+  });
+
+  it("si lo pegado no tiene piezas válidas no se guarda nada", async () => {
+    const count = async () =>
+      (await listGenerations(ctx, { cycleId: fx.contentA.cycle.id, purpose: "calendar_plan" })).length;
+    const before = await count();
+    for (const output of ["Hola, ¿qué tal?", JSON.stringify({ pieces: [{ channel: "C7", format: "post" }] })]) {
+      await expect(importCalendarPlan(ctx, { cycleId: fx.contentA.cycle.id, output })).rejects.toBeInstanceOf(
+        ValidationError,
+      );
+    }
+    expect(await count()).toBe(before);
+    const mix = await requireProjectAccess(fx.actors.mix, fx.projectA.id); // solo lectura
+    await expect(
+      importCalendarPlan(mix, { cycleId: fx.contentA.cycle.id, output: calendarPlanReply("x") }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });

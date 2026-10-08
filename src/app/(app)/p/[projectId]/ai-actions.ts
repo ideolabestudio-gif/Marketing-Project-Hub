@@ -7,6 +7,7 @@ import { projectContextForAction } from "@/lib/project-page";
 import {
   applyCalendarPlan,
   generateCalendarPlan,
+  importCalendarPlan,
   prepareNextMonthCalendar,
   generateCopyDraft,
   generateIdeas,
@@ -57,7 +58,7 @@ export async function prepareNextMonthCalendarAction(projectId: string, _: Actio
     const { cycle } = await prepareNextMonthCalendar(ctx, { instructions: formString(formData, "instructions") });
     period = cycle.period;
     revalidatePath(`/p/${projectId}`, "layout");
-  }, "Propuesta de calendario lista");
+  }, "Calendario preparado");
   if (result?.ok && period) redirect(`/p/${projectId}/ciclos/${period}#calendario-ia`);
   return result;
 }
@@ -68,6 +69,15 @@ export async function generateCalendarPlanAction(projectId: string, cycleId: str
     await generateCalendarPlan(ctx, { cycleId, instructions: formString(formData, "instructions") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Propuesta de calendario lista: revísala abajo");
+}
+
+/** Guarda la respuesta pegada desde un chat de Claude como propuesta de calendario. */
+export async function importCalendarPlanAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "ai.generate");
+    await importCalendarPlan(ctx, { cycleId, output: formString(formData, "output") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Propuesta guardada: revísala abajo");
 }
 
 /** Crea las piezas marcadas, con el título, la fecha y la idea que la persona haya dejado. */

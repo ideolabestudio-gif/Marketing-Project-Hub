@@ -71,6 +71,8 @@ Regla general: **un módulo solo accede a sus propias tablas**. Para leer o modi
 ai.prepareNextMonthCalendar(ctx, {instructions})
    ├─ abre el ciclo del mes siguiente (zona del proyecto) si no existe   [exige cycle.manage]
    └─ ai.generateCalendarPlan(ctx, cycleId) → ai_generations (purpose = calendar_plan, JSON)   [nada cambia en content]
+      sin API: ai.getCalendarPlanChatPrompt(ctx, cycleId) → texto para un chat de Claude;
+               ai.importCalendarPlan(ctx, cycleId, respuesta pegada) → ai_generations (provider = chat, coste 0)
         contexto: brief, canales activos (C1, C2…) y formatos, lo ya planificado y el mes anterior
         (piezas, aprendizajes y solo las métricas registradas)
    │ humano marca piezas, ajusta título/fecha/idea y pulsa "Añadir al calendario"

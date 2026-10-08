@@ -9,7 +9,7 @@ import { addComment, createItem, getItemDetail, saveVersion } from "@/modules/co
 import { assertCycleWritable, getCycle, getCycleByPeriod, openCycle, type Cycle } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { addAiInterpretationSection } from "@/modules/reports/service";
-import { calendarPlanJsonSchema, parseCalendarPlan, type CalendarProposal } from "./calendar-plan";
+import { CHAT_RESPONSE_FORMAT, calendarPlanJsonSchema, parseCalendarPlan, type CalendarProposal } from "./calendar-plan";
 import { calendarPlanContext, copyDraftContext, ideasContext, reportContext, type BuiltContext } from "./context";
 import { findUnverifiedNumbers } from "./numbers";
 import { CALENDAR_PLAN, COPY_DRAFT, IDEAS, REPORT_INTERPRETATION, type PromptTemplate } from "./prompts";
@@ -65,6 +65,16 @@ async function assertAiAvailable(ctx: ProjectContext) {
   return { project, provider };
 }
 
+/** Datos entre <datos> y, aparte, lo que pide la persona. */
+function buildPrompt(context: BuiltContext, instructions: string | null): string {
+  return [
+    `<datos>\n${context.data}\n</datos>`,
+    instructions ? `Indicaciones de la persona que lo pide:\n${instructions}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 async function generate(
   ctx: ProjectContext,
   input: {
@@ -91,12 +101,7 @@ async function generate(
     );
   }
 
-  const prompt = [
-    `<datos>\n${context.data}\n</datos>`,
-    input.instructions ? `Indicaciones de la persona que lo pide:\n${input.instructions}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const prompt = buildPrompt(context, input.instructions);
   const result = await provider.generate({
     system: input.template.system,
     prompt,
@@ -186,15 +191,20 @@ const prepareSchema = z.object({ instructions: instructionsSchema });
 
 /**
  * La orden «prepara el calendario del mes que viene»: abre el ciclo del mes siguiente
- * (en la zona del proyecto) si aún no existe y pide la propuesta de calendario.
- * Abrir el ciclo exige cycle.manage; lo demás, lo mismo que generateCalendarPlan.
+ * (en la zona del proyecto) si aún no existe y, si la IA está activada y configurada,
+ * pide la propuesta de calendario. Sin IA (generation = null) la propuesta se prepara
+ * en un chat de Claude y se pega con importCalendarPlan.
+ * Abrir el ciclo exige cycle.manage.
  */
 export async function prepareNextMonthCalendar(
   ctx: ProjectContext,
   input: z.input<typeof prepareSchema>,
-): Promise<{ cycle: Cycle; generation: Generation }> {
+): Promise<{ cycle: Cycle; generation: Generation | null }> {
   const data = parseInput(prepareSchema, input);
-  const { project } = await assertAiAvailable(ctx);
+  await authorize(ctx, "ai.generate");
+  await authorize(ctx, "content.write");
+  const project = await getProject(ctx);
+  const useApi = project.aiEnabled && getAiProvider().name !== "disabled";
   const period = nextPeriod(new Date(), project.timezone);
   let cycle: Cycle;
   try {
@@ -206,8 +216,78 @@ export async function prepareNextMonthCalendar(
     }
     cycle = await openCycle(ctx, { period });
   }
-  const generation = await generateCalendarPlan(ctx, { cycleId: cycle.id, instructions: data.instructions ?? undefined });
+  assertCycleWritable(cycle);
+  const generation = useApi
+    ? await generateCalendarPlan(ctx, { cycleId: cycle.id, instructions: data.instructions ?? undefined })
+    : null;
   return { cycle, generation };
+}
+
+/**
+ * Sin API: el texto completo (instrucciones + datos del proyecto) para pegarlo en un
+ * chat de Claude. No llama a ningún proveedor ni guarda nada.
+ */
+export async function getCalendarPlanChatPrompt(ctx: ProjectContext, input: z.input<typeof cycleSchema>) {
+  const data = parseInput(cycleSchema, input);
+  await authorize(ctx, "ai.generate");
+  const context = await calendarPlanContext(ctx, data.cycleId);
+  if (context.inputRefs.channel.length === 0) throw new ValidationError("El proyecto no tiene canales activos");
+  return [CALENDAR_PLAN.system, CHAT_RESPONSE_FORMAT, buildPrompt(context, data.instructions)].join("\n\n");
+}
+
+const importSchema = z.object({
+  cycleId: z.string(),
+  output: z.string().trim().min(1, "Pega la respuesta del chat").max(50000, "El texto es demasiado largo"),
+  instructions: instructionsSchema,
+});
+
+/**
+ * Guarda como propuesta de calendario la respuesta pegada desde un chat de Claude.
+ * Queda en ai_generations igual que una generada por la API (sin coste) y se revisa y
+ * se añade al calendario con applyCalendarPlan. No crea piezas.
+ */
+export async function importCalendarPlan(ctx: ProjectContext, input: z.input<typeof importSchema>) {
+  const data = parseInput(importSchema, input);
+  await authorize(ctx, "ai.generate");
+  const context = await calendarPlanContext(ctx, data.cycleId);
+  const cycle = await getCycle(ctx, context.cycleId);
+  assertCycleWritable(cycle);
+  const [project, channels] = await Promise.all([getProject(ctx), listChannels(ctx)]);
+  const { proposals } = parseCalendarPlan(data.output, {
+    channelIds: context.inputRefs.channel,
+    channels,
+    period: cycle.period,
+    timezone: project.timezone,
+  });
+  if (proposals.length === 0) {
+    throw new ValidationError("No hay ninguna pieza válida en el texto pegado: copia la respuesta completa del chat");
+  }
+  const row = await repo.insertGeneration(ctx, {
+    cycleId: cycle.id,
+    contentItemId: null,
+    purpose: "calendar_plan",
+    provider: "chat",
+    model: "Chat de Claude (pegado)",
+    promptTemplate: CALENDAR_PLAN.key,
+    promptTemplateVersion: CALENDAR_PLAN.version,
+    instructions: data.instructions,
+    inputRefs: context.inputRefs,
+    output: data.output,
+    error: null,
+    status: "draft",
+    inputTokens: 0,
+    outputTokens: 0,
+    costUsd: 0,
+  });
+  await recordAudit({
+    action: "ai.imported",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "ai_generation",
+    entityId: row.id,
+    data: { purpose: "calendar_plan" },
+  });
+  return row;
 }
 
 /** Lectura de las métricas registradas para el informe. No toca el informe. */

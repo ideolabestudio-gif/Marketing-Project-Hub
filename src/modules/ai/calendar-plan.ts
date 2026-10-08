@@ -43,6 +43,14 @@ export function calendarPlanJsonSchema(channelCount: number): Record<string, unk
   };
 }
 
+/**
+ * Formato de respuesta para cuando la propuesta se pide en un chat de Claude (sin API)
+ * y se pega luego en el Hub: allí no hay salida estructurada, así que se describe.
+ */
+export const CHAT_RESPONSE_FORMAT = `Responde solo con un objeto JSON, sin texto antes ni después, con esta forma:
+{"pieces": [{"channel": "C1", "format": "post", "date": "AAAA-MM-DDTHH:mm", "title": "…", "idea": "…"}]}
+"channel" es la referencia del canal (C1, C2…) y "format" uno de los formatos admitidos por ese canal, escrito tal cual aparece en la lista.`;
+
 const pieceSchema = z.object({
   channel: z.string(),
   format: z.string(),
@@ -74,9 +82,12 @@ export function parseCalendarPlan(
   output: string,
   options: { channelIds: string[]; channels: PlanChannel[]; period: string; timezone: string },
 ): { proposals: CalendarProposal[]; discarded: number } {
+  // Una respuesta pegada desde un chat puede traer texto o ``` alrededor del JSON.
+  const start = output.indexOf("{");
+  const end = output.lastIndexOf("}");
   let raw: unknown;
   try {
-    raw = JSON.parse(output);
+    raw = JSON.parse(output.slice(start, end + 1));
   } catch {
     return { proposals: [], discarded: 0 };
   }

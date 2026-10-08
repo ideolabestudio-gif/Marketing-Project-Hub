@@ -92,6 +92,7 @@ Decisiones: Claude (`claude-opus-5-5`) como proveedor (D-07, ADR 015); límite d
 - [x] Un botón en el proyecto abre el ciclo del mes siguiente (si no existe) y pide a la IA una propuesta de calendario con fecha, canal y formato por pieza, usando el brief, lo ya planificado y el mes anterior (piezas, aprendizajes y métricas registradas).
 - [x] La respuesta es estructurada (JSON con esquema); lo que no encaja (canal desactivado, formato ajeno, fecha fuera del mes) se descarta y se avisa.
 - [x] No se crea ninguna pieza hasta que una persona marca las que quiere y pulsa «Añadir al calendario»; nacen como ideas, sin versiones ni aprobaciones, enlazadas a la generación (`content_items.ai_generation_id`).
+- [x] Sin API de pago: el botón abre el ciclo y la sección del ciclo da el texto (instrucciones + datos del proyecto) para pegarlo en un chat de Claude; la respuesta se pega en el Hub, se guarda como propuesta (`provider = chat`, coste 0) y se revisa igual.
 
 ### F6 · Verificación de integraciones (sin código de producción)
 **Alcance:** informes de verificación (doc. 07) de las herramientas que use Ideolab (D-04), con pruebas reales en cuentas de prueba.

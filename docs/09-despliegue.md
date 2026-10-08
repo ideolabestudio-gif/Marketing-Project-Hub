@@ -50,6 +50,8 @@ La IA está apagada si no se configura nada. Para activarla:
 2. En Render, añade las variables `AI_PROVIDER=anthropic` y `ANTHROPIC_API_KEY=<la clave>` (secreta). Opcional: `AI_MODEL` (por defecto `claude-opus-5-5`).
 3. En cada proyecto, **Ajustes → Borradores con IA**: actívala y fija el límite de gasto mensual (por defecto 5 USD).
 
+Sin clave de API también se puede preparar el calendario del mes: en el ciclo, «Prepararlo con tu chat de Claude» da un texto para pegar en un chat de Claude y un campo para pegar su respuesta. Ese texto incluye los datos del proyecto, así que aplica el mismo criterio de contrato que sigue.
+
 Los textos de los proyectos con IA activada se envían a Anthropic para generar los borradores. Antes de activarla para un cliente, comprobad que vuestro contrato con él lo permite.
 
 ## 9.3 Primer acceso
