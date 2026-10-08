@@ -360,6 +360,29 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     own: (ctx, fx) => ai.generateIdeas(ctx, { cycleId: fx.contentA.cycle.id }),
     foreign: (ctx, fx) => ai.generateIdeas(ctx, { cycleId: fx.contentB.cycle.id }),
   },
+  "ai.generateCalendarPlan": {
+    kind: "project",
+    own: (ctx, fx) => ai.generateCalendarPlan(ctx, { cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => ai.generateCalendarPlan(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.prepareNextMonthCalendar": {
+    kind: "project",
+    own: (ctx) => ai.prepareNextMonthCalendar(ctx, { instructions: "Mes que viene" }),
+    foreign: { none: "No recibe IDs: el proyecto y el mes salen del contexto" },
+  },
+  "ai.applyCalendarPlan": {
+    kind: "project",
+    own: (ctx, fx) =>
+      ai.applyCalendarPlan(ctx, {
+        generationId: fx.aiA.calendarPlan.id,
+        entries: [{ index: 0, title: "Reel elegido", plannedAt: `${FIXTURE_PERIOD}-21T18:30` }],
+      }),
+    foreign: (ctx, fx) =>
+      ai.applyCalendarPlan(ctx, {
+        generationId: fx.aiB.calendarPlan.id,
+        entries: [{ index: 0, title: "Intruso", plannedAt: `${FIXTURE_PERIOD}-21T18:30` }],
+      }),
+  },
   "ai.generateReportInterpretation": {
     kind: "project",
     own: (ctx, fx) => ai.generateReportInterpretation(ctx, { cycleId: fx.contentA.cycle.id }),

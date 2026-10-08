@@ -127,7 +127,15 @@ const createItemSchema = z.object({
   plannedAt: plannedAtSchema,
 });
 
-export async function createItem(ctx: ProjectContext, input: z.input<typeof createItemSchema>) {
+/**
+ * `fromAiGenerationId` solo lo pasa el módulo de IA cuando una persona añade piezas
+ * desde una propuesta de calendario (ya comprobada, del mismo proyecto).
+ */
+export async function createItem(
+  ctx: ProjectContext,
+  input: z.input<typeof createItemSchema>,
+  opts: { fromAiGenerationId?: string } = {},
+) {
   await authorize(ctx, "content.write");
   const data = parseInput(createItemSchema, input);
   const cycle = await getCycle(ctx, data.cycleId);
@@ -139,6 +147,7 @@ export async function createItem(ctx: ProjectContext, input: z.input<typeof crea
     format: data.format,
     title: data.title,
     plannedAt: await resolvePlannedAt(ctx, data.plannedAt, cycle.period),
+    aiGenerationId: opts.fromAiGenerationId ?? null,
   });
   await recordAudit({
     action: "content_item.created",
@@ -146,6 +155,7 @@ export async function createItem(ctx: ProjectContext, input: z.input<typeof crea
     projectId: ctx.projectId,
     entityType: "content_item",
     entityId: item.id,
+    ...(opts.fromAiGenerationId ? { data: { aiGenerationId: opts.fromAiGenerationId } } : {}),
   });
   return item;
 }

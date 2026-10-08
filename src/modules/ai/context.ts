@@ -1,12 +1,14 @@
 import { formatChange, formatMetric } from "@/lib/format";
-import { formatInZone, formatPeriod } from "@/lib/time";
+import { NotFoundError } from "@/lib/errors";
+import { formatInZone, formatPeriod, previousPeriod, utcToWallTime } from "@/lib/time";
 import type { ProjectContext } from "@/modules/access/context";
 import { getItemDetail, listItems } from "@/modules/content/service";
-import { formatLabel } from "@/modules/content/formats";
-import { getCycle } from "@/modules/cycles/service";
+import { FORMATS, formatLabel } from "@/modules/content/formats";
+import { getCycle, getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { getMetricSummary } from "@/modules/metrics/service";
 import { listCyclePublications } from "@/modules/review/service";
+import { channelRef } from "./calendar-plan";
 
 /**
  * Construcción del contexto que recibe la IA. Todo se lee a través de los servicios
@@ -81,6 +83,75 @@ export async function ideasContext(ctx: ProjectContext, cycleId: string): Promis
     cycleId: cycle.id,
     data,
     inputRefs: { project: [ctx.projectId], cycle: [cycle.id], channel: active.map((c) => c.id), contentItem: items.map((i) => i.id) },
+  };
+}
+
+/**
+ * Para proponer el calendario del mes: brief, canales activos con su referencia (C1…)
+ * y formatos, lo ya planificado y, si existe, el mes anterior (piezas, aprendizajes y
+ * métricas registradas; las que no tienen dato no se envían).
+ */
+export async function calendarPlanContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
+  const [project, cycle, channels] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId), listChannels(ctx)]);
+  const items = await listItems(ctx, cycle.id);
+  const active = channels.filter((c) => c.isActive);
+  const tz = project.timezone;
+  const when = (d: Date | null) => (d ? utcToWallTime(d, tz) : "sin fecha");
+
+  let previous: Awaited<ReturnType<typeof getCycle>> | null = null;
+  try {
+    previous = await getCycleByPeriod(ctx, previousPeriod(cycle.period));
+  } catch (err) {
+    if (!(err instanceof NotFoundError)) throw err;
+  }
+  const [prevItems, prevSummary] = previous
+    ? await Promise.all([listItems(ctx, previous.id), getMetricSummary(ctx, { cycleId: previous.id })])
+    : [[], []];
+  const prevMetrics = prevSummary.flatMap(({ channel, rows }) =>
+    rows.filter((r) => r.value !== null).map((r) => `- ${channel.displayName} · ${r.definition.label}: ${formatMetric(r.value, r.definition.unit)}`),
+  );
+
+  const lines: (string | null | false)[] = [
+    `Cliente: ${project.clientName}`,
+    `Proyecto: ${project.name}`,
+    `Idioma: ${project.locale}`,
+    `Zona horaria: ${tz}`,
+    `Mes que hay que planificar: ${formatPeriod(cycle.period, project.locale)} (${cycle.period})`,
+    brief(cycle),
+    "",
+    "Canales (referencia · nombre · tipo · formatos admitidos):",
+    ...active.map(
+      (c, i) =>
+        `- ${channelRef(i)} · ${c.displayName} · ${c.kind === "email" ? "email" : "red social"} (${c.platform}) · ` +
+        Object.keys(FORMATS[c.kind]).join(", "),
+    ),
+    "",
+    items.length ? "Piezas ya planificadas este mes (no las repitas):" : "Todavía no hay piezas planificadas este mes.",
+    ...items.map((i) => `- ${when(i.plannedAt)} · ${i.title} · ${i.channelName} · ${formatLabel(i.format)}`),
+  ];
+  if (previous) {
+    lines.push(
+      "",
+      `Mes anterior (${formatPeriod(previous.period, project.locale)}):`,
+      prevItems.length ? "Piezas:" : "No tuvo piezas.",
+      ...prevItems
+        .filter((i) => i.status !== "cancelled")
+        .map((i) => `- ${when(i.plannedAt)} · ${i.title} · ${i.channelName} · ${formatLabel(i.format)}`),
+      previous.learnings && `Aprendizajes: ${previous.learnings}`,
+      prevMetrics.length ? "Métricas registradas:" : "No hay métricas registradas.",
+      ...prevMetrics,
+    );
+  }
+  return {
+    cycleId: cycle.id,
+    data: block(lines),
+    inputRefs: {
+      project: [ctx.projectId],
+      cycle: previous ? [cycle.id, previous.id] : [cycle.id],
+      // El orden importa: C1 es el primero, C2 el segundo…
+      channel: active.map((c) => c.id),
+      contentItem: [...items, ...prevItems].map((i) => i.id),
+    },
   };
 }
 

@@ -65,6 +65,19 @@ Regla general: **un módulo solo accede a sus propias tablas**. Para leer o modi
 | `audit` | Registro append-only de acciones relevantes | `audit_events` | — |
 | `comments` | Comentarios sobre piezas/versiones/informes | `comments` | — |
 
+### Flujo: «prepara el calendario del mes que viene»
+
+```
+ai.prepareNextMonthCalendar(ctx, {instructions})
+   ├─ abre el ciclo del mes siguiente (zona del proyecto) si no existe   [exige cycle.manage]
+   └─ ai.generateCalendarPlan(ctx, cycleId) → ai_generations (purpose = calendar_plan, JSON)   [nada cambia en content]
+        contexto: brief, canales activos (C1, C2…) y formatos, lo ya planificado y el mes anterior
+        (piezas, aprendizajes y solo las métricas registradas)
+   │ humano marca piezas, ajusta título/fecha/idea y pulsa "Añadir al calendario"
+ai.applyCalendarPlan(ctx, generationId, entries) → content_items (status = idea, ai_generation_id) + comentario con la idea
+   └─ valida todo antes de crear nada; después cada pieza sigue el flujo normal (versiones, revisión, aprobación)
+```
+
 ### Flujo clave: de borrador IA a publicación
 
 ```

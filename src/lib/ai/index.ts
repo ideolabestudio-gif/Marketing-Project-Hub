@@ -13,6 +13,8 @@ export type AiRequest = {
   prompt: string;
   /** Profundidad del razonamiento: low para tareas simples, medium para análisis. */
   effort: "low" | "medium";
+  /** Si se indica, la respuesta es JSON con este esquema (salida estructurada). */
+  jsonSchema?: Record<string, unknown>;
 };
 
 export type AiResult =

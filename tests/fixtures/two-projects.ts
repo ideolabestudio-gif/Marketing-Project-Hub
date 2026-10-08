@@ -9,7 +9,13 @@ import { channels, clients, projectMemberships, projects, users } from "@/lib/db
 import { requireProjectAccess } from "@/modules/access/context";
 import { addComment, createItem, getItemDetail, saveVersion, uploadAsset } from "@/modules/content/service";
 import { openCycle } from "@/modules/cycles/service";
-import { applyReportInterpretation, generateCopyDraft, generateIdeas, generateReportInterpretation } from "@/modules/ai/service";
+import {
+  applyReportInterpretation,
+  generateCalendarPlan,
+  generateCopyDraft,
+  generateIdeas,
+  generateReportInterpretation,
+} from "@/modules/ai/service";
 import { recordMetricValue, uploadMetricCsv } from "@/modules/metrics/service";
 import { updateAiSettings } from "@/modules/projects/service";
 import { createReport, getReport, updateReportSection } from "@/modules/reports/service";
@@ -20,6 +26,7 @@ import {
   submitForReview,
 } from "@/modules/review/service";
 import type { Actor } from "@/modules/identity/actor";
+import { fakeAi } from "./fake-ai";
 import { MARKER_A, MARKER_B } from "./markers";
 
 export { MARKER_A, MARKER_B };
@@ -270,7 +277,34 @@ async function seedAi(manager: Actor, projectId: string, cycleId: string, itemId
     body: `Interpretación ${marker}`,
   });
   const interpretation = await generateReportInterpretation(ctx, { cycleId, instructions: `Lectura ${marker}` });
-  return { copyDraft, ideas, interpretation, aiSection };
+  const calendarPlan = await withReply(calendarPlanReply(marker), () =>
+    generateCalendarPlan(ctx, { cycleId, instructions: `Calendario ${marker}` }),
+  );
+  return { copyDraft, ideas, interpretation, aiSection, calendarPlan };
+}
+
+/**
+ * Respuesta de ejemplo para una propuesta de calendario del mes del fixture: dos piezas
+ * válidas en el único canal (C1) y una con la fecha fuera del mes, que se descarta.
+ */
+export function calendarPlanReply(marker: string, period = FIXTURE_PERIOD): string {
+  return JSON.stringify({
+    pieces: [
+      { channel: "C1", format: "reel", date: `${period}-20T18:30`, title: `Reel ${marker}`, idea: `Idea reel ${marker}` },
+      { channel: "C1", format: "post", date: `${period}-12T10:00`, title: `Post ${marker}`, idea: `Idea post ${marker}` },
+      { channel: "C1", format: "post", date: "2030-01-01T10:00", title: `Fuera ${marker}`, idea: "Fuera del mes" },
+    ],
+  });
+}
+
+async function withReply<T>(reply: string, fn: () => Promise<T>): Promise<T> {
+  const previous = fakeAi.reply;
+  fakeAi.reply = reply;
+  try {
+    return await fn();
+  } finally {
+    fakeAi.reply = previous;
+  }
 }
 
 export type Fixture = Awaited<ReturnType<typeof seedTwoProjects>>;

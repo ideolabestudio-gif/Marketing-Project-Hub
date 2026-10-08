@@ -268,6 +268,7 @@ CREATE TABLE content_versions (
 ## 4.8 Implementado en F5 (diferencias con el diseño)
 
 - `ai_generations`: `cycle_id` obligatorio; `content_item_id` solo (y siempre) para `copy_draft` (CHECK). `purpose` = `copy_draft`, `ideas` o `report_interpretation` (los asuntos de email van dentro del borrador de un email, no hay `subject_lines`). Guarda además `instructions`, `error`, `input_tokens`, `output_tokens` y `cost_usd`. `status` = `draft` → `used` | `discarded` una sola vez, o `failed`; un trigger impide cambiar el resto de columnas y borrar.
+- Calendario con IA: `purpose` admite además `calendar_plan` (la salida es JSON con piezas; cada canal va como `C1`, `C2`… en el orden de `input_refs.channel`). `content_items.ai_generation_id` (opcional, FK `(project_id, ai_generation_id)`) indica de qué propuesta salió una pieza que una persona añadió al calendario.
 - `content_versions.ai_generation_id` con FK de tres columnas `(project_id, content_item_id, ai_generation_id)`: el borrador tiene que ser de la misma pieza. CHECK: `origin = 'ai_assisted'` si y solo si hay `ai_generation_id` (WF-05).
 - `report_sections`: nuevo `kind` `ai_interpretation` con `ai_generation_id` (CHECK: obligatorio en ese tipo y solo en ese), `reviewed_by` y `reviewed_at`. Editar el texto anula la revisión; el informe no se aprueba con secciones de IA sin revisar (WF-06).
 - `projects.ai_monthly_limit_usd` (por defecto 5). `ai_enabled` ya existía (por defecto `false`).
