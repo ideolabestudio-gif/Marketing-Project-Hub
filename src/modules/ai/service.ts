@@ -187,7 +187,11 @@ export async function generateCalendarPlan(ctx: ProjectContext, input: z.input<t
   });
 }
 
-const prepareSchema = z.object({ instructions: instructionsSchema });
+const prepareSchema = z.object({
+  instructions: instructionsSchema,
+  /** true: no llama a la API aunque esté configurada (la propuesta llega por el chat o el conector). */
+  viaChat: z.boolean().default(false),
+});
 
 /**
  * La orden «prepara el calendario del mes que viene»: abre el ciclo del mes siguiente
@@ -204,7 +208,7 @@ export async function prepareNextMonthCalendar(
   await authorize(ctx, "ai.generate");
   await authorize(ctx, "content.write");
   const project = await getProject(ctx);
-  const useApi = project.aiEnabled && getAiProvider().name !== "disabled";
+  const useApi = !data.viaChat && project.aiEnabled && getAiProvider().name !== "disabled";
   const period = nextPeriod(new Date(), project.timezone);
   let cycle: Cycle;
   try {
@@ -286,6 +290,62 @@ export async function importCalendarPlan(ctx: ProjectContext, input: z.input<typ
     entityType: "ai_generation",
     entityId: row.id,
     data: { purpose: "calendar_plan" },
+  });
+  return row;
+}
+
+/**
+ * Sin API: el texto completo para escribir el borrador de una pieza en un chat de
+ * Claude (o con el conector). No llama a ningún proveedor ni guarda nada.
+ */
+export async function getCopyDraftChatPrompt(ctx: ProjectContext, input: z.input<typeof copySchema>) {
+  const data = parseInput(copySchema, input);
+  await authorize(ctx, "ai.generate");
+  const context = await copyDraftContext(ctx, data.itemId);
+  return [COPY_DRAFT.system, buildPrompt(context, data.instructions)].join("\n\n");
+}
+
+const importCopySchema = z.object({
+  itemId: z.string(),
+  output: z.string().trim().min(1, "Falta el texto del borrador").max(20000, "El texto es demasiado largo"),
+  instructions: instructionsSchema,
+});
+
+/**
+ * Guarda como borrador de una pieza un texto escrito en un chat de Claude. Queda en
+ * ai_generations (sin coste) y solo llega a una versión si una persona lo usa con
+ * applyCopyDraft. No crea versiones.
+ */
+export async function importCopyDraft(ctx: ProjectContext, input: z.input<typeof importCopySchema>) {
+  const data = parseInput(importCopySchema, input);
+  await authorize(ctx, "ai.generate");
+  const context = await copyDraftContext(ctx, data.itemId);
+  const cycle = await getCycle(ctx, context.cycleId);
+  assertCycleWritable(cycle);
+  const row = await repo.insertGeneration(ctx, {
+    cycleId: cycle.id,
+    contentItemId: context.inputRefs.contentItem[0],
+    purpose: "copy_draft",
+    provider: "chat",
+    model: "Chat de Claude",
+    promptTemplate: COPY_DRAFT.key,
+    promptTemplateVersion: COPY_DRAFT.version,
+    instructions: data.instructions,
+    inputRefs: context.inputRefs,
+    output: data.output,
+    error: null,
+    status: "draft",
+    inputTokens: 0,
+    outputTokens: 0,
+    costUsd: 0,
+  });
+  await recordAudit({
+    action: "ai.imported",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "ai_generation",
+    entityId: row.id,
+    data: { purpose: "copy_draft" },
   });
   return row;
 }

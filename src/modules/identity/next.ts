@@ -50,3 +50,13 @@ export async function endCurrentSession(): Promise<void> {
   if (token) await invalidateSession(token);
   store.delete(name);
 }
+
+/**
+ * Ruta interna a la que volver después de iniciar sesión, o null si no es segura
+ * (solo rutas del propio Hub: nada de «//otro-sitio» ni direcciones absolutas).
+ */
+export function safeNextPath(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2000) return null;
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return null;
+  return value;
+}

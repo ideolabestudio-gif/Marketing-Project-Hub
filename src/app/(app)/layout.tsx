@@ -16,6 +16,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <Link href="/" className="link">
             Mis proyectos
           </Link>
+          <Link href="/conexiones" className="link">
+            Conexiones
+          </Link>
           {actor.isAdmin && (
             <Link href="/admin" className="link">
               Administración

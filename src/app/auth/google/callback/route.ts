@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { bootstrapAdminEmails, getEnv } from "@/lib/env";
 import { googleClient } from "@/modules/identity/google";
-import { setSessionCookie } from "@/modules/identity/next";
+import { safeNextPath, setSessionCookie } from "@/modules/identity/next";
 import { googleClaimsSchema, loginWithGoogle } from "@/modules/identity/service";
 import { createSession } from "@/modules/identity/session";
 
@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
   const codeVerifier = store.get("google_code_verifier")?.value;
   store.delete("google_oauth_state");
   store.delete("google_code_verifier");
+  const next = safeNextPath(store.get("login_next")?.value);
+  store.delete("login_next");
 
   if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
     return fail("invalid_request");
@@ -44,5 +46,5 @@ export async function GET(request: NextRequest) {
 
   const session = await createSession(result.userId);
   await setSessionCookie(session.token, session.expiresAt);
-  return NextResponse.redirect(new URL("/", env.APP_URL));
+  return NextResponse.redirect(new URL(next ?? "/", env.APP_URL));
 }
