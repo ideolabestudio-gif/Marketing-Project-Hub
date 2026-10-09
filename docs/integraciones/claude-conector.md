@@ -25,7 +25,8 @@ No hay herramientas para aprobar, publicar, programar, enviar, cerrar ni borrar 
 
 ## 4. Seguridad
 - Aislamiento: cada herramienta entra por `requireProjectAccess` con la persona del token, igual que una página. Probado en `tests/integration/mcp.test.ts` y `tests/e2e/mcp-connector.spec.ts`.
-- Solo se aceptan las direcciones de vuelta de Claude (`https://claude.ai/api/mcp/auth_callback` y `https://claude.com/api/mcp/auth_callback`); se pueden añadir otras con `OAUTH_EXTRA_REDIRECT_URIS` si Claude cambia la suya.
+- Solo se aceptan direcciones de vuelta https en `claude.ai` o `claude.com` (hoy `/api/mcp/auth_callback`); se pueden añadir otras exactas con `OAUTH_EXTRA_REDIRECT_URIS`.
+- Los rechazos de OAuth quedan en los registros de Render con el prefijo `[oauth]`.
 - PKCE S256 obligatorio. Códigos de un solo uso (5 min). Token de acceso de 1 h y de refresco de 30 días con rotación; reutilizar un código o un refresco revoca la conexión. En BD solo se guarda el SHA-256.
 - Desactivar a un usuario o pulsar «Desconectar» corta el acceso al momento.
 - La pantalla de permiso no se puede incrustar en otra web (`frame-ancestors 'none'`).

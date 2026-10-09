@@ -4,7 +4,7 @@ import { NotFoundError } from "@/lib/errors";
 import { isUuid } from "@/lib/validation";
 import { recordAudit } from "@/modules/audit/service";
 import type { Actor } from "@/modules/identity/actor";
-import { ACCESS_TOKEN_TTL_MS, allowedRedirectUris, CODE_TTL_MS, OAuthError, oauthUrls, REFRESH_TOKEN_TTL_MS } from "./config";
+import { ACCESS_TOKEN_TTL_MS, isAllowedRedirectUri, CODE_TTL_MS, OAuthError, oauthUrls, REFRESH_TOKEN_TTL_MS } from "./config";
 import * as repo from "./repo";
 
 // Inicio de sesión del conector de Claude (OAuth 2.1 con PKCE obligatorio). Claude se
@@ -34,8 +34,7 @@ const registerSchema = z.object({
 export async function registerClient(input: unknown) {
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) throw new OAuthError("invalid_client_metadata", "Faltan redirect_uris");
-  const allowed = allowedRedirectUris();
-  const bad = parsed.data.redirect_uris.find((u) => !allowed.includes(u));
+  const bad = parsed.data.redirect_uris.find((u) => !isAllowedRedirectUri(u));
   if (bad) throw new OAuthError("invalid_redirect_uri", "Este Hub solo admite el conector de Claude");
 
   const client = await repo.insertClient({

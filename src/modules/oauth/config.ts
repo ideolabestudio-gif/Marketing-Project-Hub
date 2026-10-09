@@ -36,9 +36,22 @@ export function oauthUrls(env: Env = getEnv()) {
   };
 }
 
-export function allowedRedirectUris(env: Env = getEnv()): string[] {
+/** Dominios de Claude que pueden recibir códigos (cualquier ruta https en ellos). */
+const CLAUDE_HOSTS = ["claude.ai", "claude.com"];
+
+/**
+ * Dirección de vuelta admitida: las de Claude (cualquier ruta https en claude.ai o
+ * claude.com, por si Claude cambia la suya) o las de OAUTH_EXTRA_REDIRECT_URIS.
+ */
+export function isAllowedRedirectUri(uri: string, env: Env = getEnv()): boolean {
   const extra = env.OAUTH_EXTRA_REDIRECT_URIS.split(",")
     .map((u) => u.trim())
     .filter(Boolean);
-  return [...CLAUDE_REDIRECT_URIS, ...extra];
+  if (extra.includes(uri)) return true;
+  try {
+    const url = new URL(uri);
+    return url.protocol === "https:" && !url.port && !url.username && !url.password && CLAUDE_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
 }

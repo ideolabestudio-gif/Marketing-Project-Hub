@@ -66,6 +66,15 @@ describe("registro de la aplicación", () => {
       code: "invalid_redirect_uri",
     });
     await expect(registerClient({})).rejects.toBeInstanceOf(OAuthError);
+    for (const uri of ["http://claude.ai/api/mcp/auth_callback", "https://claude.ai.atacante.example/cb", "https://claude.ai:8443/cb", "nada"]) {
+      await expect(registerClient({ redirect_uris: [uri] }), uri).rejects.toMatchObject({ code: "invalid_redirect_uri" });
+    }
+  });
+
+  it("admite cualquier ruta https de claude.ai o claude.com", async () => {
+    for (const uri of ["https://claude.com/api/mcp/auth_callback", "https://claude.ai/otra/ruta/callback"]) {
+      expect((await registerClient({ redirect_uris: [uri] })).redirect_uris).toEqual([uri]);
+    }
   });
 });
 
