@@ -3,11 +3,12 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getEnv, isSecureDeployment } from "@/lib/env";
 import { googleClient } from "@/modules/identity/google";
+import { safeNextPath } from "@/modules/identity/next";
 
 const OAUTH_COOKIE_MAX_AGE = 10 * 60;
 
-/** Inicia el flujo OAuth (código + PKCE) con Google. */
-export async function GET() {
+/** Inicia el flujo OAuth (código + PKCE) con Google. `next`: ruta del Hub a la que volver. */
+export async function GET(request: Request) {
   const env = getEnv();
   const google = googleClient();
   if (!google) {
@@ -29,5 +30,8 @@ export async function GET() {
   };
   store.set("google_oauth_state", state, options);
   store.set("google_code_verifier", codeVerifier, options);
+  const next = safeNextPath(new URL(request.url).searchParams.get("next"));
+  if (next) store.set("login_next", next, options);
+  else store.delete("login_next");
   return NextResponse.redirect(url);
 }

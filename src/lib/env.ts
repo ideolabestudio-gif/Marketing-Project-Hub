@@ -8,6 +8,11 @@ const envSchema = z.object({
   AUTH_GOOGLE_HOSTED_DOMAIN: z.string().min(1).optional(),
   /** Emails separados por comas que se crean como administradores en su primer login. */
   BOOTSTRAP_ADMIN_EMAILS: z.string().default(""),
+  /**
+   * Direcciones de vuelta OAuth admitidas para el conector de Claude, además de las de
+   * claude.ai y claude.com (separadas por comas). Solo hace falta si Claude cambia la suya.
+   */
+  OAUTH_EXTRA_REDIRECT_URIS: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -19,6 +24,7 @@ export function getEnv(): Env {
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || undefined,
     AUTH_GOOGLE_HOSTED_DOMAIN: process.env.AUTH_GOOGLE_HOSTED_DOMAIN || undefined,
     BOOTSTRAP_ADMIN_EMAILS: process.env.BOOTSTRAP_ADMIN_EMAILS || undefined,
+    OAUTH_EXTRA_REDIRECT_URIS: process.env.OAUTH_EXTRA_REDIRECT_URIS || undefined,
   });
 }
 

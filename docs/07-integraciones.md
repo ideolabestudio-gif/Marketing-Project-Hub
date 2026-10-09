@@ -47,3 +47,7 @@ Notas:
 2. Primero integraciones de **solo lectura** (métricas): menor riesgo, mayor ahorro de tiempo en el informe.
 3. Después, "crear borrador / enviar a revisión" en la herramienta externa, tras aprobación en el Hub.
 4. Publicación/envío directo por API: solo si se pide expresamente, por proyecto, y siempre tras aprobación humana registrada y acción humana explícita.
+
+## 7.5 Conector de Claude (entrante)
+
+El Hub expone un servidor MCP en `/api/mcp` para usar Claude con la suscripción de cada persona, sin API de pago. No llama a ningún servicio externo: es Claude quien llama al Hub, con un token OAuth de la persona y sus mismos permisos por proyecto. Solo lee y deja borradores. Detalle en `docs/integraciones/claude-conector.md`.

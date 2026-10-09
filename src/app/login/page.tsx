@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentActor } from "@/modules/identity/next";
+import { getCurrentActor, safeNextPath } from "@/modules/identity/next";
 
 const ERRORS: Record<string, string> = {
   not_allowed: "Tu email no está dado de alta. Pide acceso a un administrador.",
@@ -13,8 +13,9 @@ const ERRORS: Record<string, string> = {
 };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  if (await getCurrentActor()) redirect("/");
-  const { error } = await searchParams;
+  const { error, next: rawNext } = await searchParams;
+  const next = safeNextPath(rawNext);
+  if (await getCurrentActor()) redirect(next ?? "/");
   const message = typeof error === "string" ? ERRORS[error] ?? "No se pudo iniciar sesión." : null;
 
   return (
@@ -27,7 +28,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             {message}
           </p>
         )}
-        <a href="/auth/google" className="btn btn-primary justify-center">
+        <a
+          href={next ? `/auth/google?next=${encodeURIComponent(next)}` : "/auth/google"}
+          className="btn btn-primary justify-center"
+        >
           Entrar con Google
         </a>
       </div>

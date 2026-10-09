@@ -66,6 +66,16 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     call: (a, fx) => identity.adminSetUserActive(a, { userId: fx.users.edu.id, active: true }),
   },
 
+  // --- oauth (conector de Claude) ---
+  "oauth.registerClient": { kind: "internal", reason: "Registro público de la aplicación; no toca datos de proyecto" },
+  "oauth.checkAuthorizationRequest": { kind: "internal", reason: "Solo valida parámetros OAuth; no toca datos de proyecto" },
+  "oauth.approveAuthorization": { kind: "actor", reason: "Permiso de la propia persona; probado en oauth.test.ts" },
+  "oauth.denyAuthorization": { kind: "internal", reason: "Solo construye la respuesta de rechazo" },
+  "oauth.exchangeToken": { kind: "internal", reason: "Endpoint de tokens; probado en oauth.test.ts" },
+  "oauth.authenticateAccessToken": { kind: "internal", reason: "Devuelve la persona del token; cada herramienta MCP autoriza por proyecto (mcp.test.ts)" },
+  "oauth.listMyConnections": { kind: "actor", reason: "Solo las conexiones de la propia persona; probado en oauth.test.ts" },
+  "oauth.revokeMyConnection": { kind: "actor", reason: "Solo las conexiones de la propia persona; probado en oauth.test.ts" },
+
   // --- projects ---
   "projects.getProject": {
     kind: "project",
@@ -374,6 +384,16 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     kind: "project",
     own: (ctx, fx) => ai.getCalendarPlanChatPrompt(ctx, { cycleId: fx.contentA.cycle.id }),
     foreign: (ctx, fx) => ai.getCalendarPlanChatPrompt(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.getCopyDraftChatPrompt": {
+    kind: "project",
+    own: (ctx, fx) => ai.getCopyDraftChatPrompt(ctx, { itemId: fx.contentA.item.id }),
+    foreign: (ctx, fx) => ai.getCopyDraftChatPrompt(ctx, { itemId: fx.contentB.item.id }),
+  },
+  "ai.importCopyDraft": {
+    kind: "project",
+    own: (ctx, fx) => ai.importCopyDraft(ctx, { itemId: fx.contentA.item.id, output: "Texto escrito en el chat" }),
+    foreign: (ctx, fx) => ai.importCopyDraft(ctx, { itemId: fx.contentB.item.id, output: "Texto intruso" }),
   },
   "ai.importCalendarPlan": {
     kind: "project",
