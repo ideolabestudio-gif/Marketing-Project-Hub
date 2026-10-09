@@ -17,6 +17,7 @@ Cada mes hay que pasar al Hub las métricas de redes de cada cliente: hoy se hac
 
 ## 3. Acceso (según fuentes secundarias, sin confirmar)
 
+- **Plan actual de Ideolab:** **Starter** (confirmado por Sandra el 9-10-2026). Según las fuentes de abajo, no incluye la API.
 - **Plan:** la API REST solo está en los planes **Advanced** y **Custom**, que son de pago. Las cifras publicadas por terceros no coinciden (desde unos 43 €/mes por 15 marcas hasta 67 $/mes), así que hay que consultar la página de precios.
 - **Autenticación:** un `userToken` por cuenta, en la cabecera `X-Mc-Auth`, más `userId` y `blogId` como parámetros en cada llamada. Una guía de terceros habla de `Authorization: Bearer`; prevalece la oficial.
 - **Marcas:** el mismo token da acceso a **todas las marcas de la cuenta**, incluidas las compartidas. Cada marca se identifica por su `blogId`, y hay un endpoint (`simpleProfiles`) que las lista.
@@ -60,7 +61,7 @@ Si el token caduca, cambia el plan o la API falla, la importación no se ejecuta
 
 ## 8. Decisión propuesta: **posponer la API**; usar Metricool sin API
 
-- **No implementar ahora el adaptador de la API.** Exige un plan Advanced o superior, que es de pago y que hoy no hay presupuesto para contratar; no se ha podido leer la documentación oficial; y el cliente piloto todavía no está en Metricool.
+- **No implementar ahora el adaptador de la API.** Exige un plan Advanced o superior, de pago; Ideolab tiene Starter y hoy no hay presupuesto para cambiar; no se ha podido leer la documentación oficial; y el cliente piloto todavía no está en Metricool.
 - **Alternativa sin coste y sin código nuevo:** las métricas del mes entran por la **importación CSV que ya existe**, de una de estas dos formas:
   1. Exportando el CSV desde Metricool, si el plan actual lo permite (pendiente de probar con una exportación real: próximos pasos, punto 2 del doc. 08).
   2. Pidiéndoselas a Claude en el chat con el conector de Metricool: «dame en CSV las métricas de octubre de la marca X con estas columnas». Después se importa el CSV en el Hub y una persona revisa el mapeo, como siempre.
