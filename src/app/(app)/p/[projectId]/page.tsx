@@ -42,11 +42,16 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
             {project.status === "archived" && <span className="badge">Archivado · solo lectura</span>}
           </div>
         </div>
-        {hasPermission(ctx, "project.settings") && (
-          <Link href={`/p/${projectId}/ajustes`} className="btn btn-secondary">
-            Ajustes
+        <div className="flex gap-2">
+          <Link href={`/p/${projectId}/ficha`} className="btn btn-secondary">
+            Ficha del cliente
           </Link>
-        )}
+          {hasPermission(ctx, "project.settings") && (
+            <Link href={`/p/${projectId}/ajustes`} className="btn btn-secondary">
+              Ajustes
+            </Link>
+          )}
+        </div>
       </div>
 
       {canPrepare && (

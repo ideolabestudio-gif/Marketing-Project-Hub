@@ -8,3 +8,4 @@ export * from "./review";
 export * from "./metrics";
 export * from "./reports";
 export * from "./oauth";
+export * from "./brand";

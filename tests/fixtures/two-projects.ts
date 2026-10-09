@@ -7,7 +7,16 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { channels, clients, projectMemberships, projects, users } from "@/lib/db/schema";
 import { requireProjectAccess } from "@/modules/access/context";
-import { addComment, createItem, getItemDetail, saveVersion, uploadAsset } from "@/modules/content/service";
+import { saveBrandProfile } from "@/modules/brand/service";
+import {
+  addComment,
+  addLibraryFile,
+  addLibraryLink,
+  createItem,
+  getItemDetail,
+  saveVersion,
+  uploadAsset,
+} from "@/modules/content/service";
 import { openCycle } from "@/modules/cycles/service";
 import {
   applyReportInterpretation,
@@ -124,6 +133,9 @@ export async function seedTwoProjects() {
 
   const metricsA = await seedMetrics(actors.ana, projectA.id, contentA.cycle.id, channelA.id, MARKER_A);
   const metricsB = await seedMetrics(actors.bea, projectB.id, contentB.cycle.id, channelB.id, MARKER_B);
+  // Antes que la IA: así sus contextos incluyen la ficha y la biblioteca de cada proyecto.
+  const brandA = await seedBrand(actors.ana, projectA.id, MARKER_A);
+  const brandB = await seedBrand(actors.bea, projectB.id, MARKER_B);
   const aiA = await seedAi(actors.ana, projectA.id, contentA.cycle.id, contentA.item.id, MARKER_A);
   const aiB = await seedAi(actors.bea, projectB.id, contentB.cycle.id, contentB.item.id, MARKER_B);
 
@@ -142,6 +154,8 @@ export async function seedTwoProjects() {
     reviewB,
     metricsA,
     metricsB,
+    brandA,
+    brandB,
     aiA,
     aiB,
   };
@@ -259,6 +273,30 @@ async function seedMetrics(manager: Actor, projectId: string, cycleId: string, c
     report: report.report,
     sections: report.sections,
   };
+}
+
+/** Ficha del cliente (dos versiones) y biblioteca con un archivo y un enlace. */
+async function seedBrand(manager: Actor, projectId: string, marker: string) {
+  const ctx = await requireProjectAccess(manager, projectId);
+  await saveBrandProfile(ctx, { about: `Cliente ${marker}`, voice: `Tono ${marker}` });
+  const profile = await saveBrandProfile(ctx, {
+    about: `Cliente ${marker}`,
+    voice: `Tono cercano ${marker}`,
+    avoid: `Evitar ${marker}`,
+  });
+  const libraryFile = await addLibraryFile(ctx, {
+    category: "logo",
+    title: `Logo ${marker}`,
+    description: `Logo principal ${marker}`,
+    filename: `logo-${marker}.png`,
+    bytes: TINY_PNG,
+  });
+  const libraryLink = await addLibraryLink(ctx, {
+    category: "photo",
+    title: `Fotos ${marker}`,
+    url: "https://example.com/fotos",
+  });
+  return { profile, libraryFile, libraryLink };
 }
 
 /**

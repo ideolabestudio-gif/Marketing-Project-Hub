@@ -8,13 +8,14 @@ import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ALLOWED_DESCRIPTION } from "@/modules/content/files";
 import { formatLabel } from "@/modules/content/formats";
-import { getItemDetail } from "@/modules/content/service";
+import { getItemDetail, LIBRARY_CATEGORIES, listLibrary } from "@/modules/content/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { WORKFLOW_LABELS } from "@/modules/review/domain";
 import { getItemReview, isLocked } from "@/modules/review/service";
 import {
   addCommentAction,
   addLinkAction,
+  attachLibraryItemAction,
   removeAssetAction,
   saveVersionAction,
   setCancelledAction,
@@ -29,10 +30,11 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
   const ctx = await projectContextForPage(projectId);
   const { item, current, currentAssets, versions, comments } = await orNotFound(getItemDetail(ctx, itemId));
   if (item.cyclePeriod !== period) notFound();
-  const [project, channels, review] = await Promise.all([
+  const [project, channels, review, library] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     getItemReview(ctx, item.id),
+    listLibrary(ctx),
   ]);
 
   const tz = project.timezone;
@@ -201,6 +203,29 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             </ActionForm>
           </div>
         )}
+        {canEditContent &&
+          (library.length === 0 ? (
+            <p className="text-sm text-muted">
+              Para reutilizar logos, fotos o plantillas, súbelos a la{" "}
+              <Link href={`/p/${projectId}/ficha`} className="link">
+                ficha del cliente
+              </Link>
+              .
+            </p>
+          ) : (
+            <ActionForm action={attachLibraryItemAction.bind(null, projectId, item.id)} submitLabel="Añadir a la pieza">
+              <label className="field grow">
+                Desde la biblioteca del cliente
+                <select name="libraryItemId" className="input" required>
+                  {library.map((m) => (
+                    <option key={m.id} value={m.id} disabled={currentAssets.some((a) => a.id === m.asset.id)}>
+                      {LIBRARY_CATEGORIES[m.category]} · {m.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </ActionForm>
+          ))}
         <p className="text-xs text-muted">
           Cada cambio de archivos crea una versión nueva; las versiones anteriores conservan sus archivos.
         </p>

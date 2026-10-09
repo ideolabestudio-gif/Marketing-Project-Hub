@@ -311,33 +311,43 @@ export async function saveVersion(ctx: ProjectContext, input: z.input<typeof ver
 
 const MAX_ASSETS_PER_VERSION = 20;
 
+/**
+ * Valida el archivo (tamaño y tipo real por sus primeros bytes) y lo guarda en el
+ * almacenamiento del proyecto. Se escribe antes que la fila: si la transacción falla
+ * queda un huérfano inofensivo, nunca una fila apuntando a un archivo inexistente.
+ */
+async function storeFile(ctx: ProjectContext, input: { filename: string; bytes: Uint8Array }): Promise<repo.NewAsset> {
+  if (input.bytes.byteLength === 0) throw new ValidationError("El archivo está vacío");
+  if (input.bytes.byteLength > MAX_UPLOAD_BYTES) throw new ValidationError(`Archivo demasiado grande (${ALLOWED_DESCRIPTION})`);
+  const mimeType = detectMimeType(input.bytes);
+  if (!mimeType) throw new ValidationError(`Tipo de archivo no admitido (${ALLOWED_DESCRIPTION})`);
+  const assetId = randomUUID();
+  const storageKey = assetStorageKey(ctx.projectId, assetId);
+  await getStorage().put(storageKey, input.bytes);
+  return {
+    id: assetId,
+    kind: "file",
+    storageKey,
+    url: null,
+    filename: sanitizeFilename(input.filename),
+    mimeType,
+    sizeBytes: input.bytes.byteLength,
+    sha256: createHash("sha256").update(input.bytes).digest("hex"),
+  };
+}
+
+function linkAsset(url: string, label: string): repo.NewAsset {
+  return { id: randomUUID(), kind: "link", storageKey: null, url, filename: label, mimeType: null, sizeBytes: null, sha256: null };
+}
+
 /** Sube un archivo y crea una versión nueva que lo incluye. */
 export async function uploadAsset(
   ctx: ProjectContext,
   input: { itemId: string; filename: string; bytes: Uint8Array },
 ) {
   const item = await loadItemForWrite(ctx, input.itemId);
-  if (input.bytes.byteLength === 0) throw new ValidationError("El archivo está vacío");
-  if (input.bytes.byteLength > MAX_UPLOAD_BYTES) throw new ValidationError(`Archivo demasiado grande (${ALLOWED_DESCRIPTION})`);
-  const mimeType = detectMimeType(input.bytes);
-  if (!mimeType) throw new ValidationError(`Tipo de archivo no admitido (${ALLOWED_DESCRIPTION})`);
-  const filename = sanitizeFilename(input.filename);
-
-  const assetId = randomUUID();
-  const storageKey = assetStorageKey(ctx.projectId, assetId);
-  // Se escribe primero el archivo: si la transacción falla queda un huérfano inofensivo,
-  // nunca una fila apuntando a un archivo inexistente.
-  await getStorage().put(storageKey, input.bytes);
-  const newAsset: repo.NewAsset = {
-    id: assetId,
-    kind: "file",
-    storageKey,
-    url: null,
-    filename,
-    mimeType,
-    sizeBytes: input.bytes.byteLength,
-    sha256: createHash("sha256").update(input.bytes).digest("hex"),
-  };
+  const newAsset = await storeFile(ctx, input);
+  const { id: assetId, filename } = newAsset;
   return nextVersion(
     ctx,
     item,
@@ -360,21 +370,11 @@ const linkSchema = z.object({
 export async function addLinkAsset(ctx: ProjectContext, input: z.input<typeof linkSchema>) {
   const data = parseInput(linkSchema, input);
   const item = await loadItemForWrite(ctx, data.itemId);
-  const assetId = randomUUID();
   const label = data.label || data.url;
-  const newAsset: repo.NewAsset = {
-    id: assetId,
-    kind: "link",
-    storageKey: null,
-    url: data.url,
-    filename: label,
-    mimeType: null,
-    sizeBytes: null,
-    sha256: null,
-  };
+  const newAsset = linkAsset(data.url, label);
   return nextVersion(ctx, item, (prev) => ({ ...prev, newAsset }), `Añadido enlace: ${label}`, {
     action: "content_version.asset_added",
-    data: { assetId },
+    data: { assetId: newAsset.id },
   });
 }
 
@@ -393,6 +393,110 @@ export async function removeAsset(ctx: ProjectContext, input: { itemId: string; 
     },
     `Quitado: ${asset.filename}`,
     { action: "content_version.asset_removed", data: { assetId: asset.id } },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Biblioteca de materiales del proyecto (logos, manual de marca, fotos, plantillas)
+// ---------------------------------------------------------------------------
+
+export const LIBRARY_CATEGORIES = {
+  logo: "Logos",
+  brand_guide: "Manual de marca",
+  photo: "Fotos",
+  template: "Plantillas",
+  other: "Otros",
+} as const satisfies Record<repo.LibraryItemRow["category"], string>;
+
+export type LibraryEntry = Awaited<ReturnType<typeof repo.listLibrary>>[number];
+
+export async function listLibrary(ctx: ProjectContext): Promise<LibraryEntry[]> {
+  await authorize(ctx, "project.read");
+  return repo.listLibrary(ctx);
+}
+
+const libraryFieldsSchema = z.object({
+  category: z.enum(Object.keys(LIBRARY_CATEGORIES) as [keyof typeof LIBRARY_CATEGORIES], "Elige una categoría"),
+  title: z.string().trim().max(200).optional(),
+  description: optionalText(1000),
+});
+
+async function addToLibrary(
+  ctx: ProjectContext,
+  asset: repo.NewAsset,
+  fields: z.output<typeof libraryFieldsSchema>,
+) {
+  const row = await repo.insertLibraryItem(ctx, {
+    asset,
+    category: fields.category,
+    title: fields.title || asset.filename,
+    description: fields.description,
+  });
+  await recordAudit({
+    action: "library_item.added",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "library_item",
+    entityId: row.id,
+    data: { assetId: asset.id, category: row.category },
+  });
+  return row;
+}
+
+/** Sube un archivo a la biblioteca del proyecto. */
+export async function addLibraryFile(
+  ctx: ProjectContext,
+  input: z.input<typeof libraryFieldsSchema> & { filename: string; bytes: Uint8Array },
+) {
+  await authorize(ctx, "content.write");
+  const fields = parseInput(libraryFieldsSchema, input);
+  return addToLibrary(ctx, await storeFile(ctx, input), fields);
+}
+
+const libraryLinkSchema = libraryFieldsSchema.extend({ url: httpUrl });
+
+/** Añade un enlace (Drive, Canva…) a la biblioteca. Su contenido puede cambiar fuera del Hub. */
+export async function addLibraryLink(ctx: ProjectContext, input: z.input<typeof libraryLinkSchema>) {
+  await authorize(ctx, "content.write");
+  const data = parseInput(libraryLinkSchema, input);
+  return addToLibrary(ctx, linkAsset(data.url, data.title || data.url), data);
+}
+
+async function loadLibraryItem(ctx: ProjectContext, libraryItemId: string) {
+  const entry = isUuid(libraryItemId) ? await repo.findLibraryItem(ctx, libraryItemId) : undefined;
+  if (!entry) throw new NotFoundError("Material no encontrado");
+  return entry;
+}
+
+/** Quita un material de la biblioteca. Las piezas que ya lo usan lo conservan en sus versiones. */
+export async function removeLibraryItem(ctx: ProjectContext, input: { libraryItemId: string }) {
+  await authorize(ctx, "content.write");
+  const entry = await loadLibraryItem(ctx, input.libraryItemId);
+  await repo.deleteLibraryItem(ctx, entry.id);
+  await recordAudit({
+    action: "library_item.removed",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "library_item",
+    entityId: entry.id,
+    data: { assetId: entry.asset.id, title: entry.title },
+  });
+}
+
+/** Añade un material de la biblioteca a una pieza, creando una versión nueva que lo incluye. */
+export async function attachLibraryItem(ctx: ProjectContext, input: { itemId: string; libraryItemId: string }) {
+  const item = await loadItemForWrite(ctx, input.itemId);
+  const entry = await loadLibraryItem(ctx, input.libraryItemId);
+  return nextVersion(
+    ctx,
+    item,
+    (prev) => {
+      if (prev.assetIds.includes(entry.asset.id)) throw new ValidationError("La pieza ya incluye este material");
+      if (prev.assetIds.length >= MAX_ASSETS_PER_VERSION) throw new ValidationError("Demasiados archivos en la pieza");
+      return { ...prev, assetIds: [...prev.assetIds, entry.asset.id] };
+    },
+    `Añadido de la biblioteca: ${entry.title}`,
+    { action: "content_version.asset_added", data: { assetId: entry.asset.id, libraryItemId: entry.id } },
   );
 }
 

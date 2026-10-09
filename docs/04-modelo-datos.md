@@ -273,6 +273,12 @@ CREATE TABLE content_versions (
 - `report_sections`: nuevo `kind` `ai_interpretation` con `ai_generation_id` (CHECK: obligatorio en ese tipo y solo en ese), `reviewed_by` y `reviewed_at`. Editar el texto anula la revisión; el informe no se aprueba con secciones de IA sin revisar (WF-06).
 - `projects.ai_monthly_limit_usd` (por defecto 5). `ai_enabled` ya existía (por defecto `false`).
 
+## 4.8 bis Ficha del cliente y biblioteca de materiales
+
+- `brand_profiles`: contexto de marca estable del proyecto (`about`, `audience`, `voice`, `offering`, `keywords`, `avoid`). Cada guardado es una fila nueva con `version_no` (UNIQUE `(project_id, version_no)`); un trigger impide UPDATE/DELETE. La vigente es la de número más alto. Solo la edita el responsable (`project.settings`).
+- `library_items`: materiales reutilizables del proyecto (`category` = `logo`, `brand_guide`, `photo`, `template`, `other`; `title`; `description`) que apuntan a un `assets` inmutable por FK `(project_id, asset_id)`. Quitar un material borra la fila de la biblioteca, no el activo: las versiones de piezas que ya lo incluyen lo conservan. Añadirlo a una pieza crea una versión nueva con ese activo.
+- La IA (borrador de texto, ideas y calendario; no la interpretación del informe) recibe la ficha vigente y los títulos y descripciones de la biblioteca; `input_refs` registra `brandProfile` y `libraryItem`.
+
 ## 4.9 Endurecimiento opcional (fase posterior)
 
 Activar **Row Level Security** de PostgreSQL en todas las tablas con `project_id`, fijando `SET LOCAL app.project_ids = …` por transacción. No se activa en el MVP para no complicar el acceso a datos, pero el modelo ya lo permite sin cambios de esquema.

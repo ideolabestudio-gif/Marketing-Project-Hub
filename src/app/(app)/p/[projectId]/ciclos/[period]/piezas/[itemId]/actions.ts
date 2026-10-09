@@ -7,6 +7,7 @@ import { projectContextForAction } from "@/lib/project-page";
 import {
   addComment,
   addLinkAsset,
+  attachLibraryItem,
   removeAsset,
   saveVersion,
   setItemCancelled,
@@ -80,6 +81,14 @@ export async function addLinkAction(projectId: string, itemId: string, _: Action
     await addLinkAsset(ctx, { itemId, url: formString(formData, "url"), label: formString(formData, "label") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Enlace añadido (nueva versión)");
+}
+
+export async function attachLibraryItemAction(projectId: string, itemId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "content.write");
+    await attachLibraryItem(ctx, { itemId, libraryItemId: formString(formData, "libraryItemId") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Material añadido (nueva versión)");
 }
 
 export async function removeAssetAction(projectId: string, itemId: string, assetId: string) {

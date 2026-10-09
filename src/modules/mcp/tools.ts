@@ -11,8 +11,9 @@ import {
   importCopyDraft,
   prepareNextMonthCalendar,
 } from "@/modules/ai/service";
+import { BRAND_FIELDS, getBrandProfile } from "@/modules/brand/service";
 import { formatLabel } from "@/modules/content/formats";
-import { getItemDetail, listItems } from "@/modules/content/service";
+import { getItemDetail, LIBRARY_CATEGORIES, listItems, listLibrary } from "@/modules/content/service";
 import { CYCLE_STATUS_LABELS, getCycle, getCycleByPeriod, listCycles } from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
 import { getMetricSummary, uploadMetricCsv } from "@/modules/metrics/service";
@@ -100,17 +101,36 @@ export const TOOLS = [
   tool({
     name: "ver_proyecto",
     title: "Ver proyecto",
-    description: "Datos de un proyecto: zona horaria, idioma, canales (con su ID) y ciclos mensuales.",
+    description:
+      "Datos de un proyecto: ficha del cliente (tono de voz, público, qué evitar…), materiales de la biblioteca, " +
+      "zona horaria, idioma, canales (con su ID) y ciclos mensuales.",
     input: z.object({ proyecto_id: projectId }),
     readOnly: true,
     run: async (actor, input) => {
       const ctx = await context(actor, input.proyecto_id);
-      const [project, channels, cycles] = await Promise.all([getProject(ctx), listChannels(ctx), listCycles(ctx)]);
+      const [project, channels, cycles, brand, library] = await Promise.all([
+        getProject(ctx),
+        listChannels(ctx),
+        listCycles(ctx),
+        getBrandProfile(ctx),
+        listLibrary(ctx),
+      ]);
+      const profile = brand.current;
       return json({
         proyecto: project.name,
         cliente: project.clientName,
         zona_horaria: project.timezone,
         idioma: project.locale,
+        ficha_cliente: profile
+          ? Object.fromEntries(BRAND_FIELDS.filter((f) => profile[f.key]).map((f) => [f.label, profile[f.key]]))
+          : null,
+        materiales: library.map((m) => ({
+          titulo: m.title,
+          categoria: LIBRARY_CATEGORIES[m.category],
+          descripcion: m.description,
+          tipo: m.asset.kind === "link" ? "enlace" : "archivo",
+          enlace: m.asset.kind === "link" ? m.asset.url : hubUrl(`/p/${ctx.projectId}/archivos/${m.asset.id}`),
+        })),
         canales: channels.map((c) => ({
           canal_id: c.id,
           nombre: c.displayName,

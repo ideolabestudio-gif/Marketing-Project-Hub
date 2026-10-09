@@ -2,7 +2,8 @@ import { formatChange, formatMetric } from "@/lib/format";
 import { NotFoundError } from "@/lib/errors";
 import { formatInZone, formatPeriod, previousPeriod, utcToWallTime } from "@/lib/time";
 import type { ProjectContext } from "@/modules/access/context";
-import { getItemDetail, listItems } from "@/modules/content/service";
+import { BRAND_FIELDS, getBrandProfile } from "@/modules/brand/service";
+import { getItemDetail, LIBRARY_CATEGORIES, listItems, listLibrary } from "@/modules/content/service";
 import { FORMATS, formatLabel } from "@/modules/content/formats";
 import { getCycle, getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
@@ -30,14 +31,45 @@ function brief(cycle: { objectives: string | null; keyDates: string | null; note
   ]) || "Brief del mes: (vacío)";
 }
 
+/**
+ * Ficha del cliente (versión vigente) y lista de materiales de la biblioteca (solo
+ * títulos y descripciones: la IA no ve los archivos). Va antes del brief del mes.
+ */
+async function brandContext(ctx: ProjectContext): Promise<{ lines: string[]; refs: Record<string, string[]> }> {
+  const [{ current }, library] = await Promise.all([getBrandProfile(ctx), listLibrary(ctx)]);
+  const lines: string[] = [];
+  if (current) {
+    lines.push("Ficha del cliente:");
+    for (const f of BRAND_FIELDS) if (current[f.key]) lines.push(`${f.label}: ${current[f.key]}`);
+  } else {
+    lines.push("Ficha del cliente: (vacía)");
+  }
+  if (library.length) {
+    lines.push("Materiales disponibles en la biblioteca:");
+    for (const m of library) {
+      lines.push(`- ${m.title} (${LIBRARY_CATEGORIES[m.category]})${m.description ? `: ${m.description}` : ""}`);
+    }
+  }
+  lines.push("");
+  return {
+    lines,
+    refs: {
+      ...(current ? { brandProfile: [current.id] } : {}),
+      ...(library.length ? { libraryItem: library.map((m) => m.id) } : {}),
+    },
+  };
+}
+
 export async function copyDraftContext(ctx: ProjectContext, itemId: string): Promise<BuiltContext> {
   const detail = await getItemDetail(ctx, itemId);
   const { item, current } = detail;
-  const [project, cycle] = await Promise.all([getProject(ctx), getCycle(ctx, item.cycleId)]);
+  const [project, cycle, brand] = await Promise.all([getProject(ctx), getCycle(ctx, item.cycleId), brandContext(ctx)]);
   const data = block([
     `Cliente: ${project.clientName}`,
     `Proyecto: ${project.name}`,
     `Idioma: ${project.locale}`,
+    "",
+    ...brand.lines,
     `Mes: ${formatPeriod(cycle.period, project.locale)}`,
     brief(cycle),
     "",
@@ -55,6 +87,7 @@ export async function copyDraftContext(ctx: ProjectContext, itemId: string): Pro
     data,
     inputRefs: {
       project: [ctx.projectId],
+      ...brand.refs,
       cycle: [cycle.id],
       contentItem: [item.id],
       ...(current ? { contentVersion: [current.id] } : {}),
@@ -64,12 +97,14 @@ export async function copyDraftContext(ctx: ProjectContext, itemId: string): Pro
 
 export async function ideasContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
   const [project, cycle, channels] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId), listChannels(ctx)]);
-  const items = await listItems(ctx, cycle.id);
+  const [items, brand] = await Promise.all([listItems(ctx, cycle.id), brandContext(ctx)]);
   const active = channels.filter((c) => c.isActive);
   const data = block([
     `Cliente: ${project.clientName}`,
     `Proyecto: ${project.name}`,
     `Idioma: ${project.locale}`,
+    "",
+    ...brand.lines,
     `Mes: ${formatPeriod(cycle.period, project.locale)}`,
     brief(cycle),
     "",
@@ -82,18 +117,24 @@ export async function ideasContext(ctx: ProjectContext, cycleId: string): Promis
   return {
     cycleId: cycle.id,
     data,
-    inputRefs: { project: [ctx.projectId], cycle: [cycle.id], channel: active.map((c) => c.id), contentItem: items.map((i) => i.id) },
+    inputRefs: {
+      project: [ctx.projectId],
+      ...brand.refs,
+      cycle: [cycle.id],
+      channel: active.map((c) => c.id),
+      contentItem: items.map((i) => i.id),
+    },
   };
 }
 
 /**
- * Para proponer el calendario del mes: brief, canales activos con su referencia (C1…)
+ * Para proponer el calendario del mes: ficha del cliente, brief, canales activos con su referencia (C1…)
  * y formatos, lo ya planificado y, si existe, el mes anterior (piezas, aprendizajes y
  * métricas registradas; las que no tienen dato no se envían).
  */
 export async function calendarPlanContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
   const [project, cycle, channels] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId), listChannels(ctx)]);
-  const items = await listItems(ctx, cycle.id);
+  const [items, brand] = await Promise.all([listItems(ctx, cycle.id), brandContext(ctx)]);
   const active = channels.filter((c) => c.isActive);
   const tz = project.timezone;
   const when = (d: Date | null) => (d ? utcToWallTime(d, tz) : "sin fecha");
@@ -116,6 +157,8 @@ export async function calendarPlanContext(ctx: ProjectContext, cycleId: string):
     `Proyecto: ${project.name}`,
     `Idioma: ${project.locale}`,
     `Zona horaria: ${tz}`,
+    "",
+    ...brand.lines,
     `Mes que hay que planificar: ${formatPeriod(cycle.period, project.locale)} (${cycle.period})`,
     brief(cycle),
     "",
@@ -147,6 +190,7 @@ export async function calendarPlanContext(ctx: ProjectContext, cycleId: string):
     data: block(lines),
     inputRefs: {
       project: [ctx.projectId],
+      ...brand.refs,
       cycle: previous ? [cycle.id, previous.id] : [cycle.id],
       // El orden importa: C1 es el primero, C2 el segundo…
       channel: active.map((c) => c.id),

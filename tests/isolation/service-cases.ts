@@ -2,6 +2,7 @@ import { NotFoundError } from "@/lib/errors";
 import type { ProjectContext } from "@/modules/access/context";
 import * as access from "@/modules/access/service";
 import * as ai from "@/modules/ai/service";
+import * as brand from "@/modules/brand/service";
 import * as content from "@/modules/content/service";
 import * as cycles from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
@@ -175,7 +176,46 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
   },
   "cycles.assertCycleWritable": { kind: "internal", reason: "Función pura sobre un ciclo ya cargado con contexto" },
 
+  // --- brand (ficha del cliente) ---
+  "brand.getBrandProfile": {
+    kind: "project",
+    own: (ctx) => brand.getBrandProfile(ctx),
+    foreign: { none: "No recibe IDs: la ficha sale del proyecto del contexto" },
+  },
+  "brand.saveBrandProfile": {
+    kind: "project",
+    own: (ctx) => brand.saveBrandProfile(ctx, { about: "Cliente actualizado", voice: "Tono nuevo" }),
+    foreign: { none: "No recibe IDs: la versión se crea siempre en el proyecto del contexto" },
+  },
+
   // --- content ---
+  "content.listLibrary": {
+    kind: "project",
+    own: (ctx) => content.listLibrary(ctx),
+    foreign: { none: "No recibe IDs: la biblioteca sale del proyecto del contexto" },
+  },
+  "content.addLibraryFile": {
+    kind: "project",
+    own: (ctx) => content.addLibraryFile(ctx, { category: "photo", filename: "foto.png", bytes: TINY_PNG }),
+    foreign: { none: "No recibe IDs: el material se crea siempre en el proyecto del contexto" },
+  },
+  "content.addLibraryLink": {
+    kind: "project",
+    own: (ctx) => content.addLibraryLink(ctx, { category: "template", url: "https://example.com/plantilla" }),
+    foreign: { none: "No recibe IDs: el material se crea siempre en el proyecto del contexto" },
+  },
+  "content.removeLibraryItem": {
+    kind: "project",
+    own: (ctx, fx) => content.removeLibraryItem(ctx, { libraryItemId: fx.brandA.libraryLink.id }),
+    foreign: (ctx, fx) => content.removeLibraryItem(ctx, { libraryItemId: fx.brandB.libraryLink.id }),
+  },
+  "content.attachLibraryItem": {
+    kind: "project",
+    own: (ctx, fx) =>
+      content.attachLibraryItem(ctx, { itemId: fx.contentA.item.id, libraryItemId: fx.brandA.libraryFile.id }),
+    foreign: (ctx, fx) =>
+      content.attachLibraryItem(ctx, { itemId: fx.contentA.item.id, libraryItemId: fx.brandB.libraryFile.id }),
+  },
   "content.listItems": {
     kind: "project",
     own: (ctx, fx) => content.listItems(ctx, fx.contentA.cycle.id),

@@ -94,6 +94,11 @@ Decisiones: Claude (`claude-opus-5-5`) como proveedor (D-07, ADR 015); límite d
 - [x] No se crea ninguna pieza hasta que una persona marca las que quiere y pulsa «Añadir al calendario»; nacen como ideas, sin versiones ni aprobaciones, enlazadas a la generación (`content_items.ai_generation_id`).
 - [x] Sin API de pago: el botón abre el ciclo y la sección del ciclo da el texto (instrucciones + datos del proyecto) para pegarlo en un chat de Claude; la respuesta se pega en el Hub, se guarda como propuesta (`provider = chat`, coste 0) y se revisa igual.
 
+**Ampliación · Ficha del cliente** — ✅ hecho
+- [x] Cada proyecto tiene una ficha con el contexto de marca (quién es, público, tono de voz, productos, palabras clave y qué evitar), versionada e inmutable.
+- [x] Biblioteca de materiales del proyecto (logos, manual de marca, fotos, plantillas; archivo o enlace) que se añade a cualquier pieza sin volver a subirlo.
+- [x] La IA y el conector de Claude (`ver_proyecto`) reciben la ficha y la lista de materiales.
+
 ### F6 · Verificación de integraciones (sin código de producción)
 **Metricool (métricas):** informe en borrador en [`integraciones/metricool.md`](integraciones/metricool.md). La propuesta es posponer la API, porque exige un plan de pago y no se ha podido leer la documentación oficial, y usar mientras tanto el CSV (exportado de Metricool o generado con el conector desde un chat de Claude) con el importador actual.
 

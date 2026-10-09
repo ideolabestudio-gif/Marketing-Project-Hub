@@ -8,12 +8,13 @@ import {
   contentVersionAssets,
   contentVersions,
   cycles,
+  libraryItems,
   users,
 } from "@/lib/db/schema";
 import type { ProjectContext } from "@/modules/access/context";
 
 // Todas las consultas filtran por ctx.projectId. Lee channels/cycles/users con JOIN;
-// solo escribe en sus tablas (content_items, content_versions, assets, comments…).
+// solo escribe en sus tablas (content_items, content_versions, assets, library_items, comments…).
 
 export type ItemRow = typeof contentItems.$inferSelect;
 export type VersionRow = typeof contentVersions.$inferSelect;
@@ -258,4 +259,67 @@ export async function insertComment(
     })
     .returning();
   return row;
+}
+
+// ---------------------------------------------------------------------------
+// Biblioteca de materiales del proyecto
+// ---------------------------------------------------------------------------
+
+export type LibraryItemRow = typeof libraryItems.$inferSelect;
+
+const libraryColumns = {
+  id: libraryItems.id,
+  category: libraryItems.category,
+  title: libraryItems.title,
+  description: libraryItems.description,
+  createdAt: libraryItems.createdAt,
+  asset: assets,
+};
+
+export async function listLibrary(ctx: ProjectContext) {
+  return getDb()
+    .select(libraryColumns)
+    .from(libraryItems)
+    .innerJoin(assets, and(eq(assets.projectId, libraryItems.projectId), eq(assets.id, libraryItems.assetId)))
+    .where(eq(libraryItems.projectId, ctx.projectId))
+    .orderBy(asc(libraryItems.category), asc(libraryItems.title));
+}
+
+export async function findLibraryItem(ctx: ProjectContext, libraryItemId: string) {
+  const [row] = await getDb()
+    .select(libraryColumns)
+    .from(libraryItems)
+    .innerJoin(assets, and(eq(assets.projectId, libraryItems.projectId), eq(assets.id, libraryItems.assetId)))
+    .where(and(eq(libraryItems.projectId, ctx.projectId), eq(libraryItems.id, libraryItemId)))
+    .limit(1);
+  return row;
+}
+
+/** Registra el activo y su ficha en la biblioteca en una transacción. */
+export async function insertLibraryItem(
+  ctx: ProjectContext,
+  input: { asset: NewAsset } & Pick<LibraryItemRow, "category" | "title" | "description">,
+): Promise<LibraryItemRow> {
+  return getDb().transaction(async (tx) => {
+    await tx.insert(assets).values({ ...input.asset, projectId: ctx.projectId, uploadedBy: ctx.actor.userId });
+    const [row] = await tx
+      .insert(libraryItems)
+      .values({
+        projectId: ctx.projectId,
+        assetId: input.asset.id,
+        category: input.category,
+        title: input.title,
+        description: input.description,
+        createdBy: ctx.actor.userId,
+      })
+      .returning();
+    return row;
+  });
+}
+
+/** Quita el material de la biblioteca. El activo se conserva (es inmutable y puede estar en versiones). */
+export async function deleteLibraryItem(ctx: ProjectContext, libraryItemId: string): Promise<void> {
+  await getDb()
+    .delete(libraryItems)
+    .where(and(eq(libraryItems.projectId, ctx.projectId), eq(libraryItems.id, libraryItemId)));
 }
