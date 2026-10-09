@@ -16,6 +16,8 @@ export function jsonResponse(body: unknown, status = 200, headers: Record<string
 
 export function oauthErrorResponse(err: unknown): Response {
   if (err instanceof OAuthError) {
+    // Queda en los registros de Render para saber por qué falla una conexión (sin secretos).
+    console.warn(`[oauth] ${err.code}: ${err.description}`);
     return jsonResponse({ error: err.code, error_description: err.description }, err.status);
   }
   throw err;

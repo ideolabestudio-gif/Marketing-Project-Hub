@@ -16,6 +16,7 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
   }
 
   const check = await checkAuthorizationRequest(params);
+  if (!check.ok) console.warn(`[oauth] autorización rechazada: ${"message" in check ? check.message : check.redirectTo}`);
   if (!check.ok && "redirectTo" in check) redirect(check.redirectTo);
 
   return (
