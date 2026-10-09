@@ -62,7 +62,10 @@ export class AnthropicProvider implements AiProvider {
       max_tokens: MAX_TOKENS,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: request.effort },
+      output_config: {
+        effort: request.effort,
+        ...(request.jsonSchema ? { format: { type: "json_schema" as const, schema: request.jsonSchema } } : {}),
+      },
       system: request.system,
       messages: [{ role: "user", content: request.prompt }],
     });

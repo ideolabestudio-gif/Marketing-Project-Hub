@@ -46,6 +46,8 @@ export const contentItems = pgTable(
     plannedAt: timestamp("planned_at", { withTimezone: true }),
     status: contentItemStatus("status").notNull().default("idea"),
     assigneeId: uuid("assignee_id").references(() => users.id),
+    /** Propuesta de calendario de IA de la que salió la pieza (si una persona la añadió desde ahí). */
+    aiGenerationId: uuid("ai_generation_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     createdBy: uuid("created_by").references(() => users.id),
   },
@@ -53,6 +55,11 @@ export const contentItems = pgTable(
     unique("content_items_project_id_id_uq").on(t.projectId, t.id),
     foreignKey({ name: "content_items_cycle_fk", columns: [t.projectId, t.cycleId], foreignColumns: [cycles.projectId, cycles.id] }),
     foreignKey({ name: "content_items_channel_fk", columns: [t.projectId, t.channelId], foreignColumns: [channels.projectId, channels.id] }),
+    foreignKey({
+      name: "content_items_ai_generation_fk",
+      columns: [t.projectId, t.aiGenerationId],
+      foreignColumns: [aiGenerations.projectId, aiGenerations.id],
+    }),
     index("content_items_cycle_idx").on(t.projectId, t.cycleId),
   ],
 );

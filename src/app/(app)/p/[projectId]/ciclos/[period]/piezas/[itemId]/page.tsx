@@ -59,6 +59,11 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           </span>
           <span className="badge">{item.plannedAt ? formatInZone(item.plannedAt, tz) : "Sin fecha"}</span>
           <span className="badge">{current ? `Versión ${current.versionNo}` : "Sin versiones"}</span>
+          {item.aiGenerationId && (
+            <span className="rounded bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">
+              Propuesta por IA en el calendario
+            </span>
+          )}
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import { getProject, listChannels } from "@/modules/projects/service";
 import { getReport } from "@/modules/reports/service";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
 import { listCycleStatuses } from "@/modules/review/service";
+import { CalendarPlanSection } from "./calendar-plan-section";
 import { IdeasSection } from "./ideas-section";
 import { closeCycleAction, createItemAction, reopenCycleAction, setStatusAction, updateBriefAction } from "./actions";
 
@@ -191,6 +192,7 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
         </section>
       )}
 
+      <CalendarPlanSection ctx={ctx} projectId={projectId} cycleId={cycle.id} period={cycle.period} writable={canWrite} tz={tz} />
       <IdeasSection ctx={ctx} projectId={projectId} cycleId={cycle.id} writable={canWrite} tz={tz} />
 
       <section className="card flex flex-col gap-4">

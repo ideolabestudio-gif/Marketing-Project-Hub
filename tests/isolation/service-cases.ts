@@ -11,7 +11,7 @@ import { findDefinition } from "@/modules/metrics/repo";
 import * as reports from "@/modules/reports/service";
 import * as projects from "@/modules/projects/service";
 import * as review from "@/modules/review/service";
-import { FIXTURE_PERIOD, TINY_PNG, type Fixture } from "../fixtures/two-projects";
+import { calendarPlanReply, FIXTURE_PERIOD, TINY_PNG, type Fixture } from "../fixtures/two-projects";
 
 /**
  * Registro de TODAS las funciones exportadas por los `service.ts` de los módulos.
@@ -359,6 +359,40 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     kind: "project",
     own: (ctx, fx) => ai.generateIdeas(ctx, { cycleId: fx.contentA.cycle.id }),
     foreign: (ctx, fx) => ai.generateIdeas(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.generateCalendarPlan": {
+    kind: "project",
+    own: (ctx, fx) => ai.generateCalendarPlan(ctx, { cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => ai.generateCalendarPlan(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.prepareNextMonthCalendar": {
+    kind: "project",
+    own: (ctx) => ai.prepareNextMonthCalendar(ctx, { instructions: "Mes que viene" }),
+    foreign: { none: "No recibe IDs: el proyecto y el mes salen del contexto" },
+  },
+  "ai.getCalendarPlanChatPrompt": {
+    kind: "project",
+    own: (ctx, fx) => ai.getCalendarPlanChatPrompt(ctx, { cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => ai.getCalendarPlanChatPrompt(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.importCalendarPlan": {
+    kind: "project",
+    own: (ctx, fx) => ai.importCalendarPlan(ctx, { cycleId: fx.contentA.cycle.id, output: calendarPlanReply("pegada") }),
+    foreign: (ctx, fx) =>
+      ai.importCalendarPlan(ctx, { cycleId: fx.contentB.cycle.id, output: calendarPlanReply("intrusa") }),
+  },
+  "ai.applyCalendarPlan": {
+    kind: "project",
+    own: (ctx, fx) =>
+      ai.applyCalendarPlan(ctx, {
+        generationId: fx.aiA.calendarPlan.id,
+        entries: [{ index: 0, title: "Reel elegido", plannedAt: `${FIXTURE_PERIOD}-21T18:30` }],
+      }),
+    foreign: (ctx, fx) =>
+      ai.applyCalendarPlan(ctx, {
+        generationId: fx.aiB.calendarPlan.id,
+        entries: [{ index: 0, title: "Intruso", plannedAt: `${FIXTURE_PERIOD}-21T18:30` }],
+      }),
   },
   "ai.generateReportInterpretation": {
     kind: "project",

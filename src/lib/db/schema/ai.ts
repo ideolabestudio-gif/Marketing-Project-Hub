@@ -8,6 +8,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  type PgTableExtraConfigValue,
   text,
   timestamp,
   unique,
@@ -22,8 +23,9 @@ import { projects } from "./projects";
  * - copy_draft: borrador de copy (o de email) para una pieza.
  * - ideas: ideas de contenido para el mes.
  * - report_interpretation: lectura de las métricas registradas para el informe.
+ * - calendar_plan: propuesta de calendario del mes (piezas con fecha, canal y formato).
  */
-export const aiPurpose = pgEnum("ai_purpose", ["copy_draft", "ideas", "report_interpretation"]);
+export const aiPurpose = pgEnum("ai_purpose", ["copy_draft", "ideas", "report_interpretation", "calendar_plan"]);
 /** draft → used | discarded (una sola vez). failed: el proveedor no devolvió texto. */
 export const aiGenerationStatus = pgEnum("ai_generation_status", ["draft", "used", "discarded", "failed"]);
 
@@ -63,7 +65,8 @@ export const aiGenerations = pgTable(
     resolvedBy: uuid("resolved_by").references(() => users.id),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   },
-  (t) => [
+  // Tipo explícito: content_items y ai_generations se referencian mutuamente.
+  (t): PgTableExtraConfigValue[] => [
     unique("ai_generations_project_id_id_uq").on(t.projectId, t.id),
     // Permite exigir en BD que una versión use un borrador de su misma pieza.
     unique("ai_generations_project_item_id_uq").on(t.projectId, t.contentItemId, t.id),

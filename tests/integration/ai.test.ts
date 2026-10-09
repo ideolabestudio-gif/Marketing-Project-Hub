@@ -67,7 +67,8 @@ describe("activación y límites", () => {
   it("respeta el límite de gasto mensual del proyecto", async () => {
     const { spentUsd } = await getAiStatus(ctx);
     expect(spentUsd).toBeGreaterThan(0);
-    await updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: spentUsd + 0.005 });
+    // El límite se guarda con dos decimales: con el gasto actual no cabe otra petición.
+    await updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: spentUsd });
     await expect(generateIdeas(ctx, { cycleId: fx.contentA.cycle.id })).rejects.toThrow(/límite de gasto/);
     expect(fakeAi.requests).toHaveLength(0);
     await updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: 1 });

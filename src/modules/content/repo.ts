@@ -34,6 +34,7 @@ const itemColumns = {
   title: contentItems.title,
   plannedAt: contentItems.plannedAt,
   status: contentItems.status,
+  aiGenerationId: contentItems.aiGenerationId,
   createdAt: contentItems.createdAt,
   channelName: channels.displayName,
   channelPlatform: channels.platform,
@@ -73,7 +74,7 @@ export async function findItem(ctx: ProjectContext, itemId: string) {
 
 export async function insertItem(
   ctx: ProjectContext,
-  values: Pick<ItemRow, "cycleId" | "channelId" | "format" | "title" | "plannedAt">,
+  values: Pick<ItemRow, "cycleId" | "channelId" | "format" | "title" | "plannedAt"> & { aiGenerationId?: string | null },
 ): Promise<ItemRow> {
   const [row] = await getDb()
     .insert(contentItems)

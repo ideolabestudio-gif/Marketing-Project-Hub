@@ -37,6 +37,18 @@ Propón entre 5 y 10 ideas. Para cada una: un título corto, el canal y el forma
 Devuelve una lista en texto plano, una idea por bloque, sin introducción ni conclusión.`,
 };
 
+export const CALENDAR_PLAN: PromptTemplate = {
+  key: "calendar_plan",
+  version: 1,
+  effort: "medium",
+  system: `${COMMON}
+Vas a proponer el calendario de contenidos del mes indicado en <datos>: qué piezas publicar, en qué canal, con qué formato y en qué fecha y hora.
+Básate en el brief del mes, en las fechas clave, en lo que pida la persona y, si aparece, en lo que se hizo el mes anterior y en sus aprendizajes y métricas. No repitas las piezas que ya están planificadas.
+Usa solo los canales de la lista, con su referencia (C1, C2…), y solo los formatos que admite cada canal. Las fechas van en la hora local del proyecto, con el formato AAAA-MM-DDTHH:mm, y todas dentro del mes.
+Reparte las piezas por el mes con un ritmo realista para cada canal, salvo que la persona pida otra cosa. Usa horas habituales de publicación; no afirmes que son las mejores horas, porque no tienes datos de eso.
+Para cada pieza escribe un título corto y, en "idea", una o dos frases que expliquen el enfoque. No escribas todavía el texto final de la pieza.`,
+};
+
 export const REPORT_INTERPRETATION: PromptTemplate = {
   key: "report_interpretation",
   version: 1,

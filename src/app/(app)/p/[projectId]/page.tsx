@@ -5,20 +5,30 @@ import { formatPeriod, nextPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ROLE_LABELS } from "@/modules/access/permissions";
 import { listProjectMembers } from "@/modules/access/service";
+import { getAiStatus } from "@/modules/ai/service";
 import { PLATFORMS } from "@/modules/projects/catalog";
 import { CYCLE_STATUS_LABELS, listCycles } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { openCycleAction } from "./actions";
+import { prepareNextMonthCalendarAction } from "./ai-actions";
 
 export default async function ProjectPage({ params }: PageProps<"/p/[projectId]">) {
   const { projectId } = await params;
   const ctx = await projectContextForPage(projectId);
-  const [project, channels, members, cycles] = await Promise.all([
+  const [project, channels, members, cycles, ai] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     listProjectMembers(ctx),
     listCycles(ctx),
+    getAiStatus(ctx),
   ]);
+  const next = nextPeriod(new Date(), project.timezone);
+  const nextCycle = cycles.find((c) => c.period === next);
+  const useApi = ai.enabled && ai.configured;
+  const canPrepare =
+    hasPermission(ctx, "ai.generate") &&
+    hasPermission(ctx, "content.write") &&
+    (nextCycle ? nextCycle.status !== "closed" : hasPermission(ctx, "cycle.manage"));
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,6 +48,30 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
           </Link>
         )}
       </div>
+
+      {canPrepare && (
+        <section className="card flex flex-col gap-3" aria-label="Preparar el calendario del mes que viene">
+          <h2 className="h2">Preparar el calendario de {formatPeriod(next, project.locale).toLocaleLowerCase(project.locale)}</h2>
+          <p className="text-sm text-muted">
+            {nextCycle ? "" : "Se abrirá el ciclo del mes. "}
+            {useApi
+              ? "La IA propone las piezas a partir del brief, los canales y lo que se hizo el mes anterior."
+              : "Te llevará al ciclo con el texto para pedir la propuesta a tu chat de Claude y pegar su respuesta."}{" "}
+            Tú eliges qué piezas añadir; no se publica nada.
+          </p>
+          <ActionForm
+            action={prepareNextMonthCalendarAction.bind(null, projectId)}
+            submitLabel="Preparar calendario del mes que viene"
+          >
+            {useApi ? (
+              <label className="field grow">
+                Indicaciones (opcional)
+                <input name="instructions" className="input" placeholder="3 posts por semana; campaña de Navidad el día 5" />
+              </label>
+            ) : null}
+          </ActionForm>
+        </section>
+      )}
 
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Ciclos mensuales</h2>
@@ -63,7 +97,7 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
                 type="month"
                 name="period"
                 className="input"
-                defaultValue={nextPeriod(new Date(), project.timezone)}
+                defaultValue={next}
                 required
               />
             </label>

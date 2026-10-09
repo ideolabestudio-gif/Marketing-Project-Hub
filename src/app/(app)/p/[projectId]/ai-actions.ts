@@ -1,9 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { projectContextForAction } from "@/lib/project-page";
 import {
+  applyCalendarPlan,
+  generateCalendarPlan,
+  importCalendarPlan,
+  prepareNextMonthCalendar,
   generateCopyDraft,
   generateIdeas,
   generateReportInterpretation,
@@ -43,6 +48,54 @@ export async function generateIdeasAction(projectId: string, cycleId: string, _:
     await generateIdeas(ctx, { cycleId, instructions: formString(formData, "instructions") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Ideas generadas");
+}
+
+/** «Prepara el calendario del mes que viene»: abre el ciclo si hace falta y propone piezas. */
+export async function prepareNextMonthCalendarAction(projectId: string, _: ActionState, formData: FormData) {
+  let period: string | undefined;
+  const result = await runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "ai.generate");
+    const { cycle } = await prepareNextMonthCalendar(ctx, { instructions: formString(formData, "instructions") });
+    period = cycle.period;
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Calendario preparado");
+  if (result?.ok && period) redirect(`/p/${projectId}/ciclos/${period}#calendario-ia`);
+  return result;
+}
+
+export async function generateCalendarPlanAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "ai.generate");
+    await generateCalendarPlan(ctx, { cycleId, instructions: formString(formData, "instructions") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Propuesta de calendario lista: revísala abajo");
+}
+
+/** Guarda la respuesta pegada desde un chat de Claude como propuesta de calendario. */
+export async function importCalendarPlanAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "ai.generate");
+    await importCalendarPlan(ctx, { cycleId, output: formString(formData, "output") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Propuesta guardada: revísala abajo");
+}
+
+/** Crea las piezas marcadas, con el título, la fecha y la idea que la persona haya dejado. */
+export async function applyCalendarPlanAction(projectId: string, generationId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "content.write");
+    const entries = formData.getAll("pick").map((value) => {
+      const index = Number(value);
+      return {
+        index,
+        title: formString(formData, `title-${index}`),
+        plannedAt: formString(formData, `plannedAt-${index}`),
+        idea: formString(formData, `idea-${index}`),
+      };
+    });
+    await applyCalendarPlan(ctx, { generationId, entries });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Piezas añadidas al calendario");
 }
 
 export async function generateInterpretationAction(

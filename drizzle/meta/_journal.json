@@ -71,6 +71,13 @@
       "when": 1791358082170,
       "tag": "0009_ai_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791459666614,
+      "tag": "0010_calendar_plan",
+      "breakpoints": true
     }
   ]
 }
