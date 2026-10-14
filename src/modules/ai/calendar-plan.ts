@@ -85,11 +85,17 @@ export function parseCalendarPlan(
   // Una respuesta pegada desde un chat puede traer texto o ``` alrededor del JSON.
   const start = output.indexOf("{");
   const end = output.lastIndexOf("}");
+  const json = output.slice(start, end + 1);
   let raw: unknown;
   try {
-    raw = JSON.parse(output.slice(start, end + 1));
+    raw = JSON.parse(json);
   } catch {
-    return { proposals: [], discarded: 0 };
+    // Al copiar desde algunos chats o editores las comillas rectas se vuelven tipográficas.
+    try {
+      raw = JSON.parse(json.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"'));
+    } catch {
+      return { proposals: [], discarded: 0 };
+    }
   }
   const list = z.object({ pieces: z.array(z.unknown()) }).safeParse(raw);
   if (!list.success) return { proposals: [], discarded: 0 };

@@ -43,6 +43,16 @@ describe("propuesta de calendario de la IA", () => {
     expect(discarded).toBe(7);
   });
 
+  it("acepta la respuesta aunque al copiarla las comillas se vuelvan tipográficas", () => {
+    let n = 0;
+    const output = JSON.stringify({ pieces: [piece({ title: "Arranca noviembre" })] }).replace(/"/g, () =>
+      n++ % 2 ? "\u201D" : "\u201C",
+    );
+    expect(output).not.toContain('"');
+    const { proposals } = parseCalendarPlan(output, options);
+    expect(proposals.map((p) => p.title)).toEqual(["Arranca noviembre"]);
+  });
+
   it("una respuesta que no es la esperada no da propuestas", () => {
     expect(parseCalendarPlan("no es JSON", options)).toEqual({ proposals: [], discarded: 0 });
     expect(parseCalendarPlan('{"otra":1}', options)).toEqual({ proposals: [], discarded: 0 });
