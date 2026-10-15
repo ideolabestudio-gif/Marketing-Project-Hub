@@ -5,13 +5,22 @@ import { listMyProjects } from "@/modules/access/service";
 import { formatLabel } from "@/modules/content/formats";
 import { requireActor } from "@/modules/identity/next";
 import { formatDay, formatInZone, formatPeriod, formatTimeInZone, weekOf, zonedDay } from "@/lib/time";
-import { listMyPendingWork, listMyWeek, PENDING_ACTION_LABELS } from "@/modules/review/service";
+import { listMyPendingWork, listMyWeek, PENDING_ACTION_LABELS, type PendingAction } from "@/modules/review/service";
 
 /** Zona para la cabecera cuando el usuario aún no tiene piezas (la de cada pieza manda en su fila). */
 const DEFAULT_TIMEZONE = "Europe/Madrid";
 
-const pieceHref = (p: { projectId: string; period: string; itemId: string }) =>
-  `/p/${p.projectId}/ciclos/${p.period}/piezas/${p.itemId}`;
+const pieceHref = (p: { projectId: string; period: string; itemId: string }, section?: string) =>
+  `/p/${p.projectId}/ciclos/${p.period}/piezas/${p.itemId}${section ? `#${section}` : ""}`;
+
+/** Botón de cada tarea pendiente. Todas llevan a la sección «Revisión y publicación» de la pieza. */
+const ACTION_BUTTONS: Record<PendingAction, string> = {
+  review: "Revisar",
+  client: "Registrar respuesta",
+  fix: "Ver los cambios",
+  publish: "Copiar para Metricool",
+  confirm: "Confirmar",
+};
 
 export default async function HomePage() {
   const actor = await requireActor();
@@ -110,7 +119,7 @@ export default async function HomePage() {
                   {toSchedule.map((p) => (
                     <li key={p.itemId}>
                       <Link
-                        href={pieceHref(p)}
+                        href={pieceHref(p, p.channelKind === "email" ? "revision" : "metricool")}
                         className="group flex flex-col gap-1 rounded-lg border border-border bg-surface-muted px-3 py-2.5 transition hover:border-accent/40 hover:bg-accent-soft sm:flex-row sm:items-center sm:gap-3"
                       >
                         <div className="min-w-0 flex-1">
@@ -138,41 +147,35 @@ export default async function HomePage() {
             {otherPending.length === 0 ? (
               <EmptyState>Nada pendiente de revisar, corregir ni confirmar.</EmptyState>
             ) : (
-              <div className="-mx-6 overflow-x-auto px-6">
-                <table className="table min-w-[40rem]">
-                  <thead>
-                    <tr>
-                      <th>Qué hacer</th>
-                      <th>Pieza</th>
-                      <th>Cliente · proyecto</th>
-                      <th>Fecha prevista</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {otherPending.map((p) => (
-                      <tr key={p.itemId}>
-                        <td className="font-medium">{PENDING_ACTION_LABELS[p.action]}</td>
-                        <td>
-                          <Link href={pieceHref(p)} className="link">
-                            {p.title}
-                          </Link>
-                        </td>
-                        <td>
-                          {p.clientName} · {p.projectName}
-                          <span className="block text-xs text-muted">{formatPeriod(p.period)}</span>
-                        </td>
-                        <td className="whitespace-nowrap">
-                          {p.plannedAt ? formatInZone(p.plannedAt, p.timezone) : "—"}
-                        </td>
-                        <td>
-                          <StatusPill status={p.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="flex flex-col gap-2">
+                {otherPending.map((p) => (
+                  <li key={p.itemId}>
+                    <Link
+                      href={pieceHref(p, "revision")}
+                      className="group flex flex-col gap-2 rounded-lg border border-border bg-surface-muted px-4 py-3 transition hover:border-accent/40 hover:bg-accent-soft sm:flex-row sm:items-center sm:gap-4"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium tracking-wide text-muted uppercase">
+                          {PENDING_ACTION_LABELS[p.action]}
+                        </div>
+                        <div className="mt-0.5 text-sm font-medium group-hover:text-accent-ink sm:truncate">
+                          {p.title}
+                        </div>
+                        <div className="text-xs text-muted sm:truncate">
+                          {p.clientName} · {p.projectName} ·{" "}
+                          {p.plannedAt ? formatInZone(p.plannedAt, p.timezone) : formatPeriod(p.period)}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <StatusPill status={p.status} />
+                        <span className="btn btn-secondary py-1.5 group-hover:border-accent/40 group-hover:text-accent-ink">
+                          {ACTION_BUTTONS[p.action]} <span aria-hidden>→</span>
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
         </>
