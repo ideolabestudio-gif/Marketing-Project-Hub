@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { IdeolabLogo } from "@/components/ideolab-logo";
 import { getCurrentActor, safeNextPath } from "@/modules/identity/next";
 
 const ERRORS: Record<string, string> = {
@@ -22,12 +23,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     <main className="flex min-h-screen items-center justify-center px-6">
       <div className="card flex w-full max-w-sm flex-col gap-5 p-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <span
-            aria-hidden
-            className="grid size-12 place-items-center rounded-xl bg-accent text-base font-bold text-on-accent shadow-(--shadow)"
-          >
-            MH
-          </span>
+          <IdeolabLogo className="mb-2 h-8 w-auto" title="Ideolab" />
           <h1 className="h1">Marketing Project Hub</h1>
           <p className="text-sm text-muted">Acceso solo para el equipo de Ideolab.</p>
         </div>

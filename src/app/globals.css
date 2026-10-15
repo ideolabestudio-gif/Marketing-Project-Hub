@@ -5,42 +5,43 @@
  * lo cambia en toda la app (claro y oscuro).
  */
 :root {
-  --background: #f5f4f1;
+  /* Identidad Ideolab: blanco y negro (#1d1d1b es el negro del logotipo). */
+  --background: #f7f7f7;
   --surface: #ffffff;
-  --surface-muted: #faf9f7;
-  --foreground: #1d1b22;
-  --muted: #6c6875;
-  --border: #e6e3de;
-  --border-strong: #d3cfc8;
-  --accent: #4a3fd6;
-  --accent-hover: #3b31b8;
-  --accent-soft: #eeecfd;
-  --accent-ink: #2f2696;
+  --surface-muted: #f9f9f9;
+  --foreground: #1d1d1b;
+  --muted: #6b6b68;
+  --border: #e6e6e4;
+  --border-strong: #cfcfcc;
+  --accent: #1d1d1b;
+  --accent-hover: #000000;
+  --accent-soft: #efefee;
+  --accent-ink: #1d1d1b;
   --on-accent: #ffffff;
   --danger: #b4232f;
   --danger-soft: #fdecec;
-  --ring: rgb(74 63 214 / 0.35);
-  --shadow: 0 1px 2px rgb(29 27 34 / 0.04), 0 1px 3px rgb(29 27 34 / 0.06);
-  --shadow-hover: 0 4px 12px rgb(29 27 34 / 0.08), 0 1px 3px rgb(29 27 34 / 0.06);
+  --ring: rgb(29 29 27 / 0.25);
+  --shadow: 0 1px 2px rgb(29 29 27 / 0.04), 0 1px 3px rgb(29 29 27 / 0.06);
+  --shadow-hover: 0 4px 12px rgb(29 29 27 / 0.08), 0 1px 3px rgb(29 29 27 / 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #131217;
-    --surface: #1c1b22;
-    --surface-muted: #18171d;
-    --foreground: #ecebf0;
-    --muted: #9d99a8;
-    --border: #2e2c36;
-    --border-strong: #403d4a;
-    --accent: #9a91ff;
-    --accent-hover: #b0a9ff;
-    --accent-soft: #29264a;
-    --accent-ink: #cdc8ff;
-    --on-accent: #16132f;
+    --background: #111111;
+    --surface: #1b1b1a;
+    --surface-muted: #161615;
+    --foreground: #f2f2f0;
+    --muted: #a3a3a0;
+    --border: #2c2c2a;
+    --border-strong: #42423f;
+    --accent: #ffffff;
+    --accent-hover: #e2e2e0;
+    --accent-soft: #2a2a28;
+    --accent-ink: #ffffff;
+    --on-accent: #1d1d1b;
     --danger: #ff8a93;
     --danger-soft: #3a1c22;
-    --ring: rgb(154 145 255 / 0.4);
+    --ring: rgb(255 255 255 / 0.35);
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-hover: 0 4px 14px rgb(0 0 0 / 0.4);
   }
@@ -100,7 +101,7 @@ body {
   .badge { @apply inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-muted; }
   .h1 { @apply text-[1.75rem] leading-tight font-semibold tracking-tight; }
   .h2 { @apply text-lg font-semibold tracking-tight; }
-  .link { @apply rounded-sm text-accent underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-(--ring) focus-visible:outline-none; }
+  .link { @apply rounded-sm text-accent underline decoration-border-strong underline-offset-2 hover:decoration-current focus-visible:ring-2 focus-visible:ring-(--ring) focus-visible:outline-none; }
   .collapsible > summary { @apply list-none; }
   .collapsible > summary::-webkit-details-marker { display: none; }
   .collapsible .chevron { @apply inline-block transition-transform; }

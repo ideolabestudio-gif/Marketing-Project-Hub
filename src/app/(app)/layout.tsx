@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireActor } from "@/modules/identity/next";
+import { IdeolabLogo } from "@/components/ideolab-logo";
 import { logoutAction } from "./actions";
 
 // Esta comprobación es solo para pintar la cabecera: cada página y cada acción
@@ -10,14 +11,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     <div className="min-h-full">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/85 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-6 py-2.5 text-sm whitespace-nowrap">
-          <Link href="/" className="mr-4 flex items-center gap-2.5 font-semibold tracking-tight">
-            <span
-              aria-hidden
-              className="grid size-7 place-items-center rounded-lg bg-accent text-xs font-bold text-on-accent shadow-(--shadow)"
-            >
-              MH
-            </span>
-            <span className="hidden md:inline">Marketing Project Hub</span>
+          <Link href="/" className="mr-4 flex shrink-0 items-center gap-3 font-semibold tracking-tight">
+            <IdeolabLogo className="h-4 w-auto" title="Ideolab" />
+            <span className="hidden border-l border-border-strong pl-3 md:inline">Marketing Project Hub</span>
           </Link>
           <Link href="/" className="nav-link">
             Mis proyectos
