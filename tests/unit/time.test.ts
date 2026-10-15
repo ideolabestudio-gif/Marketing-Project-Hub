@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidPeriod, monthGrid, nextPeriod, utcToWallTime, wallTimeToUtc, zonedDay } from "@/lib/time";
+import { addDays, isValidPeriod, monthGrid, nextPeriod, utcToWallTime, wallTimeToUtc, weekOf, zonedDay } from "@/lib/time";
 
 describe("fechas en la zona del proyecto", () => {
   it("convierte hora de Madrid a UTC en invierno y en verano", () => {
@@ -49,5 +49,15 @@ describe("formatPeriod", () => {
   it("pone en mayúscula solo la primera letra", async () => {
     const { formatPeriod } = await import("@/lib/time");
     expect(formatPeriod("2026-11")).toBe("Noviembre de 2026");
+  });
+});
+
+describe("semanas", () => {
+  it("van de lunes a domingo, también al cambiar de mes y de año", () => {
+    expect(weekOf("2026-10-15")).toEqual({ start: "2026-10-12", end: "2026-10-18" });
+    expect(weekOf("2026-10-12")).toEqual({ start: "2026-10-12", end: "2026-10-18" });
+    expect(weekOf("2026-10-18")).toEqual({ start: "2026-10-12", end: "2026-10-18" });
+    expect(weekOf("2027-01-01")).toEqual({ start: "2026-12-28", end: "2027-01-03" });
+    expect(addDays("2026-10-25", 1)).toBe("2026-10-26"); // cambio de hora: no afecta a los días
   });
 });

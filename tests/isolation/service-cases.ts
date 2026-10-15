@@ -389,6 +389,7 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     foreign: (ctx, fx) => review.listCyclePublications(ctx, fx.contentB.cycle.id),
   },
   "review.listMyPendingWork": { kind: "actor", reason: "Probado en review.test.ts (cada usuario ve solo lo suyo)" },
+  "review.listMyWeek": { kind: "actor", reason: "Probado en review.test.ts (cada usuario ve solo sus proyectos)" },
   "review.isLocked": { kind: "internal", reason: "Función pura sobre un estado" },
 
   // --- audit ---

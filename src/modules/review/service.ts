@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
-import { wallTimeToUtc } from "@/lib/time";
+import { wallTimeToUtc, weekOf, zonedDay } from "@/lib/time";
 import { isUuid, parseInput } from "@/lib/validation";
 import { authorize, hasPermission, requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import { listMyProjects } from "@/modules/access/service";
@@ -360,6 +360,9 @@ export async function listMyPendingWork(actor: Actor, now = new Date()) {
     clientName: string;
     itemId: string;
     title: string;
+    channelName: string;
+    channelKind: "social" | "email";
+    format: string;
     period: string;
     plannedAt: Date | null;
     timezone: string;
@@ -387,6 +390,9 @@ export async function listMyPendingWork(actor: Actor, now = new Date()) {
         clientName: m.clientName,
         itemId: row.id,
         title: row.title,
+        channelName: row.channelName,
+        channelKind: row.channelKind,
+        format: row.format,
         period: row.period,
         plannedAt: row.plannedAt,
         timezone: flags.timezone,
@@ -396,6 +402,64 @@ export async function listMyPendingWork(actor: Actor, now = new Date()) {
     }
   }
   return result.sort((a, b) => (a.plannedAt?.getTime() ?? Infinity) - (b.plannedAt?.getTime() ?? Infinity));
+}
+
+/** Estados en los que la pieza ya está en manos de Metricool/MailerLite o descartada. */
+const DONE_STATUSES: readonly WorkflowStatus[] = ["scheduled", "published", "cancelled"];
+
+/**
+ * Lo que vence esta semana (de lunes a domingo, en la zona de cada proyecto) en todos
+ * los proyectos del usuario, más lo atrasado: piezas con fecha ya pasada que nadie ha
+ * programado ni publicado. Solo lectura; cada proyecto con su propio contexto autorizado.
+ */
+export async function listMyWeek(actor: Actor, now = new Date()) {
+  const memberships = await listMyProjects(actor);
+  const result: {
+    projectId: string;
+    projectName: string;
+    clientName: string;
+    itemId: string;
+    title: string;
+    channelName: string;
+    channelKind: "social" | "email";
+    format: string;
+    period: string;
+    plannedAt: Date;
+    day: string;
+    timezone: string;
+    status: WorkflowStatus;
+    overdue: boolean;
+  }[] = [];
+  for (const m of memberships) {
+    if (m.projectStatus === "archived") continue;
+    const ctx = await requireProjectAccess(actor, m.projectId);
+    await authorize(ctx, "project.read");
+    const [rows, flags] = await Promise.all([repo.listWorkflowRows(ctx), repo.getProjectFlags(ctx)]);
+    const week = weekOf(zonedDay(now, flags.timezone));
+    for (const row of statusesFrom(rows, flags.requireClientApproval)) {
+      if (!row.plannedAt || row.status === "cancelled") continue;
+      const day = zonedDay(row.plannedAt, flags.timezone);
+      const overdue = !DONE_STATUSES.includes(row.status) && row.plannedAt < now;
+      if (day > week.end || (day < week.start && !overdue)) continue;
+      result.push({
+        projectId: m.projectId,
+        projectName: m.projectName,
+        clientName: m.clientName,
+        itemId: row.id,
+        title: row.title,
+        channelName: row.channelName,
+        channelKind: row.channelKind,
+        format: row.format,
+        period: row.period,
+        plannedAt: row.plannedAt,
+        day,
+        timezone: flags.timezone,
+        status: row.status,
+        overdue,
+      });
+    }
+  }
+  return result.sort((a, b) => a.plannedAt.getTime() - b.plannedAt.getTime());
 }
 
 export function isLocked(status: WorkflowStatus): boolean {

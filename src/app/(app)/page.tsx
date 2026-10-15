@@ -1,86 +1,304 @@
 import Link from "next/link";
+import { StatusPill } from "@/components/status-pill";
 import { ROLE_LABELS } from "@/modules/access/permissions";
 import { listMyProjects } from "@/modules/access/service";
+import { formatLabel } from "@/modules/content/formats";
 import { requireActor } from "@/modules/identity/next";
-import { formatInZone, formatPeriod } from "@/lib/time";
-import { WORKFLOW_LABELS } from "@/modules/review/domain";
-import { listMyPendingWork, PENDING_ACTION_LABELS } from "@/modules/review/service";
+import { formatDay, formatInZone, formatPeriod, formatTimeInZone, weekOf, zonedDay } from "@/lib/time";
+import { listMyPendingWork, listMyWeek, PENDING_ACTION_LABELS } from "@/modules/review/service";
+
+/** Zona para la cabecera cuando el usuario aún no tiene piezas (la de cada pieza manda en su fila). */
+const DEFAULT_TIMEZONE = "Europe/Madrid";
+
+const pieceHref = (p: { projectId: string; period: string; itemId: string }) =>
+  `/p/${p.projectId}/ciclos/${p.period}/piezas/${p.itemId}`;
 
 export default async function HomePage() {
   const actor = await requireActor();
-  const [projects, pending] = await Promise.all([listMyProjects(actor), listMyPendingWork(actor)]);
+  const now = new Date();
+  const [projects, pending, week] = await Promise.all([
+    listMyProjects(actor),
+    listMyPendingWork(actor, now),
+    listMyWeek(actor, now),
+  ]);
+
+  const timezone = week[0]?.timezone ?? pending[0]?.timezone ?? DEFAULT_TIMEZONE;
+  const today = zonedDay(now, timezone);
+  const { start, end } = weekOf(today);
+
+  const toSchedule = pending.filter((p) => p.action === "publish");
+  const otherPending = pending.filter((p) => p.action !== "publish");
+  const overdue = week.filter((w) => w.overdue && w.day < today);
+  const byDay = new Map<string, typeof week>();
+  for (const w of week) {
+    if (w.overdue && w.day < today) continue;
+    byDay.set(w.day, [...(byDay.get(w.day) ?? []), w]);
+  }
+  const dueThisWeek = week.filter((w) => w.day >= start).length;
+  const weekRange = formatWeekRange(start, end);
 
   return (
-    <div className="flex flex-col gap-6">
-      {pending.length > 0 && (
-        <section className="card flex flex-col gap-3">
-          <h2 className="h2 flex items-center gap-2">
-            Pendiente de mí
-            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent">{pending.length}</span>
-          </h2>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Qué hacer</th>
-                <th>Pieza</th>
-                <th>Cliente · proyecto</th>
-                <th>Fecha prevista</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((p) => (
-                <tr key={p.itemId}>
-                  <td className="font-medium">{PENDING_ACTION_LABELS[p.action]}</td>
-                  <td>
-                    <Link href={`/p/${p.projectId}/ciclos/${p.period}/piezas/${p.itemId}`} className="link">
-                      {p.title}
-                    </Link>
-                  </td>
-                  <td>
-                    {p.clientName} · {p.projectName}
-                    <span className="block text-xs text-muted">{formatPeriod(p.period)}</span>
-                  </td>
-                  <td className="whitespace-nowrap">{p.plannedAt ? formatInZone(p.plannedAt, p.timezone) : "—"}</td>
-                  <td>{WORKFLOW_LABELS[p.status]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+    <div className="flex flex-col gap-8">
+      <div>
+        <p className="text-sm text-muted first-letter:uppercase">{formatDay(today)}</p>
+        <h1 className="h1 mt-1">Inicio</h1>
+      </div>
+
+      {projects.length > 0 && (
+        <>
+          <ul className="grid gap-4 sm:grid-cols-3">
+            <StatTile href="#semana" value={dueThisWeek} label="Vencen esta semana">
+              {overdue.length > 0 ? (
+                <span className="font-medium text-danger">
+                  {overdue.length} {overdue.length === 1 ? "atrasada" : "atrasadas"} de antes
+                </span>
+              ) : (
+                weekRange
+              )}
+            </StatTile>
+            <StatTile href="#por-programar" value={toSchedule.length} label="Por programar en Metricool" accent>
+              Aprobadas, sin programar todavía
+            </StatTile>
+            <StatTile href="#pendiente" value={otherPending.length} label="Pendiente de mí">
+              Revisar, corregir o confirmar
+            </StatTile>
+          </ul>
+
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <section id="semana" className="card flex min-w-0 scroll-mt-20 flex-col gap-4">
+              <div>
+                <h2 className="h2">Esta semana</h2>
+                <p className="text-sm text-muted">Lo que tiene fecha {weekRange} en todos tus proyectos.</p>
+              </div>
+              {overdue.length === 0 && byDay.size === 0 ? (
+                <EmptyState>No vence nada esta semana.</EmptyState>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {overdue.length > 0 && (
+                    <DayGroup title="Atrasadas" tone="danger" hint="Con fecha pasada y sin programar ni publicar">
+                      {overdue.map((w) => (
+                        <WeekRow key={w.itemId} entry={w} when={formatInZone(w.plannedAt, w.timezone)} />
+                      ))}
+                    </DayGroup>
+                  )}
+                  {[...byDay.entries()].map(([day, entries]) => (
+                    <DayGroup
+                      key={day}
+                      title={formatDay(day)}
+                      tone={day === today ? "today" : day < today ? "past" : "normal"}
+                    >
+                      {entries.map((w) => (
+                        <WeekRow key={w.itemId} entry={w} when={formatTimeInZone(w.plannedAt, w.timezone)} />
+                      ))}
+                    </DayGroup>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section id="por-programar" className="card flex min-w-0 scroll-mt-20 flex-col gap-4">
+              <div>
+                <h2 className="h2">Por programar en Metricool</h2>
+                <p className="text-sm text-muted">
+                  Abre cada pieza, pulsa «Copiar para Metricool», pégalo en Claude y registra aquí la programación.
+                </p>
+              </div>
+              {toSchedule.length === 0 ? (
+                <EmptyState>No hay piezas aprobadas esperando.</EmptyState>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {toSchedule.map((p) => (
+                    <li key={p.itemId}>
+                      <Link
+                        href={pieceHref(p)}
+                        className="group flex flex-col gap-1 rounded-lg border border-border bg-surface-muted px-3 py-2.5 transition hover:border-accent/40 hover:bg-accent-soft sm:flex-row sm:items-center sm:gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium group-hover:text-accent-ink sm:truncate">{p.title}</div>
+                          <div className="text-xs text-muted sm:truncate">
+                            {p.clientName} · {p.channelName} · {formatLabel(p.format)}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 gap-2 text-xs sm:block sm:text-right">
+                          <div className="font-medium whitespace-nowrap">
+                            {p.plannedAt ? formatInZone(p.plannedAt, p.timezone) : "Sin fecha"}
+                          </div>
+                          {p.channelKind === "email" && <div className="text-muted">Va a MailerLite</div>}
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+
+          <section id="pendiente" className="card flex min-w-0 scroll-mt-20 flex-col gap-3">
+            <h2 className="h2">Pendiente de mí</h2>
+            {otherPending.length === 0 ? (
+              <EmptyState>Nada pendiente de revisar, corregir ni confirmar.</EmptyState>
+            ) : (
+              <div className="-mx-6 overflow-x-auto px-6">
+                <table className="table min-w-[40rem]">
+                  <thead>
+                    <tr>
+                      <th>Qué hacer</th>
+                      <th>Pieza</th>
+                      <th>Cliente · proyecto</th>
+                      <th>Fecha prevista</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {otherPending.map((p) => (
+                      <tr key={p.itemId}>
+                        <td className="font-medium">{PENDING_ACTION_LABELS[p.action]}</td>
+                        <td>
+                          <Link href={pieceHref(p)} className="link">
+                            {p.title}
+                          </Link>
+                        </td>
+                        <td>
+                          {p.clientName} · {p.projectName}
+                          <span className="block text-xs text-muted">{formatPeriod(p.period)}</span>
+                        </td>
+                        <td className="whitespace-nowrap">
+                          {p.plannedAt ? formatInZone(p.plannedAt, p.timezone) : "—"}
+                        </td>
+                        <td>
+                          <StatusPill status={p.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
       )}
 
-      <h1 className="h1">Mis proyectos</h1>
-      {projects.length === 0 ? (
-        <div className="card text-sm text-muted">
-          Todavía no eres miembro de ningún proyecto.
-          {actor.isAdmin && (
-            <>
-              {" "}
-              Como administrador puedes crear clientes y proyectos y asignarte en{" "}
-              <Link href="/admin" className="link">
-                Administración
-              </Link>
-              .
-            </>
-          )}
-        </div>
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <li key={p.projectId}>
-              <Link href={`/p/${p.projectId}`} className="card block h-full transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-(--shadow-hover)">
-                <div className="text-xs text-muted">{p.clientName}</div>
-                <div className="mt-1 text-base font-semibold tracking-tight">{p.projectName}</div>
-                <div className="mt-3 flex gap-2">
-                  <span className="badge">{ROLE_LABELS[p.role]}</span>
-                  {p.projectStatus === "archived" && <span className="badge">Archivado</span>}
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="flex flex-col gap-4">
+        <h2 className="h2">Mis proyectos</h2>
+        {projects.length === 0 ? (
+          <div className="card text-sm text-muted">
+            Todavía no eres miembro de ningún proyecto.
+            {actor.isAdmin && (
+              <>
+                {" "}
+                Como administrador puedes crear clientes y proyectos y asignarte en{" "}
+                <Link href="/admin" className="link">
+                  Administración
+                </Link>
+                .
+              </>
+            )}
+          </div>
+        ) : (
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((p) => (
+              <li key={p.projectId}>
+                <Link
+                  href={`/p/${p.projectId}`}
+                  className="card block h-full transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-(--shadow-hover)"
+                >
+                  <div className="text-xs text-muted">{p.clientName}</div>
+                  <div className="mt-1 text-base font-semibold tracking-tight">{p.projectName}</div>
+                  <div className="mt-3 flex gap-2">
+                    <span className="badge">{ROLE_LABELS[p.role]}</span>
+                    {p.projectStatus === "archived" && <span className="badge">Archivado</span>}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
+  );
+}
+
+function StatTile(props: { href: string; value: number; label: string; accent?: boolean; children: React.ReactNode }) {
+  const highlighted = props.accent && props.value > 0;
+  return (
+    <li>
+      <a
+        href={props.href}
+        className={`card flex h-full flex-col gap-1 p-5 transition hover:-translate-y-0.5 hover:shadow-(--shadow-hover) ${
+          highlighted ? "border-accent/40 bg-accent-soft" : "hover:border-accent/40"
+        }`}
+      >
+        <span className={`text-3xl font-semibold tracking-tight ${highlighted ? "text-accent-ink" : ""}`}>
+          {props.value}
+        </span>
+        <span className="text-sm font-medium">{props.label}</span>
+        <span className="text-xs text-muted first-letter:uppercase">{props.children}</span>
+      </a>
+    </li>
+  );
+}
+
+function DayGroup(props: {
+  title: string;
+  tone: "danger" | "today" | "past" | "normal";
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  const titleClass = {
+    danger: "text-danger",
+    today: "text-accent-ink",
+    past: "text-muted",
+    normal: "",
+  }[props.tone];
+  return (
+    <div className="flex flex-col gap-1.5">
+      <h3 className={`flex items-baseline gap-2 text-sm font-semibold first-letter:uppercase ${titleClass}`}>
+        {props.title}
+        {props.tone === "today" && (
+          <span className="rounded-full bg-accent px-2 py-0.5 text-[0.7rem] font-semibold text-on-accent">Hoy</span>
+        )}
+        {props.hint && <span className="text-xs font-normal text-muted">{props.hint}</span>}
+      </h3>
+      <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
+        {props.children}
+      </ul>
+    </div>
+  );
+}
+
+function WeekRow({ entry, when }: { entry: Awaited<ReturnType<typeof listMyWeek>>[number]; when: string }) {
+  return (
+    <li>
+      <Link
+        href={pieceHref(entry)}
+        className="flex items-start gap-3 px-3 py-2.5 transition-colors hover:bg-surface-muted sm:items-center"
+      >
+        <span className="w-14 shrink-0 pt-0.5 text-xs text-muted tabular-nums sm:w-24 sm:pt-0">{when}</span>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-3">
+          <div className="min-w-0 sm:flex-1">
+            <div className="text-sm font-medium sm:truncate">{entry.title}</div>
+            <div className="text-xs text-muted sm:truncate">
+              {entry.clientName} · {entry.channelName} · {formatLabel(entry.format)}
+            </div>
+          </div>
+          <StatusPill status={entry.status} />
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+/** "del 12 al 18 de octubre" o, si cambia el mes, "del 28 de diciembre al 3 de enero". */
+function formatWeekRange(start: string, end: string): string {
+  const fmt = (day: string, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("es-ES", { ...opts, timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
+  const sameMonth = start.slice(0, 7) === end.slice(0, 7);
+  const from = sameMonth ? fmt(start, { day: "numeric" }) : fmt(start, { day: "numeric", month: "long" });
+  return `del ${from} al ${fmt(end, { day: "numeric", month: "long" })}`;
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">{children}</p>
   );
 }
