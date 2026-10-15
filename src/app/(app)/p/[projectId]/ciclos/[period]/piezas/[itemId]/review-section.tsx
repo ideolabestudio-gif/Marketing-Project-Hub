@@ -1,6 +1,7 @@
 import { ActionForm } from "@/components/action-form";
 import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
+import { can, type Permission, ROLE_LABELS, ROLES } from "@/modules/access/permissions";
 import { WORKFLOW_LABELS } from "@/modules/review/domain";
 import type { getItemReview } from "@/modules/review/service";
 import {
@@ -33,6 +34,29 @@ const NEXT_STEP: Record<string, string> = {
   published: "Publicada.",
   cancelled: "Pieza cancelada.",
 };
+
+/** Explica por qué no aparece el siguiente paso cuando el rol de la persona no lo permite. */
+function MissingPermission({ ctx, permission, what }: { ctx: ProjectContext; permission: Permission; what: string }) {
+  const roles = ROLES.filter((r) => can(r, permission)).map((r) => `«${ROLE_LABELS[r]}»`);
+  return (
+    <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+      Solo puede {what} quien tenga en este proyecto el rol {roles.join(" o ")}. Tu rol es «{ROLE_LABELS[ctx.role]}».
+      Una persona administradora puede cambiarlo en Administración › Proyectos.
+    </p>
+  );
+}
+
+/** El paso siguiente que la persona ve pero no puede dar por su rol. */
+function missingStep(ctx: ProjectContext, status: string): { permission: Permission; what: string } | null {
+  const steps: Record<string, { permission: Permission; what: string }> = {
+    draft: { permission: "content.write", what: "enviarla a revisión" },
+    in_review: { permission: "approval.internal", what: "aprobarla o pedir cambios en la revisión interna" },
+    awaiting_client: { permission: "approval.client.record", what: "registrar la respuesta del cliente" },
+    approved: { permission: "publish", what: "registrar la programación o la publicación" },
+  };
+  const step = steps[status];
+  return step && !hasPermission(ctx, step.permission) ? step : null;
+}
 
 function DateTimeInput({ name, defaultValue, tz }: { name: string; defaultValue?: string; tz: string }) {
   return (
@@ -69,6 +93,7 @@ export function ReviewSection({
   const canPublish = open && status === "approved" && latest && hasPermission(ctx, "publish");
   const canManageScheduled = open && active?.status === "scheduled" && hasPermission(ctx, "publish");
   const nowWall = utcToWallTime(new Date(), tz);
+  const missing = open && latest && !ctx.projectArchived ? missingStep(ctx, status) : null;
 
   return (
     <section className="card flex flex-col gap-4">
@@ -81,6 +106,7 @@ export function ReviewSection({
         </span>
       </div>
       <p className="text-sm">{NEXT_STEP[status]}</p>
+      {missing && <MissingPermission ctx={ctx} permission={missing.permission} what={missing.what} />}
 
       {canSubmit && (
         <ActionForm
