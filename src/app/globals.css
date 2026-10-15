@@ -109,7 +109,13 @@ body {
   .segmented { @apply inline-flex rounded-lg border border-border bg-surface-muted p-0.5 text-sm; }
   .segmented > a { @apply rounded-md px-3 py-1 text-muted transition-colors hover:text-foreground; }
   .segmented > a[aria-current="page"] { @apply bg-surface font-medium text-foreground shadow-(--shadow); }
+  /* Al llegar desde un contador del inicio o un enlace con ancla: resalta la sección destino. */
+  .card:target { animation: target-flash 2s ease-out; }
   .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink; }
+}
+
+@keyframes target-flash {
+  0%, 40% { box-shadow: 0 0 0 4px var(--ring); }
 }
 
 /* Impresión / guardar como PDF: solo el contenido del informe. */
