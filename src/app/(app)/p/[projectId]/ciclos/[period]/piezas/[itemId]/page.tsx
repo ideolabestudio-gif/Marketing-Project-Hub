@@ -96,7 +96,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
       />
 
       {metricoolText && (
-        <section className="card flex flex-col gap-3">
+        <section id="metricool" className="card flex scroll-mt-20 flex-col gap-3">
           <h2 className="h2">Llevar a Metricool con Claude</h2>
           <p className="text-sm">
             Copia este mensaje y pégalo en un chat de Claude que tenga activado el conector de Metricool. Claude dejará

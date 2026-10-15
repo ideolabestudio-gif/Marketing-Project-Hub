@@ -97,7 +97,7 @@ export function ReviewSection({
   const missing = open && latest && !ctx.projectArchived ? missingStep(ctx, status) : null;
 
   return (
-    <section className="card flex flex-col gap-4">
+    <section id="revision" className="card flex scroll-mt-20 flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="h2">Revisión y publicación</h2>
         <span className="badge">{WORKFLOW_LABELS[status]}</span>
