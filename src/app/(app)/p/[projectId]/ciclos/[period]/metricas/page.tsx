@@ -40,58 +40,74 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
 
       {channels.map((channel) => {
         const defs = data.definitions.filter(
-          (d) => d.kind === channel.kind && (d.isActive || data.values.some((v) => v.channelId === channel.id && v.metricKey === d.key)),
+          (d) =>
+            d.kind === channel.kind &&
+            (d.isActive || data.values.some((v) => v.channelId === channel.id && v.metricKey === d.key)),
         );
         const values = data.values.filter((v) => v.channelId === channel.id && !v.contentItemId);
         const current = (key: string) => values.find((v) => v.metricKey === key && v.isCurrent);
         const history = values.filter((v) => !v.isCurrent);
         return (
-          <section key={channel.id} className="card flex flex-col gap-4" aria-label={`Métricas de ${channel.displayName}`}>
-            <h2 className="h2">
-              {channel.displayName} <span className="text-sm font-normal text-muted">· {channel.kind === "email" ? "Email" : "Redes"}</span>
-            </h2>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Métrica</th>
-                  <th>Valor</th>
-                  <th>Fuente</th>
-                  <th>Registrado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {defs.map((d) => {
-                  const v = current(d.key);
-                  return (
-                    <tr key={d.key}>
-                      <td title={d.description}>{d.label}</td>
-                      <td className={v ? "font-medium" : "text-muted"}>{formatMetric(v ? v.value : null, d.unit)}</td>
-                      <td className="text-sm">
-                        {v ? (
-                          <>
-                            {SOURCE_LABELS[v.source]}
-                            {v.sourceDetail && <div className="text-xs text-muted">{v.sourceDetail}</div>}
-                            {v.note && <div className="text-xs text-muted">Motivo: {v.note}</div>}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="text-sm whitespace-nowrap">
-                        {v ? (
-                          <>
-                            {v.capturedByName}
-                            <div className="text-xs text-muted">{formatInZone(v.capturedAt, tz)}</div>
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <section
+            key={channel.id}
+            className="card flex flex-col gap-4"
+            aria-label={`Métricas de ${channel.displayName}`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="h2">{channel.displayName}</h2>
+              <div className="flex flex-wrap gap-2">
+                <span className="badge">{channel.kind === "email" ? "Email" : "Redes"}</span>
+                <span className="badge">
+                  {defs.filter((d) => current(d.key)).length} de {defs.length} con dato
+                </span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table min-w-[560px]">
+                <thead>
+                  <tr>
+                    <th>Métrica</th>
+                    <th className="text-right">Valor</th>
+                    <th>Fuente</th>
+                    <th>Registrado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {defs.map((d) => {
+                    const v = current(d.key);
+                    return (
+                      <tr key={d.key}>
+                        <td title={d.description}>{d.label}</td>
+                        <td className={`pr-8 text-right tabular-nums ${v ? "font-medium" : "text-muted"}`}>
+                          {formatMetric(v ? v.value : null, d.unit)}
+                        </td>
+                        <td className="text-sm">
+                          {v ? (
+                            <>
+                              {SOURCE_LABELS[v.source]}
+                              {v.sourceDetail && <div className="text-xs text-muted">{v.sourceDetail}</div>}
+                              {v.note && <div className="text-xs text-muted">Motivo: {v.note}</div>}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="text-sm whitespace-nowrap">
+                          {v ? (
+                            <>
+                              {v.capturedByName}
+                              <div className="text-xs text-muted">{formatInZone(v.capturedAt, tz)}</div>
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {history.length > 0 && (
               <details className="text-sm">
@@ -117,7 +133,9 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
                 action={recordValueAction.bind(null, projectId, cycle.id, channel.id)}
                 submitLabel="Registrar valor"
                 variant="secondary"
+                className="tile flex flex-wrap items-end gap-3"
               >
+                <h3 className="eyebrow w-full">Registrar o corregir un valor</h3>
                 <label className="field">
                   Métrica
                   <select name="metricKey" className="input" required>
@@ -144,7 +162,7 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
                     ))}
                   </select>
                 </label>
-                <label className="field grow">
+                <label className="field min-w-0 grow basis-56">
                   Motivo (obligatorio si corriges un valor)
                   <input name="note" className="input" />
                 </label>
@@ -162,7 +180,11 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
               Sube la exportación (Metricool, MailerLite, una hoja de cálculo…). En el paso siguiente eliges qué columna
               corresponde a cada métrica y cómo se resumen las filas. El archivo original se conserva.
             </p>
-            <ActionForm action={uploadCsvAction.bind(null, projectId, cycle.id, period)} submitLabel="Subir CSV">
+            <ActionForm
+              action={uploadCsvAction.bind(null, projectId, cycle.id, period)}
+              submitLabel="Subir CSV"
+              className="tile flex flex-wrap items-end gap-3"
+            >
               <label className="field">
                 Canal
                 <select name="channelId" className="input" required>
@@ -175,7 +197,7 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
                     ))}
                 </select>
               </label>
-              <label className="field">
+              <label className="field min-w-0 grow basis-64">
                 Archivo
                 <input type="file" name="file" accept=".csv,text/csv,text/plain" className="input" required />
               </label>
@@ -185,32 +207,36 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
         {data.imports.length === 0 ? (
           <p className="text-sm text-muted">No hay importaciones en este ciclo.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Archivo</th>
-                <th>Canal</th>
-                <th>Filas</th>
-                <th>Estado</th>
-                <th>Subido</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.imports.map((imp) => (
-                <tr key={imp.id}>
-                  <td>
-                    <Link href={`${base}/metricas/importar/${imp.id}`} className="link">
-                      {imp.filename}
-                    </Link>
-                  </td>
-                  <td>{data.channels.find((c) => c.id === imp.channelId)?.displayName}</td>
-                  <td>{imp.rowCount}</td>
-                  <td>{IMPORT_STATUS_LABELS[imp.status]}</td>
-                  <td className="whitespace-nowrap">{formatInZone(imp.createdAt, tz)}</td>
+          <div className="overflow-x-auto">
+            <table className="table min-w-[560px]">
+              <thead>
+                <tr>
+                  <th>Archivo</th>
+                  <th>Canal</th>
+                  <th>Filas</th>
+                  <th>Estado</th>
+                  <th>Subido</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.imports.map((imp) => (
+                  <tr key={imp.id}>
+                    <td>
+                      <Link href={`${base}/metricas/importar/${imp.id}`} className="link">
+                        {imp.filename}
+                      </Link>
+                    </td>
+                    <td>{data.channels.find((c) => c.id === imp.channelId)?.displayName}</td>
+                    <td>{imp.rowCount}</td>
+                    <td>
+                      <span className="badge">{IMPORT_STATUS_LABELS[imp.status]}</span>
+                    </td>
+                    <td className="whitespace-nowrap">{formatInZone(imp.createdAt, tz)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

@@ -114,50 +114,61 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
 
   return (
     <div className="flex flex-col gap-6">
-      {header}
-      <section className="card flex flex-wrap items-center gap-3">
-        <span className="badge">{approved ? "Aprobado" : "Borrador"}</span>
-        {approved && report.approvedAt && (
-          <span className="text-sm text-muted">Aprobado el {formatInZone(report.approvedAt, project.timezone)}</span>
-        )}
-        <Link href={`${base}/informe/imprimir`} className="btn btn-secondary">
-          Ver para imprimir / PDF
-        </Link>
-        {canApprove && !approved && (
-          <ActionForm action={approveReportAction.bind(null, projectId, report.id)} submitLabel="Aprobar informe">
-            <span className="text-sm text-muted">Al aprobarlo queda bloqueado.</span>
-          </ActionForm>
-        )}
-        {canApprove && approved && (
-          <ActionForm
-            action={reopenReportAction.bind(null, projectId, report.id)}
-            submitLabel="Reabrir informe"
-            variant="secondary"
-          >
-            <input name="reason" className="input" placeholder="Motivo" required />
-          </ActionForm>
-        )}
-      </section>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          {header}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="badge">{approved ? "Aprobado" : "Borrador"}</span>
+            <span className="badge">{sections.length} secciones</span>
+            {approved && report.approvedAt && (
+              <span className="text-sm text-muted">Aprobado el {formatInZone(report.approvedAt, project.timezone)}</span>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <Link href={`${base}/informe/imprimir`} className="btn btn-secondary">
+            Ver para imprimir / PDF
+          </Link>
+          {canApprove && !approved && (
+            <ActionForm action={approveReportAction.bind(null, projectId, report.id)} submitLabel="Aprobar informe">
+              <span className="text-sm text-muted">Al aprobarlo queda bloqueado.</span>
+            </ActionForm>
+          )}
+          {canApprove && approved && (
+            <ActionForm
+              action={reopenReportAction.bind(null, projectId, report.id)}
+              submitLabel="Reabrir informe"
+              variant="secondary"
+            >
+              <input name="reason" className="input" placeholder="Motivo" required />
+            </ActionForm>
+          )}
+        </div>
+      </div>
 
       {editable && (
-        <section className="flex flex-col gap-4">
-          <h2 className="h2">Secciones</h2>
+        <section className="card flex flex-col gap-4">
+          <div>
+            <h2 className="h2">Secciones</h2>
+            <p className="mt-0.5 text-sm text-muted">Edita el texto y el orden; la vista previa de abajo es lo que verá el cliente.</p>
+          </div>
           {sections.map((s, i) => (
-            <div key={s.id} className="card flex flex-col gap-3" aria-label={`Sección ${s.title}`}>
+            <div key={s.id} className="tile flex flex-col gap-3" aria-label={`Sección ${s.title}`}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={s.kind === "ai_interpretation" ? "rounded bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900" : "badge"}>
+                <span className="text-xs font-medium text-muted tabular-nums">{i + 1}.</span>
+                <span className={s.kind === "ai_interpretation" ? "badge-ai" : "badge"}>
                   {SECTION_KIND_LABELS[s.kind]}
                 </span>
                 {s.kind === "ai_interpretation" &&
                   (s.reviewedAt ? (
-                    <span className="text-xs text-green-700">Revisada el {formatInZone(s.reviewedAt, project.timezone)}</span>
+                    <span className="text-xs text-success">Revisada el {formatInZone(s.reviewedAt, project.timezone)}</span>
                   ) : (
                     <ActionForm
                       action={markAiSectionReviewedAction.bind(null, projectId, s.id)}
                       submitLabel="La he revisado"
                       variant="secondary"
                     >
-                      <span className="text-xs text-amber-800">Sin revisar: compruébala contra los datos.</span>
+                      <span className="text-xs text-warning-ink">Sin revisar: compruébala contra los datos.</span>
                     </ActionForm>
                   ))}
                 <div className="ml-auto flex gap-2">
@@ -185,8 +196,8 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
               </ActionForm>
             </div>
           ))}
-          <div className="card flex flex-col gap-3">
-            <h3 className="font-medium">Añadir sección</h3>
+          <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border-strong p-3">
+            <h3 className="eyebrow">Añadir sección</h3>
             <ActionForm action={addSectionAction.bind(null, projectId, report.id)} submitLabel="Añadir sección" className="grid gap-3">
               <label className="field">
                 Tipo
@@ -220,10 +231,10 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
             </ActionForm>
           )}
           {drafts.map((g) => (
-            <div key={g.id} className="flex flex-col gap-2 rounded-md border border-violet-200 p-3">
+            <div key={g.id} className="ai-box">
               <AiGenerationMeta generation={g} tz={project.timezone} />
               {g.unverifiedNumbers.length > 0 && (
-                <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-900">
+                <p className="notice">
                   Cifras que no están en los datos registrados: {g.unverifiedNumbers.join(", ")}. Corrígelas o quítalas.
                 </p>
               )}
@@ -253,9 +264,11 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
         </section>
       )}
 
-      <section className="card">
-        <h2 className="h2 mb-4">Vista previa</h2>
-        <ReportBody view={view} />
+      <section className="flex flex-col gap-3">
+        <h2 className="h2">Vista previa</h2>
+        <div className="card report-paper mx-auto w-full max-w-3xl sm:p-10">
+          <ReportBody view={view} />
+        </div>
       </section>
     </div>
   );

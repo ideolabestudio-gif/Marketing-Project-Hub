@@ -20,7 +20,9 @@ export default async function PrintReportPage({ params }: PageProps<"/p/[project
         <PrintButton />
         <span className="text-sm text-muted">En el diálogo de impresión elige «Guardar como PDF».</span>
       </div>
-      <ReportBody view={view} />
+      <div className="card report-paper sm:p-10">
+        <ReportBody view={view} />
+      </div>
     </div>
   );
 }

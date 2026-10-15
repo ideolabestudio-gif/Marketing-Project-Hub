@@ -21,6 +21,17 @@
   --danger: #b4232f;
   --danger-soft: #fdecec;
   --ring: rgb(29 29 27 / 0.25);
+  /* Avisos, confirmaciones, lo generado con IA y las diferencias entre versiones. */
+  --warning-soft: #fdf6e3;
+  --warning-ink: #7a4d06;
+  --success: #1f7a3d;
+  --ai-soft: #f1edfd;
+  --ai-ink: #4c2a9e;
+  --ai-border: #ddd3fa;
+  --diff-add: #d8f5df;
+  --diff-add-ink: #0f4a22;
+  --diff-del: #fde0e0;
+  --diff-del-ink: #7a1620;
   --shadow: 0 1px 2px rgb(29 29 27 / 0.04), 0 1px 3px rgb(29 29 27 / 0.06);
   --shadow-hover: 0 4px 12px rgb(29 29 27 / 0.08), 0 1px 3px rgb(29 29 27 / 0.06);
 }
@@ -42,6 +53,16 @@
     --danger: #ff8a93;
     --danger-soft: #3a1c22;
     --ring: rgb(255 255 255 / 0.35);
+    --warning-soft: #33280f;
+    --warning-ink: #f3cf7a;
+    --success: #7fd69a;
+    --ai-soft: #2a2240;
+    --ai-ink: #c9b8ff;
+    --ai-border: #43386a;
+    --diff-add: #173d24;
+    --diff-add-ink: #b4f0c6;
+    --diff-del: #47191e;
+    --diff-del-ink: #ffc2c7;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-hover: 0 4px 14px rgb(0 0 0 / 0.4);
   }
@@ -62,6 +83,16 @@
   --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-success: var(--success);
+  --color-ai-soft: var(--ai-soft);
+  --color-ai-ink: var(--ai-ink);
+  --color-ai-border: var(--ai-border);
+  --color-diff-add: var(--diff-add);
+  --color-diff-add-ink: var(--diff-add-ink);
+  --color-diff-del: var(--diff-del);
+  --color-diff-del-ink: var(--diff-del-ink);
 }
 
 body {
@@ -71,6 +102,15 @@ body {
   font-feature-settings: "cv11", "ss01";
 }
 
+/* Casillas y radios con el color de la marca (negro en claro, blanco en oscuro). */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 ::selection {
   background: var(--accent-soft);
   color: var(--accent-ink);
@@ -78,10 +118,10 @@ body {
 
 @layer components {
   .card { @apply rounded-xl border border-border bg-surface p-6 shadow-(--shadow); }
-  .field { @apply flex flex-col gap-1.5 text-sm font-medium; }
+  .field { @apply flex max-w-full min-w-0 flex-col gap-1.5 text-sm font-medium; }
   .field :where(input, select, textarea, span, p) { @apply font-normal; }
   .input {
-    @apply rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm transition-colors;
+    @apply max-w-full min-w-0 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm transition-colors;
     @apply placeholder:text-muted/70 hover:border-muted/60;
     @apply focus:border-accent focus:ring-3 focus:ring-(--ring) focus:outline-none;
   }
@@ -101,14 +141,34 @@ body {
   .badge { @apply inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-muted; }
   .h1 { @apply text-[1.75rem] leading-tight font-semibold tracking-tight; }
   .h2 { @apply text-lg font-semibold tracking-tight; }
+  /* Selector de archivo con el mismo aspecto que los botones secundarios. */
+  .input[type="file"] { @apply cursor-pointer py-1.5 text-muted; }
+  .input[type="file"]::file-selector-button {
+    @apply mr-3 cursor-pointer rounded-md border border-border-strong bg-surface-muted px-3 py-1 text-sm font-medium text-foreground transition-colors;
+  }
+  .input[type="file"]:hover::file-selector-button { @apply bg-accent-soft; }
+  /* Aviso (en revisión, sin revisar, configuración pendiente…). */
+  .notice { @apply rounded-lg border border-warning-ink/15 bg-warning-soft px-3.5 py-2.5 text-sm text-warning-ink; }
+  .error-box { @apply rounded-lg border border-danger/25 bg-danger-soft px-3.5 py-2.5 text-sm text-danger; }
+  /* Todo lo generado con IA lleva este distintivo y este recuadro. */
+  .badge-ai { @apply inline-flex items-center rounded-full border border-ai-border bg-ai-soft px-2.5 py-0.5 text-xs font-medium text-ai-ink; }
+  .ai-box { @apply flex flex-col gap-2 rounded-lg border border-ai-border bg-surface p-4; }
+  /* Bloques dentro de una tarjeta: archivos, comentarios, secciones del informe. */
+  .tile { @apply rounded-lg border border-border bg-surface-muted p-3; }
+  .eyebrow { @apply text-xs font-medium tracking-wide text-muted uppercase; }
+  /* Desplegables sencillos (historiales, propuestas anteriores) con la misma flecha que las tarjetas plegables. */
+  details:not(.collapsible) > summary { @apply flex cursor-pointer list-none items-center gap-1.5 text-muted transition-colors hover:text-foreground; }
+  details:not(.collapsible) > summary::-webkit-details-marker { display: none; }
+  details:not(.collapsible) > summary::before { content: "▾"; @apply inline-block -rotate-90 text-xs transition-transform; }
+  details:not(.collapsible)[open] > summary::before { @apply rotate-0; }
   .link { @apply rounded-sm text-accent underline decoration-border-strong underline-offset-2 hover:decoration-current focus-visible:ring-2 focus-visible:ring-(--ring) focus-visible:outline-none; }
   .collapsible > summary { @apply list-none; }
   .collapsible > summary::-webkit-details-marker { display: none; }
   .collapsible .chevron { @apply inline-block transition-transform; }
   .collapsible:not([open]) .chevron { @apply -rotate-90; }
   .collapsible:not([open]) { @apply py-4; }
-  .segmented { @apply inline-flex rounded-lg border border-border bg-surface-muted p-0.5 text-sm; }
-  .segmented > a { @apply rounded-md px-3 py-1 text-muted transition-colors hover:text-foreground; }
+  .segmented { @apply inline-flex rounded-lg border border-border bg-surface-muted p-0.5 max-w-full overflow-x-auto text-sm; }
+  .segmented > a { @apply rounded-md px-3 py-1 text-muted transition-colors whitespace-nowrap hover:text-foreground; }
   .segmented > a[aria-current="page"] { @apply bg-surface font-medium text-foreground shadow-(--shadow); }
   /* Al llegar desde un contador del inicio o un enlace con ancla: resalta la sección destino. */
   .card:target { animation: target-flash 2s ease-out; }
@@ -125,6 +185,15 @@ body {
   nav,
   .no-print {
     display: none !important;
+  }
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .report-paper {
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
   }
   body {
     background: white;

@@ -20,7 +20,7 @@ export function AiGenerationMeta({
   return (
     <div className="flex flex-col gap-1 text-xs text-muted">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded bg-violet-100 px-2 py-0.5 font-medium text-violet-900">Generado con IA</span>
+        <span className="badge-ai">Generado con IA</span>
         <span className="badge">{STATUS[generation.status]}</span>
         <span>
           {generation.requestedByName} · {formatInZone(generation.createdAt, tz)} · {generation.model} ·{" "}

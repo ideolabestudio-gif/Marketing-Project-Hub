@@ -70,8 +70,8 @@ export default async function MetricCatalogPage() {
               .filter((d) => d.kind === g.kind)
               .map((d) => (
                 <li key={d.key}>
-                  <details className="rounded-md border border-border p-3">
-                    <summary className="cursor-pointer">
+                  <details className="tile">
+                    <summary className="text-foreground">
                       <span className={d.isActive ? "font-medium" : "font-medium text-muted line-through"}>{d.label}</span>{" "}
                       <span className="text-xs text-muted">
                         {d.key} · {UNIT_LABELS[d.unit as MetricUnit]}

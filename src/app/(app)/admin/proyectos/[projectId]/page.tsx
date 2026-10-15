@@ -35,43 +35,49 @@ export default async function AdminProjectPage({ params }: PageProps<"/admin/pro
 
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Miembros</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Persona</th>
-              <th>Rol</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr key={m.userId}>
-                <td>{m.email}</td>
-                <td>
-                  <ActionForm action={setMembershipAction.bind(null, projectId)} submitLabel="Cambiar" variant="secondary">
-                    <input type="hidden" name="userId" value={m.userId} />
-                    <select name="role" defaultValue={m.role} className="input">
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {ROLE_LABELS[r]}
-                        </option>
-                      ))}
-                    </select>
-                  </ActionForm>
-                </td>
-                <td>
-                  <ActionForm
-                    action={removeMembershipAction.bind(null, projectId, m.userId)}
-                    submitLabel="Retirar"
-                    variant="danger"
-                  >
-                    {null}
-                  </ActionForm>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table min-w-[520px]">
+            <thead>
+              <tr>
+                <th>Persona</th>
+                <th>Rol</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.userId}>
+                  <td>{m.email}</td>
+                  <td>
+                    <ActionForm
+                      action={setMembershipAction.bind(null, projectId)}
+                      submitLabel="Cambiar"
+                      variant="secondary"
+                    >
+                      <input type="hidden" name="userId" value={m.userId} />
+                      <select name="role" defaultValue={m.role} className="input">
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABELS[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </ActionForm>
+                  </td>
+                  <td>
+                    <ActionForm
+                      action={removeMembershipAction.bind(null, projectId, m.userId)}
+                      submitLabel="Retirar"
+                      variant="danger"
+                    >
+                      {null}
+                    </ActionForm>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <h3 className="mt-2 font-medium">Añadir miembro</h3>
         {candidates.length === 0 ? (
           <p className="text-sm text-muted">No hay más usuarios activos. Da de alta usuarios en Usuarios.</p>
@@ -103,9 +109,7 @@ export default async function AdminProjectPage({ params }: PageProps<"/admin/pro
 
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Estado</h2>
-        <p className="text-sm text-muted">
-          Un proyecto archivado queda en solo lectura para todos sus miembros.
-        </p>
+        <p className="text-sm text-muted">Un proyecto archivado queda en solo lectura para todos sus miembros.</p>
         <ActionForm
           action={setProjectStatusAction.bind(null, projectId, project.status === "active" ? "archived" : "active")}
           submitLabel={project.status === "active" ? "Archivar proyecto" : "Reactivar proyecto"}

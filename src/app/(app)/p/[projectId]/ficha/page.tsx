@@ -97,7 +97,7 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
         )}
         {brand.versions.length > 1 && (
           <details className="text-sm">
-            <summary className="cursor-pointer text-muted">Historial ({brand.versions.length} versiones)</summary>
+            <summary>Historial ({brand.versions.length} versiones)</summary>
             <ul className="mt-2 flex flex-col gap-1">
               {brand.versions.map((v) => (
                 <li key={v.id}>
@@ -119,7 +119,7 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
         ) : (
           libraryByCategory.map((g) => (
             <div key={g.key} className="flex flex-col gap-2">
-              <h3 className="font-medium">{LIBRARY_CATEGORIES[g.key]}</h3>
+              <h3 className="eyebrow">{LIBRARY_CATEGORIES[g.key]}</h3>
               <AssetList
                 projectId={projectId}
                 assets={g.entries.map((m) => ({ ...m.asset, filename: m.title }))}
@@ -145,9 +145,9 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
           ))
         )}
         {canEditLibrary && (
-          <div className="grid gap-4 md:grid-cols-2">
-            <ActionForm action={addLibraryFileAction.bind(null, projectId)} submitLabel="Subir" className="grid gap-3">
-              <h3 className="font-medium">Subir archivo</h3>
+          <div className="grid gap-3 md:grid-cols-2">
+            <ActionForm action={addLibraryFileAction.bind(null, projectId)} submitLabel="Subir" className="tile grid content-start gap-3">
+              <h3 className="eyebrow">Subir archivo</h3>
               <label className="field">
                 Archivo ({ALLOWED_DESCRIPTION})
                 <input
@@ -160,8 +160,8 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
               </label>
               <CategoryFields />
             </ActionForm>
-            <ActionForm action={addLibraryLinkAction.bind(null, projectId)} submitLabel="Añadir enlace" className="grid gap-3">
-              <h3 className="font-medium">Añadir enlace (Drive, Canva…)</h3>
+            <ActionForm action={addLibraryLinkAction.bind(null, projectId)} submitLabel="Añadir enlace" className="tile grid content-start gap-3">
+              <h3 className="eyebrow">Añadir enlace (Drive, Canva…)</h3>
               <label className="field">
                 Enlace
                 <input type="url" name="url" className="input" required />
