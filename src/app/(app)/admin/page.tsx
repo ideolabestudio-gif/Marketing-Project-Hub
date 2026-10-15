@@ -12,8 +12,8 @@ export default async function AdminPage() {
     <div className="flex flex-col gap-6">
       <h1 className="h1">Clientes y proyectos</h1>
       <p className="text-sm text-muted">
-        La administración gestiona la estructura y los accesos. Para ver el trabajo de un proyecto hay
-        que ser miembro de él.
+        La administración gestiona la estructura y los accesos. Para ver el trabajo de un proyecto hay que ser miembro
+        de él.
       </p>
 
       <section className="card flex flex-col gap-3">
@@ -21,32 +21,34 @@ export default async function AdminPage() {
         {projects.length === 0 ? (
           <p className="text-sm text-muted">Aún no hay proyectos.</p>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Proyecto</th>
-                <th>Zona horaria</th>
-                <th>Estado</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.clientName}</td>
-                  <td>{p.name}</td>
-                  <td>{p.timezone}</td>
-                  <td>{p.status === "active" ? "Activo" : "Archivado"}</td>
-                  <td>
-                    <Link href={`/admin/proyectos/${p.id}`} className="link">
-                      Miembros
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="table min-w-[520px]">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Proyecto</th>
+                  <th>Zona horaria</th>
+                  <th>Estado</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {projects.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.clientName}</td>
+                    <td>{p.name}</td>
+                    <td>{p.timezone}</td>
+                    <td>{p.status === "active" ? "Activo" : "Archivado"}</td>
+                    <td>
+                      <Link href={`/admin/proyectos/${p.id}`} className="link">
+                        Miembros
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         <h3 className="mt-2 font-medium">Nuevo proyecto</h3>
         {clients.length === 0 ? (

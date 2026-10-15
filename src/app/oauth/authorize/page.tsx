@@ -24,7 +24,7 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
       <div className="card flex flex-col gap-4">
         <h1 className="h1">Conectar con Claude</h1>
         {!check.ok ? (
-          <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+          <p role="alert" className="error-box">
             {check.message}
           </p>
         ) : (

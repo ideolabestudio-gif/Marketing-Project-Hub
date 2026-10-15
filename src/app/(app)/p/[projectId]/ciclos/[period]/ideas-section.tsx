@@ -52,7 +52,7 @@ export async function IdeasSection({
         </ActionForm>
       )}
       {drafts.map((g) => (
-        <div key={g.id} className="flex flex-col gap-2 rounded-md border border-violet-200 p-3">
+        <div key={g.id} className="ai-box">
           <AiGenerationMeta generation={g} tz={tz} />
           <pre className="whitespace-pre-wrap font-sans text-sm">{g.output}</pre>
           {hasPermission(ctx, "ai.generate") && (
@@ -83,7 +83,7 @@ export async function IdeasSection({
               <li key={g.id} className="flex flex-col gap-1">
                 <AiGenerationMeta generation={g} tz={tz} />
                 {g.status === "failed" ? (
-                  <p className="text-red-700">{g.error}</p>
+                  <p className="text-danger">{g.error}</p>
                 ) : (
                   <pre className="whitespace-pre-wrap font-sans text-muted">{g.output}</pre>
                 )}

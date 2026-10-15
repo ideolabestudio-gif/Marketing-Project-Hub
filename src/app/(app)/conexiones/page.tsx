@@ -19,7 +19,7 @@ export default async function ConnectionsPage() {
         <p>
           En claude.ai, abre Ajustes › Conectores › Añadir conector personalizado y pega esta dirección:
         </p>
-        <code className="rounded-md bg-background p-2">{oauthUrls().resource}</code>
+        <code className="tile break-all p-2">{oauthUrls().resource}</code>
         <p className="text-muted">
           Claude solo verá los proyectos de los que eres miembro y solo podrá dejar borradores: nada se aprueba,
           publica ni envía desde Claude.

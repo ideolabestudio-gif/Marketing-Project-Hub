@@ -29,13 +29,13 @@ export function AssetList({
   return (
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {assets.map((a) => (
-        <li key={a.id} className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+        <li key={a.id} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm shadow-(--shadow)">
           {a.kind === "file" && a.mimeType?.startsWith("image/") && (
             // eslint-disable-next-line @next/next/no-img-element -- archivo privado servido tras autorizar
             <img
               src={`/p/${projectId}/archivos/${a.id}`}
               alt={a.filename}
-              className="max-h-48 w-full rounded object-contain"
+              className="h-40 w-full rounded-md bg-surface-muted object-contain"
             />
           )}
           {a.kind === "file" ? (

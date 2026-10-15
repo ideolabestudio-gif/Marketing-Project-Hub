@@ -77,7 +77,7 @@ export async function CalendarPlanSection({
       )}
       {chatPrompt && (
         <details className="flex flex-col gap-3 rounded-md border border-border p-3" open={!canGenerate}>
-          <summary className="cursor-pointer text-sm font-medium">Prepararlo con tu chat de Claude (sin API)</summary>
+          <summary className="text-sm font-medium text-foreground">Prepararlo con tu chat de Claude (sin API)</summary>
           <ol className="mt-3 flex list-decimal flex-col gap-3 pl-5 text-sm">
             <li className="flex flex-col gap-2">
               Copia este texto y pégalo en un chat nuevo de Claude. Puedes añadir al final lo que quieras («3 posts por
@@ -103,7 +103,7 @@ export async function CalendarPlanSection({
         const proposals = g.plan?.proposals ?? [];
         const discarded = g.plan?.discarded ?? 0;
         return (
-          <div key={g.id} className="flex flex-col gap-3 rounded-md border border-violet-200 p-3">
+          <div key={g.id} className="ai-box gap-3">
             <AiGenerationMeta generation={g} tz={tz} />
             {discarded > 0 && (
               <p className="text-sm text-muted">
@@ -181,7 +181,7 @@ export async function CalendarPlanSection({
               <li key={g.id} className="flex flex-col gap-1">
                 <AiGenerationMeta generation={g} tz={tz} />
                 {g.status === "failed" ? (
-                  <p className="text-red-700">{g.error}</p>
+                  <p className="text-danger">{g.error}</p>
                 ) : (
                   <ul className="text-muted">
                     {(g.plan?.proposals ?? []).map((p) => (

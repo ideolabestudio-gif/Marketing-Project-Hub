@@ -54,7 +54,7 @@ export async function AiSection({
       {drafts.map((g) => {
         const email = isEmail ? splitEmailDraft(g.output) : null;
         return (
-          <div key={g.id} className="flex flex-col gap-2 rounded-md border border-violet-200 p-3">
+          <div key={g.id} className="ai-box">
             <AiGenerationMeta generation={g} tz={tz} />
             {canEditContent ? (
               <ActionForm
@@ -78,13 +78,13 @@ export async function AiSection({
                   Texto (puedes editarlo antes de guardarlo)
                   <textarea
                     name="body"
-                    className="input min-h-40 font-mono text-sm"
+                    className="input min-h-40 leading-relaxed"
                     defaultValue={email ? email.body : g.output}
                   />
                 </label>
               </ActionForm>
             ) : (
-              <pre className="whitespace-pre-wrap rounded-md bg-background p-3 font-sans text-sm">{g.output}</pre>
+              <pre className="tile font-sans text-sm leading-relaxed whitespace-pre-wrap">{g.output}</pre>
             )}
             {hasPermission(ctx, "ai.generate") && (
               <ActionForm
@@ -107,7 +107,7 @@ export async function AiSection({
               <li key={g.id} className="flex flex-col gap-1">
                 <AiGenerationMeta generation={g} tz={tz} />
                 {g.status === "failed" ? (
-                  <p className="text-red-700">{g.error}</p>
+                  <p className="text-danger">{g.error}</p>
                 ) : (
                   <pre className="whitespace-pre-wrap font-sans text-muted">{g.output}</pre>
                 )}

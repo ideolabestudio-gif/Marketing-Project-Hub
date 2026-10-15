@@ -23,15 +23,17 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
       <section className="card flex flex-col gap-3">
         <h2 className="h2">General</h2>
         <ActionForm action={updateSettingsAction.bind(null, projectId)} submitLabel="Guardar" className="grid gap-3">
-          <label className="field">
-            Zona horaria
-            <input name="timezone" defaultValue={project.timezone} className="input" required />
-          </label>
-          <label className="field">
-            Idioma
-            <input name="locale" defaultValue={project.locale} className="input" required />
-          </label>
-          <label className="flex items-start gap-2 text-sm">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="field">
+              Zona horaria
+              <input name="timezone" defaultValue={project.timezone} className="input" required />
+            </label>
+            <label className="field">
+              Idioma
+              <input name="locale" defaultValue={project.locale} className="input" required />
+            </label>
+          </div>
+          <label className="tile flex cursor-pointer items-start gap-3 text-sm">
             <input type="checkbox" name="soloMode" defaultChecked={project.soloMode} />
             <span>
               Trabajo en solitario
@@ -41,7 +43,9 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
               </span>
             </span>
           </label>
-          <label className={`flex items-start gap-2 text-sm ${project.soloMode ? "opacity-60" : ""}`}>
+          <label
+            className={`tile flex cursor-pointer items-start gap-3 text-sm ${project.soloMode ? "opacity-60" : ""}`}
+          >
             <input
               type="checkbox"
               name="requireClientApproval"
@@ -55,7 +59,9 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
               </span>
             </span>
           </label>
-          <label className={`flex items-start gap-2 text-sm ${project.soloMode ? "opacity-60" : ""}`}>
+          <label
+            className={`tile flex cursor-pointer items-start gap-3 text-sm ${project.soloMode ? "opacity-60" : ""}`}
+          >
             <input
               type="checkbox"
               name="separationOfDuties"
@@ -78,7 +84,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
           generar el texto, y todo lo que produce queda marcado y necesita revisión humana. No publica ni envía nada.
         </p>
         {!ai.configured && (
-          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="notice">
             El servidor no tiene configurado un proveedor de IA (variables AI_PROVIDER y ANTHROPIC_API_KEY). Puedes
             dejarlo activado, pero no se podrá generar nada hasta configurarlo.
           </p>
@@ -111,41 +117,49 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Canales</h2>
         <p className="text-sm text-muted">
-          Todos los canales funcionan en modo manual. Las integraciones (Metricool, MailerLite) se
-          activarán solo tras verificar sus capacidades.
+          Todos los canales funcionan en modo manual. Las integraciones (Metricool, MailerLite) se activarán solo tras
+          verificar sus capacidades.
         </p>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Canal</th>
-              <th>Plataforma</th>
-              <th>Cuenta / lista</th>
-              <th>Estado</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {channels.map((c) => (
-              <tr key={c.id}>
-                <td>{c.displayName}</td>
-                <td>{PLATFORMS[c.platform as keyof typeof PLATFORMS]?.label ?? c.platform}</td>
-                <td>{c.handle ?? "—"}</td>
-                <td>{c.isActive ? "Activo" : "Inactivo"}</td>
-                <td>
-                  <ActionForm
-                    action={setChannelActiveAction.bind(null, projectId, c.id, !c.isActive)}
-                    submitLabel={c.isActive ? "Desactivar" : "Activar"}
-                    variant="secondary"
-                  >
-                    {null}
-                  </ActionForm>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table min-w-[560px]">
+            <thead>
+              <tr>
+                <th>Canal</th>
+                <th>Plataforma</th>
+                <th>Cuenta / lista</th>
+                <th>Estado</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <h3 className="mt-2 font-medium">Añadir canal</h3>
-        <ActionForm action={createChannelAction.bind(null, projectId)} submitLabel="Añadir">
+            </thead>
+            <tbody>
+              {channels.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.displayName}</td>
+                  <td>{PLATFORMS[c.platform as keyof typeof PLATFORMS]?.label ?? c.platform}</td>
+                  <td>{c.handle ?? "—"}</td>
+                  <td>
+                    <span className="badge">{c.isActive ? "Activo" : "Inactivo"}</span>
+                  </td>
+                  <td>
+                    <ActionForm
+                      action={setChannelActiveAction.bind(null, projectId, c.id, !c.isActive)}
+                      submitLabel={c.isActive ? "Desactivar" : "Activar"}
+                      variant="secondary"
+                    >
+                      {null}
+                    </ActionForm>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ActionForm
+          action={createChannelAction.bind(null, projectId)}
+          submitLabel="Añadir"
+          className="tile flex flex-wrap items-end gap-3"
+        >
+          <h3 className="eyebrow w-full">Añadir canal</h3>
           <label className="field">
             Plataforma
             <select name="platform" className="input" required>

@@ -44,7 +44,7 @@ const SOLO_DRAFT_STEP =
 function MissingPermission({ ctx, permission, what }: { ctx: ProjectContext; permission: Permission; what: string }) {
   const roles = ROLES.filter((r) => can(r, permission)).map((r) => `«${ROLE_LABELS[r]}»`);
   return (
-    <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+    <p className="notice">
       Solo puede {what} quien tenga en este proyecto el rol {roles.join(" o ")}. Tu rol es «{ROLE_LABELS[ctx.role]}».
       Una persona administradora puede cambiarlo en Administración › Proyectos.
     </p>
@@ -110,7 +110,8 @@ export function ReviewSection({
   const canSubmit = open && !solo && status === "draft" && latest && hasPermission(ctx, "content.write");
   const canDecideInternal = open && status === "in_review" && latest && hasPermission(ctx, "approval.internal");
   const blockedBySod = review.separationOfDuties && review.isAuthorOfLatest;
-  const canRecordClient = open && status === "awaiting_client" && latest && hasPermission(ctx, "approval.client.record");
+  const canRecordClient =
+    open && status === "awaiting_client" && latest && hasPermission(ctx, "approval.client.record");
   const canPublish = open && status === "approved" && latest && hasPermission(ctx, "publish");
   const canManageScheduled = open && active?.status === "scheduled" && hasPermission(ctx, "publish");
   const nowWall = utcToWallTime(new Date(), tz);
@@ -228,7 +229,7 @@ export function ReviewSection({
       )}
 
       {canPublish && (
-        <div className="flex flex-col gap-2 rounded-md bg-background p-3">
+        <div className="flex flex-col gap-2 tile">
           <p className="text-sm">
             El Hub no publica nada por sí mismo. Publica o programa la versión v{latest.versionNo} en la herramienta
             habitual (Metricool, MailerLite…) y registra aquí lo que has hecho.
@@ -263,7 +264,7 @@ export function ReviewSection({
       )}
 
       {active && (
-        <div className="flex flex-col gap-2 rounded-md bg-background p-3 text-sm">
+        <div className="flex flex-col gap-2 tile text-sm">
           <p>
             <strong>{active.status === "published" ? "Publicada" : "Programada"}</strong>{" "}
             {active.status === "published" && active.publishedAt && formatInZone(active.publishedAt, tz)}
@@ -314,34 +315,38 @@ export function ReviewSection({
       {review.events.length > 0 && (
         <div>
           <h3 className="mb-2 text-sm font-medium">Historial de revisión</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Versión</th>
-                <th>Qué</th>
-                <th>Quién</th>
-                <th>Detalle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {review.events.map((e) => (
-                <tr key={e.id}>
-                  <td className="whitespace-nowrap">{formatInZone(e.createdAt, tz)}</td>
-                  <td>v{e.versionNo}</td>
-                  <td>{EVENT_LABELS[`${e.stage}:${e.decision}`]}</td>
-                  <td>
-                    {e.actorName ?? e.actorEmail}
-                    {e.clientApproverName && <span className="block text-muted">Cliente: {e.clientApproverName}</span>}
-                  </td>
-                  <td className="whitespace-pre-wrap">
-                    {e.evidence && <span className="block">Evidencia: {e.evidence}</span>}
-                    {e.comment}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="table min-w-[520px]">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Versión</th>
+                  <th>Qué</th>
+                  <th>Quién</th>
+                  <th>Detalle</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {review.events.map((e) => (
+                  <tr key={e.id}>
+                    <td className="whitespace-nowrap">{formatInZone(e.createdAt, tz)}</td>
+                    <td>v{e.versionNo}</td>
+                    <td>{EVENT_LABELS[`${e.stage}:${e.decision}`]}</td>
+                    <td>
+                      {e.actorName ?? e.actorEmail}
+                      {e.clientApproverName && (
+                        <span className="block text-muted">Cliente: {e.clientApproverName}</span>
+                      )}
+                    </td>
+                    <td className="whitespace-pre-wrap">
+                      {e.evidence && <span className="block">Evidencia: {e.evidence}</span>}
+                      {e.comment}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -350,7 +355,10 @@ export function ReviewSection({
           Programaciones canceladas:{" "}
           {review.publications
             .filter((p) => p.publication.status === "cancelled")
-            .map((p) => `v${p.versionNo} (${p.publication.cancelledAt ? formatInZone(p.publication.cancelledAt, tz) : ""})`)
+            .map(
+              (p) =>
+                `v${p.versionNo} (${p.publication.cancelledAt ? formatInZone(p.publication.cancelledAt, tz) : ""})`,
+            )
             .join(", ")}
         </p>
       )}

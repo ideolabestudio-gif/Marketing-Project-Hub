@@ -12,7 +12,8 @@ test("un usuario recorre su proyecto y no puede entrar al de otro cliente cambia
   await context.addCookies([{ name: "mph_session", value: s.tokens.ana, url: baseURL! }]);
 
   await page.goto("/");
-  await page.getByRole("link", { name: new RegExp(`Proyecto ${MARKER_A}`) }).click();
+  // La tarjeta del proyecto (el panel de inicio también enlaza tareas que mencionan el proyecto).
+  await page.locator(`a[href="/p/${s.projectA}"]`).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(MARKER_A);
 
   await page.getByRole("link", { name: /octubre/i }).click();

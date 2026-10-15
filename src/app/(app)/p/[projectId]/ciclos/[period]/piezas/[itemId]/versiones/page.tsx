@@ -41,39 +41,39 @@ export default async function VersionsPage({
       </div>
 
       <section className="card">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Versión</th>
-              <th>Fecha</th>
-              <th>Autor</th>
-              <th>Nota</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {versions.map((v) => (
-              <tr key={v.id}>
-                <td className="whitespace-nowrap">
-                  v{v.versionNo}
-                  {v.origin === "ai_assisted" && (
-                    <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-900">IA</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap">{formatInZone(v.createdAt, project.timezone)}</td>
-                <td>{v.authorName ?? v.authorEmail}</td>
-                <td>{v.note ?? "—"}</td>
-                <td className="whitespace-nowrap">
-                  {v.versionNo > 1 && (
-                    <Link href={`?de=${v.versionNo - 1}&a=${v.versionNo}`} className="link">
-                      Ver cambios
-                    </Link>
-                  )}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="table min-w-[520px]">
+            <thead>
+              <tr>
+                <th>Versión</th>
+                <th>Fecha</th>
+                <th>Autor</th>
+                <th>Nota</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {versions.map((v) => (
+                <tr key={v.id}>
+                  <td className="whitespace-nowrap">
+                    v{v.versionNo}
+                    {v.origin === "ai_assisted" && <span className="badge-ai ml-2">IA</span>}
+                  </td>
+                  <td className="whitespace-nowrap">{formatInZone(v.createdAt, project.timezone)}</td>
+                  <td>{v.authorName ?? v.authorEmail}</td>
+                  <td>{v.note ?? "—"}</td>
+                  <td className="whitespace-nowrap">
+                    {v.versionNo > 1 && (
+                      <Link href={`?de=${v.versionNo - 1}&a=${v.versionNo}`} className="link">
+                        Ver cambios
+                      </Link>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {comparison && (
@@ -88,14 +88,14 @@ export default async function VersionsPage({
                 <h3 className="text-sm font-medium">
                   {f.label} {!f.changed && <span className="text-muted">(sin cambios)</span>}
                 </h3>
-                <pre className="whitespace-pre-wrap rounded-md bg-background p-3 font-sans text-sm">
+                <pre className="tile font-sans text-sm leading-relaxed whitespace-pre-wrap">
                   {f.parts.map((p, i) =>
                     p.added ? (
-                      <ins key={i} className="bg-green-200 text-green-950 no-underline">
+                      <ins key={i} className="rounded-sm bg-diff-add text-diff-add-ink no-underline">
                         {p.value}
                       </ins>
                     ) : p.removed ? (
-                      <del key={i} className="bg-red-200 text-red-950">
+                      <del key={i} className="rounded-sm bg-diff-del text-diff-del-ink">
                         {p.value}
                       </del>
                     ) : (

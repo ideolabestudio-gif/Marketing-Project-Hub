@@ -4,6 +4,7 @@ import { ActionForm } from "@/components/action-form";
 import { AssetList } from "@/components/asset-list";
 import { ChannelFormatSelect } from "@/components/channel-format-select";
 import { CopyButton } from "@/components/copy-button";
+import { StatusPill } from "@/components/status-pill";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
@@ -12,7 +13,6 @@ import { formatLabel } from "@/modules/content/formats";
 import { buildMetricoolHandoff } from "@/modules/content/metricool-handoff";
 import { getItemDetail, LIBRARY_CATEGORIES, listLibrary } from "@/modules/content/service";
 import { getProject, listChannels } from "@/modules/projects/service";
-import { WORKFLOW_LABELS } from "@/modules/review/domain";
 import { getItemReview, isLocked } from "@/modules/review/service";
 import {
   addCommentAction,
@@ -70,15 +70,15 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           ← Plan del mes
         </Link>
         <h1 className={`h1 mt-1 ${cancelled ? "line-through opacity-60" : ""}`}>{item.title}</h1>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <span className="badge">{WORKFLOW_LABELS[review.status]}</span>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <StatusPill status={review.status} />
           <span className="badge">
             {item.channelName} · {formatLabel(item.format)}
           </span>
           <span className="badge">{item.plannedAt ? formatInZone(item.plannedAt, tz) : "Sin fecha"}</span>
           <span className="badge">{current ? `Versión ${current.versionNo}` : "Sin versiones"}</span>
           {item.aiGenerationId && (
-            <span className="rounded bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">
+            <span className="badge-ai">
               Propuesta por IA en el calendario
             </span>
           )}
@@ -103,7 +103,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             la publicación en Metricool como pendiente de revisión. Revísala, añade las imágenes o vídeos, prográmala tú
             allí y después registra aquí la programación.
           </p>
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-background p-3 text-xs">
+          <pre className="tile max-h-64 overflow-auto text-xs whitespace-pre-wrap">
             {metricoolText}
           </pre>
           <CopyButton text={metricoolText} label="Copiar para Metricool" />
@@ -111,7 +111,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
       )}
 
       <section className="card flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="h2">Contenido {current && <span className="text-muted">· v{current.versionNo}</span>}</h2>
           {versions.length > 0 && (
             <Link href={`${cycleUrl}/piezas/${item.id}/versiones`} className="link text-sm">
@@ -120,7 +120,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           )}
         </div>
         {canEditContent && editVoidsApproval && (
-          <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="notice">
             Esta versión ya está en revisión o aprobada. Si guardas cambios se creará una versión nueva y habrá que
             volver a revisarla y aprobarla.
           </p>
@@ -151,7 +151,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             )}
             <label className="field">
               {isEmail ? "Cuerpo del email" : "Copy"}
-              <textarea name="body" className="input min-h-48 font-mono text-sm" defaultValue={current?.body ?? ""} />
+              <textarea name="body" className="input min-h-48 leading-relaxed" defaultValue={current?.body ?? ""} />
             </label>
             <label className="field">
               Enlace de destino (opcional)
@@ -171,7 +171,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
                 <span className="text-muted">Preencabezado:</span> {current.emailPreheader || "—"}
               </p>
             )}
-            <pre className="whitespace-pre-wrap rounded-md bg-background p-3 font-sans">{current.body || "—"}</pre>
+            <pre className="tile font-sans leading-relaxed whitespace-pre-wrap">{current.body || "—"}</pre>
             {current.linkUrl && <p className="break-all text-muted">Enlace: {current.linkUrl}</p>}
           </div>
         ) : (
@@ -209,9 +209,14 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           }
         />
         {canEditContent && (
-          <div className="grid gap-4 md:grid-cols-2">
-            <ActionForm action={uploadAssetAction.bind(null, projectId, item.id)} submitLabel="Subir">
-              <label className="field">
+          <div className="grid gap-3 md:grid-cols-2">
+            <ActionForm
+              action={uploadAssetAction.bind(null, projectId, item.id)}
+              submitLabel="Subir"
+              className="tile flex min-w-0 flex-col items-start gap-3"
+            >
+              <h3 className="eyebrow">Subir archivo</h3>
+              <label className="field w-full">
                 Archivo ({ALLOWED_DESCRIPTION})
                 <input
                   type="file"
@@ -222,12 +227,17 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
                 />
               </label>
             </ActionForm>
-            <ActionForm action={addLinkAction.bind(null, projectId, item.id)} submitLabel="Añadir enlace">
-              <label className="field">
+            <ActionForm
+              action={addLinkAction.bind(null, projectId, item.id)}
+              submitLabel="Añadir enlace"
+              className="tile flex min-w-0 flex-col items-start gap-3"
+            >
+              <h3 className="eyebrow">Añadir enlace</h3>
+              <label className="field w-full">
                 Enlace (Drive, Canva…)
                 <input type="url" name="url" className="input" required />
               </label>
-              <label className="field">
+              <label className="field w-full">
                 Nombre
                 <input name="label" className="input" />
               </label>
@@ -244,8 +254,12 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
               .
             </p>
           ) : (
-            <ActionForm action={attachLibraryItemAction.bind(null, projectId, item.id)} submitLabel="Añadir a la pieza">
-              <label className="field grow">
+            <ActionForm
+              action={attachLibraryItemAction.bind(null, projectId, item.id)}
+              submitLabel="Añadir a la pieza"
+              className="tile flex flex-wrap items-end gap-3"
+            >
+              <label className="field min-w-0 grow basis-64">
                 Desde la biblioteca del cliente
                 <select name="libraryItemId" className="input" required>
                   {library.map((m) => (
@@ -269,9 +283,9 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
         ) : (
           <ul className="flex flex-col gap-3 text-sm">
             {comments.map((c) => (
-              <li key={c.id} className="rounded-md bg-background p-3">
+              <li key={c.id} className="tile">
                 <div className="text-xs text-muted">
-                  {c.authorName ?? c.authorEmail} · {formatInZone(c.createdAt, tz)}
+                  <span className="font-medium text-foreground">{c.authorName ?? c.authorEmail}</span> · {formatInZone(c.createdAt, tz)}
                   {c.versionNo && ` · sobre v${c.versionNo}`}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{c.body}</p>

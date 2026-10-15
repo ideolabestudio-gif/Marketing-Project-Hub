@@ -21,7 +21,7 @@ export function ActionForm({ action, children, submitLabel, className, variant =
         {pending ? "…" : submitLabel}
       </button>
       {state?.message && (
-        <p role="status" className={state.ok ? "text-sm text-green-700" : "text-sm text-red-700"}>
+        <p role="status" className={state.ok ? "text-sm text-success" : "text-sm text-danger"}>
           {state.message}
         </p>
       )}
