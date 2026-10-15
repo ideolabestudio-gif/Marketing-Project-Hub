@@ -56,7 +56,7 @@ export default async function HomePage() {
       {projects.length > 0 && (
         <>
           <ul className="grid gap-4 sm:grid-cols-3">
-            <StatTile href="#semana" value={dueThisWeek} label="Vencen esta semana">
+            <StatTile href="#semana" value={dueThisWeek} label="Vencen esta semana" linked={week.length > 0}>
               {overdue.length > 0 ? (
                 <span className="font-medium text-danger">
                   {overdue.length} {overdue.length === 1 ? "atrasada" : "atrasadas"} de antes
@@ -221,8 +221,33 @@ export default async function HomePage() {
   );
 }
 
-function StatTile(props: { href: string; value: number; label: string; accent?: boolean; children: React.ReactNode }) {
+/** Contador del inicio. Solo es un enlace si hay algo que ver en su sección: con 0 no lleva a nada. */
+function StatTile(props: {
+  href: string;
+  value: number;
+  label: string;
+  accent?: boolean;
+  linked?: boolean;
+  children: React.ReactNode;
+}) {
   const highlighted = props.accent && props.value > 0;
+  const linked = props.linked ?? props.value > 0;
+  const content = (
+    <>
+      <span className={`text-3xl font-semibold tracking-tight ${highlighted ? "text-accent-ink" : ""}`}>
+        {props.value}
+      </span>
+      <span className="text-sm font-medium">{props.label}</span>
+      <span className="text-xs text-muted first-letter:uppercase">{props.children}</span>
+    </>
+  );
+  if (!linked) {
+    return (
+      <li>
+        <div className="card flex h-full flex-col gap-1 p-5">{content}</div>
+      </li>
+    );
+  }
   return (
     <li>
       <a
@@ -231,11 +256,10 @@ function StatTile(props: { href: string; value: number; label: string; accent?: 
           highlighted ? "border-accent/40 bg-accent-soft" : "hover:border-accent/40"
         }`}
       >
-        <span className={`text-3xl font-semibold tracking-tight ${highlighted ? "text-accent-ink" : ""}`}>
-          {props.value}
+        {content}
+        <span className="mt-1 text-xs font-medium text-accent">
+          Ver {props.value === 1 ? "cuál" : "cuáles"} <span aria-hidden>↓</span>
         </span>
-        <span className="text-sm font-medium">{props.label}</span>
-        <span className="text-xs text-muted first-letter:uppercase">{props.children}</span>
       </a>
     </li>
   );
