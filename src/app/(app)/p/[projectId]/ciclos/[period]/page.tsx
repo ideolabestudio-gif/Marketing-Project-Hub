@@ -10,6 +10,7 @@ import { listItems } from "@/modules/content/service";
 import { CYCLE_STATUS_LABELS, getCycleByPeriod, SELECTABLE_STATUSES } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { getReport } from "@/modules/reports/service";
+import { STATUS_STYLES } from "@/components/status-pill";
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
 import { listCycleStatuses } from "@/modules/review/service";
 import { CalendarPlanSection } from "./calendar-plan-section";
@@ -17,19 +18,6 @@ import { IdeasSection } from "./ideas-section";
 import { closeCycleAction, createItemAction, reopenCycleAction, setStatusAction, updateBriefAction } from "./actions";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
-/** Color de cada pieza en el calendario según su estado. */
-const STATUS_STYLES: Record<WorkflowStatus, string> = {
-  idea: "bg-background border border-border",
-  draft: "bg-background border border-border",
-  in_review: "bg-amber-100 text-amber-950",
-  awaiting_client: "bg-amber-100 text-amber-950",
-  changes_requested: "bg-red-100 text-red-950",
-  approved: "bg-sky-100 text-sky-950",
-  scheduled: "bg-indigo-100 text-indigo-950",
-  published: "bg-green-100 text-green-950",
-  cancelled: "bg-background border border-border line-through opacity-60",
-};
 
 export default async function CyclePage({ params, searchParams }: PageProps<"/p/[projectId]/ciclos/[period]">) {
   const { projectId, period } = await params;

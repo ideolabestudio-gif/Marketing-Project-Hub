@@ -10,6 +10,7 @@ import {
   decideInternal,
   getItemReview,
   listMyPendingWork,
+  listMyWeek,
   markPublished,
   recordClientDecision,
   recordPublication,
@@ -309,5 +310,38 @@ describe("pendiente de mí", () => {
     // La programación vencida pide confirmar la publicación.
     const later = await listMyPendingWork(fx.actors.ana, new Date("2026-10-21T00:00:00Z"));
     expect(later.find((p) => p.itemId === fx.reviewA.scheduled.item.id)?.action).toBe("confirm");
+  });
+});
+
+describe("esta semana", () => {
+  it("muestra lo que vence de lunes a domingo y lo atrasado, solo de mis proyectos", async () => {
+    // Jueves 15 de octubre: semana del 12 al 18.
+    const thursday = new Date("2026-10-15T09:00:00Z");
+    const week = await listMyWeek(fx.actors.ana, thursday);
+    expect(week.every((w) => w.projectId === fx.projectA.id)).toBe(true);
+    expect(JSON.stringify(week)).not.toContain("BETA-SECRET");
+    // La pieza del día 5 sigue en borrador: está atrasada. La programada del 20 es de la semana siguiente.
+    expect(week.map((w) => [w.itemId, w.overdue])).toEqual([[fx.contentA.item.id, true]]);
+    expect(week[0].channelName).toBe(fx.channelA.displayName);
+
+    // Lunes 19: la programada del 20 entra en la semana y no está atrasada (ya está en Metricool).
+    const monday = await listMyWeek(fx.actors.ana, new Date("2026-10-19T08:00:00Z"));
+    expect(monday.map((w) => [w.itemId, w.overdue])).toEqual([
+      [fx.contentA.item.id, true],
+      [fx.reviewA.scheduled.item.id, false],
+    ]);
+    // Ni siquiera atrasada sale si ya está programada (21 de octubre, después de la fecha).
+    const later = await listMyWeek(fx.actors.ana, new Date("2026-10-21T08:00:00Z"));
+    expect(later.find((w) => w.itemId === fx.reviewA.scheduled.item.id)?.overdue).toBe(false);
+
+    // Rob solo es miembro de B.
+    const rob = await listMyWeek(fx.actors.rob, new Date("2026-10-19T08:00:00Z"));
+    expect(rob.length).toBeGreaterThan(0);
+    expect(rob.every((w) => w.projectId === fx.projectB.id)).toBe(true);
+  });
+
+  it("no incluye piezas sin fecha ni de semanas futuras", async () => {
+    const week = await listMyWeek(fx.actors.ana, new Date("2026-10-01T09:00:00Z"));
+    expect(week).toEqual([]);
   });
 });

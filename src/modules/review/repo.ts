@@ -168,10 +168,14 @@ export async function listWorkflowRows(ctx: ProjectContext, opts: { cycleId?: st
       title: contentItems.title,
       baseStatus: contentItems.status,
       plannedAt: contentItems.plannedAt,
+      format: contentItems.format,
+      channelName: channels.displayName,
+      channelKind: channels.kind,
       period: cycles.period,
     })
     .from(contentItems)
     .innerJoin(cycles, and(eq(cycles.projectId, contentItems.projectId), eq(cycles.id, contentItems.cycleId)))
+    .innerJoin(channels, and(eq(channels.projectId, contentItems.projectId), eq(channels.id, contentItems.channelId)))
     .where(
       and(
         eq(contentItems.projectId, ctx.projectId),

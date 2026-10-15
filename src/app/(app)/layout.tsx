@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/85 backdrop-blur">
-        <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6 py-2.5 text-sm">
+        <nav className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-6 py-2.5 text-sm whitespace-nowrap">
           <Link href="/" className="mr-4 flex items-center gap-2.5 font-semibold tracking-tight">
             <span
               aria-hidden
@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             >
               MH
             </span>
-            Marketing Project Hub
+            <span className="hidden md:inline">Marketing Project Hub</span>
           </Link>
           <Link href="/" className="nav-link">
             Mis proyectos

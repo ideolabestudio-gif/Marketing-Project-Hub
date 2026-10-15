@@ -126,3 +126,24 @@ export function previousPeriod(period: string): string {
   const mo = Number(m[2]);
   return mo === 1 ? `${y - 1}-12` : `${y}-${pad(mo - 1)}`;
 }
+
+/** Suma días a un día AAAA-MM-DD (sin zona: es una fecha de calendario). */
+export function addDays(day: string, days: number): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Lunes y domingo de la semana a la que pertenece un día AAAA-MM-DD. */
+export function weekOf(day: string): { start: string; end: string } {
+  const weekday = (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7; // lunes = 0
+  const start = addDays(day, -weekday);
+  return { start, end: addDays(start, 6) };
+}
+
+/** Día AAAA-MM-DD legible, p. ej. "jueves, 15 de octubre". */
+export function formatDay(day: string, locale = "es-ES"): string {
+  return new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(
+    new Date(`${day}T12:00:00Z`),
+  );
+}
