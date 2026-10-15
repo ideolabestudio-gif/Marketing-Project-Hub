@@ -8,23 +8,29 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const actor = await requireActor();
   return (
     <div className="min-h-full">
-      <header className="border-b border-border bg-surface">
-        <nav className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3 text-sm">
-          <Link href="/" className="font-semibold">
+      <header className="sticky top-0 z-20 border-b border-border bg-surface/85 backdrop-blur">
+        <nav className="mx-auto flex max-w-6xl items-center gap-1 px-6 py-2.5 text-sm">
+          <Link href="/" className="mr-4 flex items-center gap-2.5 font-semibold tracking-tight">
+            <span
+              aria-hidden
+              className="grid size-7 place-items-center rounded-lg bg-accent text-xs font-bold text-on-accent shadow-(--shadow)"
+            >
+              MH
+            </span>
             Marketing Project Hub
           </Link>
-          <Link href="/" className="link">
+          <Link href="/" className="nav-link">
             Mis proyectos
           </Link>
-          <Link href="/conexiones" className="link">
+          <Link href="/conexiones" className="nav-link">
             Conexiones
           </Link>
           {actor.isAdmin && (
-            <Link href="/admin" className="link">
+            <Link href="/admin" className="nav-link">
               Administración
             </Link>
           )}
-          <span className="ml-auto text-muted">{actor.email}</span>
+          <span className="mr-3 ml-auto hidden text-muted sm:inline">{actor.email}</span>
           <form action={logoutAction}>
             <button type="submit" className="btn btn-secondary">
               Salir

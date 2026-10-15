@@ -19,18 +19,26 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const message = typeof error === "string" ? ERRORS[error] ?? "No se pudo iniciar sesión." : null;
 
   return (
-    <main className="mx-auto mt-24 max-w-sm">
-      <div className="card flex flex-col gap-4">
-        <h1 className="h1">Marketing Project Hub</h1>
-        <p className="text-sm text-muted">Acceso solo para el equipo de Ideolab.</p>
+    <main className="flex min-h-screen items-center justify-center px-6">
+      <div className="card flex w-full max-w-sm flex-col gap-5 p-8">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span
+            aria-hidden
+            className="grid size-12 place-items-center rounded-xl bg-accent text-base font-bold text-on-accent shadow-(--shadow)"
+          >
+            MH
+          </span>
+          <h1 className="h1">Marketing Project Hub</h1>
+          <p className="text-sm text-muted">Acceso solo para el equipo de Ideolab.</p>
+        </div>
         {message && (
-          <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+          <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
             {message}
           </p>
         )}
         <a
           href={next ? `/auth/google?next=${encodeURIComponent(next)}` : "/auth/google"}
-          className="btn btn-primary justify-center"
+          className="btn btn-primary justify-center py-2.5"
         >
           Entrar con Google
         </a>

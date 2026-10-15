@@ -1,55 +1,115 @@
 @import "tailwindcss";
 
+/*
+ * Estilo visual del Hub. Todo sale de estas variables: cambiar un color aquí
+ * lo cambia en toda la app (claro y oscuro).
+ */
 :root {
-  --background: #f7f7f8;
+  --background: #f5f4f1;
   --surface: #ffffff;
-  --foreground: #1c1c1f;
-  --muted: #6b6b73;
-  --border: #e3e3e8;
-  --accent: #3b3bd1;
+  --surface-muted: #faf9f7;
+  --foreground: #1d1b22;
+  --muted: #6c6875;
+  --border: #e6e3de;
+  --border-strong: #d3cfc8;
+  --accent: #4a3fd6;
+  --accent-hover: #3b31b8;
+  --accent-soft: #eeecfd;
+  --accent-ink: #2f2696;
+  --on-accent: #ffffff;
+  --danger: #b4232f;
+  --danger-soft: #fdecec;
+  --ring: rgb(74 63 214 / 0.35);
+  --shadow: 0 1px 2px rgb(29 27 34 / 0.04), 0 1px 3px rgb(29 27 34 / 0.06);
+  --shadow-hover: 0 4px 12px rgb(29 27 34 / 0.08), 0 1px 3px rgb(29 27 34 / 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #121214;
-    --surface: #1b1b1f;
-    --foreground: #ececef;
-    --muted: #9c9ca6;
-    --border: #2d2d33;
-    --accent: #8f8fff;
+    --background: #131217;
+    --surface: #1c1b22;
+    --surface-muted: #18171d;
+    --foreground: #ecebf0;
+    --muted: #9d99a8;
+    --border: #2e2c36;
+    --border-strong: #403d4a;
+    --accent: #9a91ff;
+    --accent-hover: #b0a9ff;
+    --accent-soft: #29264a;
+    --accent-ink: #cdc8ff;
+    --on-accent: #16132f;
+    --danger: #ff8a93;
+    --danger-soft: #3a1c22;
+    --ring: rgb(154 145 255 / 0.4);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-hover: 0 4px 14px rgb(0 0 0 / 0.4);
   }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 @layer components {
-  .card { @apply rounded-lg border border-border bg-surface p-5; }
-  .field { @apply flex flex-col gap-1 text-sm; }
-  .input { @apply rounded-md border border-border bg-surface px-3 py-2 text-sm; }
-  .btn { @apply inline-flex items-center rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50; }
-  .btn-primary { @apply bg-accent text-white; }
-  .btn-secondary { @apply border border-border bg-surface; }
-  .btn-danger { @apply border border-red-300 bg-surface text-red-700; }
+  .card { @apply rounded-xl border border-border bg-surface p-6 shadow-(--shadow); }
+  .field { @apply flex flex-col gap-1.5 text-sm font-medium; }
+  .field :where(input, select, textarea, span, p) { @apply font-normal; }
+  .input {
+    @apply rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm transition-colors;
+    @apply placeholder:text-muted/70 hover:border-muted/60;
+    @apply focus:border-accent focus:ring-3 focus:ring-(--ring) focus:outline-none;
+  }
+  .btn {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition;
+    @apply focus-visible:ring-3 focus-visible:ring-(--ring) focus-visible:outline-none;
+    @apply active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary { @apply bg-accent text-on-accent shadow-(--shadow) hover:bg-accent-hover; }
+  .btn-secondary { @apply border border-border-strong bg-surface hover:border-muted/60 hover:bg-surface-muted; }
+  .btn-danger { @apply border border-danger/30 bg-surface text-danger hover:bg-danger-soft; }
   .table { @apply w-full text-left text-sm; }
-  .table th { @apply border-b border-border py-2 pr-4 font-medium text-muted; }
-  .table td { @apply border-b border-border py-2 pr-4 align-middle; }
-  .badge { @apply inline-block rounded-full border border-border px-2 py-0.5 text-xs text-muted; }
-  .h1 { @apply text-2xl font-semibold; }
-  .h2 { @apply text-lg font-semibold; }
-  .link { @apply text-accent underline-offset-2 hover:underline; }
+  .table th { @apply border-b border-border py-2.5 pr-4 text-xs font-medium tracking-wide text-muted uppercase; }
+  .table td { @apply border-b border-border py-3 pr-4 align-middle; }
+  .table tbody tr:last-child td { @apply border-b-0; }
+  .table tbody tr { @apply transition-colors hover:bg-surface-muted; }
+  .badge { @apply inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-muted; }
+  .h1 { @apply text-[1.75rem] leading-tight font-semibold tracking-tight; }
+  .h2 { @apply text-lg font-semibold tracking-tight; }
+  .link { @apply rounded-sm text-accent underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-(--ring) focus-visible:outline-none; }
+  .collapsible > summary { @apply list-none; }
+  .collapsible > summary::-webkit-details-marker { display: none; }
+  .collapsible .chevron { @apply inline-block transition-transform; }
+  .collapsible:not([open]) .chevron { @apply -rotate-90; }
+  .collapsible:not([open]) { @apply py-4; }
+  .segmented { @apply inline-flex rounded-lg border border-border bg-surface-muted p-0.5 text-sm; }
+  .segmented > a { @apply rounded-md px-3 py-1 text-muted transition-colors hover:text-foreground; }
+  .segmented > a[aria-current="page"] { @apply bg-surface font-medium text-foreground shadow-(--shadow); }
+  .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink; }
 }
 
 /* Impresión / guardar como PDF: solo el contenido del informe. */

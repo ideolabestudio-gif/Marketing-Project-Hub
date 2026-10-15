@@ -14,7 +14,10 @@ export default async function HomePage() {
     <div className="flex flex-col gap-6">
       {pending.length > 0 && (
         <section className="card flex flex-col gap-3">
-          <h2 className="h2">Pendiente de mí ({pending.length})</h2>
+          <h2 className="h2 flex items-center gap-2">
+            Pendiente de mí
+            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent">{pending.length}</span>
+          </h2>
           <table className="table">
             <thead>
               <tr>
@@ -66,9 +69,9 @@ export default async function HomePage() {
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
             <li key={p.projectId}>
-              <Link href={`/p/${p.projectId}`} className="card block hover:border-accent">
+              <Link href={`/p/${p.projectId}`} className="card block h-full transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-(--shadow-hover)">
                 <div className="text-xs text-muted">{p.clientName}</div>
-                <div className="mt-1 font-semibold">{p.projectName}</div>
+                <div className="mt-1 text-base font-semibold tracking-tight">{p.projectName}</div>
                 <div className="mt-3 flex gap-2">
                   <span className="badge">{ROLE_LABELS[p.role]}</span>
                   {p.projectStatus === "archived" && <span className="badge">Archivado</span>}
