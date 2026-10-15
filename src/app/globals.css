@@ -16,6 +16,7 @@
   --accent-hover: #3b31b8;
   --accent-soft: #eeecfd;
   --accent-ink: #2f2696;
+  --on-accent: #ffffff;
   --danger: #b4232f;
   --danger-soft: #fdecec;
   --ring: rgb(74 63 214 / 0.35);
@@ -36,6 +37,7 @@
     --accent-hover: #b0a9ff;
     --accent-soft: #29264a;
     --accent-ink: #cdc8ff;
+    --on-accent: #16132f;
     --danger: #ff8a93;
     --danger-soft: #3a1c22;
     --ring: rgb(154 145 255 / 0.4);
@@ -56,6 +58,7 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
 }
@@ -86,7 +89,7 @@ body {
     @apply focus-visible:ring-3 focus-visible:ring-(--ring) focus-visible:outline-none;
     @apply active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-primary { @apply bg-accent text-white shadow-(--shadow) hover:bg-accent-hover; }
+  .btn-primary { @apply bg-accent text-on-accent shadow-(--shadow) hover:bg-accent-hover; }
   .btn-secondary { @apply border border-border-strong bg-surface hover:border-muted/60 hover:bg-surface-muted; }
   .btn-danger { @apply border border-danger/30 bg-surface text-danger hover:bg-danger-soft; }
   .table { @apply w-full text-left text-sm; }
@@ -98,6 +101,14 @@ body {
   .h1 { @apply text-[1.75rem] leading-tight font-semibold tracking-tight; }
   .h2 { @apply text-lg font-semibold tracking-tight; }
   .link { @apply rounded-sm text-accent underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-(--ring) focus-visible:outline-none; }
+  .collapsible > summary { @apply list-none; }
+  .collapsible > summary::-webkit-details-marker { display: none; }
+  .collapsible .chevron { @apply inline-block transition-transform; }
+  .collapsible:not([open]) .chevron { @apply -rotate-90; }
+  .collapsible:not([open]) { @apply py-4; }
+  .segmented { @apply inline-flex rounded-lg border border-border bg-surface-muted p-0.5 text-sm; }
+  .segmented > a { @apply rounded-md px-3 py-1 text-muted transition-colors hover:text-foreground; }
+  .segmented > a[aria-current="page"] { @apply bg-surface font-medium text-foreground shadow-(--shadow); }
   .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink; }
 }
 

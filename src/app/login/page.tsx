@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <div className="flex flex-col items-center gap-3 text-center">
           <span
             aria-hidden
-            className="grid size-12 place-items-center rounded-xl bg-accent text-base font-bold text-white shadow-(--shadow)"
+            className="grid size-12 place-items-center rounded-xl bg-accent text-base font-bold text-on-accent shadow-(--shadow)"
           >
             MH
           </span>

@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <Link href="/" className="mr-4 flex items-center gap-2.5 font-semibold tracking-tight">
             <span
               aria-hidden
-              className="grid size-7 place-items-center rounded-lg bg-accent text-xs font-bold text-white shadow-(--shadow)"
+              className="grid size-7 place-items-center rounded-lg bg-accent text-xs font-bold text-on-accent shadow-(--shadow)"
             >
               MH
             </span>

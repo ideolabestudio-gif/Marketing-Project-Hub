@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { ChannelFormatSelect } from "@/components/channel-format-select";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatPeriod, formatTimeInZone, formatInZone, monthGrid, zonedDay } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
@@ -19,15 +20,15 @@ const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 /** Color de cada pieza en el calendario según su estado. */
 const STATUS_STYLES: Record<WorkflowStatus, string> = {
-  idea: "bg-background",
-  draft: "bg-background",
+  idea: "bg-background border border-border",
+  draft: "bg-background border border-border",
   in_review: "bg-amber-100 text-amber-950",
   awaiting_client: "bg-amber-100 text-amber-950",
   changes_requested: "bg-red-100 text-red-950",
   approved: "bg-sky-100 text-sky-950",
   scheduled: "bg-indigo-100 text-indigo-950",
   published: "bg-green-100 text-green-950",
-  cancelled: "bg-background line-through opacity-60",
+  cancelled: "bg-background border border-border line-through opacity-60",
 };
 
 export default async function CyclePage({ params, searchParams }: PageProps<"/p/[projectId]/ciclos/[period]">) {
@@ -52,6 +53,8 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
   const view = vista === "lista" ? "lista" : "calendario";
   const base = `/p/${projectId}/ciclos/${period}`;
   const tz = project.timezone;
+  const today = zonedDay(new Date(), tz);
+  const briefEmpty = !cycle.objectives && !cycle.keyDates && !cycle.notes;
 
   const byDay = new Map<string, typeof items>();
   const undated: typeof items = [];
@@ -71,16 +74,16 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
             ← {project.name}
           </Link>
           <h1 className="h1 mt-1">{formatPeriod(cycle.period, project.locale)}</h1>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <span className="badge">{CYCLE_STATUS_LABELS[cycle.status]}</span>
             <span className="badge">{items.length} piezas</span>
             <span className="badge">Horario: {tz}</span>
           </div>
-          <nav className="mt-3 flex gap-4 text-sm">
-            <Link href={`${base}/metricas`} className="link">
+          <nav className="mt-4 flex flex-wrap gap-2 text-sm">
+            <Link href={`${base}/metricas`} className="btn btn-secondary">
               Métricas
             </Link>
-            <Link href={`${base}/informe`} className="link">
+            <Link href={`${base}/informe`} className="btn btn-secondary">
               Informe {report ? (reportApproved ? "(aprobado)" : "(borrador)") : "(sin crear)"}
             </Link>
           </nav>
@@ -98,7 +101,7 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
         )}
       </div>
 
-      {closed ? (
+      {closed && (
         <section className="card flex flex-col gap-3">
           <h2 className="h2">Ciclo cerrado</h2>
           <p className="text-sm text-muted">
@@ -112,97 +115,16 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
             </ActionForm>
           )}
         </section>
-      ) : (
-        canManage && (
-          <section className="card flex flex-col gap-3">
-            <h2 className="h2">Cerrar el ciclo</h2>
-            {reportApproved ? (
-              <ActionForm action={closeCycleAction.bind(null, projectId, cycle.id)} submitLabel="Cerrar ciclo" className="grid gap-3">
-                <label className="field">
-                  Aprendizajes del mes (qué funcionó, qué cambiar el mes que viene)
-                  <textarea name="learnings" className="input min-h-24" required />
-                </label>
-              </ActionForm>
-            ) : (
-              <p className="text-sm text-muted">
-                Para cerrar el mes, el <Link href={`${base}/informe`} className="link">informe</Link> tiene que estar
-                aprobado. Al cerrarlo, todo el ciclo queda en solo lectura.
-              </p>
-            )}
-          </section>
-        )
       )}
-
-      <section className="card flex flex-col gap-3">
-        <h2 className="h2">Brief del mes</h2>
-        {canManage ? (
-          <ActionForm action={updateBriefAction.bind(null, projectId, cycle.id)} submitLabel="Guardar brief" className="grid gap-3">
-            <label className="field">
-              Objetivos
-              <textarea name="objectives" className="input min-h-20" defaultValue={cycle.objectives ?? ""} />
-            </label>
-            <label className="field">
-              Fechas clave
-              <textarea name="keyDates" className="input min-h-16" defaultValue={cycle.keyDates ?? ""} />
-            </label>
-            <label className="field">
-              Notas
-              <textarea name="notes" className="input min-h-16" defaultValue={cycle.notes ?? ""} />
-            </label>
-          </ActionForm>
-        ) : (
-          <dl className="grid gap-2 text-sm">
-            <dt className="text-muted">Objetivos</dt>
-            <dd className="whitespace-pre-wrap">{cycle.objectives || "—"}</dd>
-            <dt className="text-muted">Fechas clave</dt>
-            <dd className="whitespace-pre-wrap">{cycle.keyDates || "—"}</dd>
-            <dt className="text-muted">Notas</dt>
-            <dd className="whitespace-pre-wrap">{cycle.notes || "—"}</dd>
-          </dl>
-        )}
-      </section>
-
-      {canWrite && (
-        <section className="card flex flex-col gap-3">
-          <h2 className="h2">Nueva pieza</h2>
-          {channels.some((c) => c.isActive) ? (
-            <ActionForm action={createItemAction.bind(null, projectId, cycle.id, period)} submitLabel="Crear pieza">
-              <label className="field">
-                Título interno
-                <input name="title" className="input" placeholder="Lanzamiento cerveza de otoño" required />
-              </label>
-              <label className="field">
-                Canal y formato
-                <ChannelFormatSelect channels={channels} />
-              </label>
-              <label className="field">
-                Fecha prevista ({tz})
-                <input
-                  type="datetime-local"
-                  name="plannedAt"
-                  className="input"
-                  min={`${period}-01T00:00`}
-                  max={`${period}-31T23:59`}
-                />
-              </label>
-            </ActionForm>
-          ) : (
-            <p className="text-sm text-muted">Configura algún canal en Ajustes antes de crear piezas.</p>
-          )}
-        </section>
-      )}
-
-      <CalendarPlanSection ctx={ctx} projectId={projectId} cycleId={cycle.id} period={cycle.period} writable={canWrite} tz={tz} />
-      <IdeasSection ctx={ctx} projectId={projectId} cycleId={cycle.id} writable={canWrite} tz={tz} />
 
       <section className="card flex flex-col gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="h2">Plan del mes</h2>
-          <nav className="flex gap-3 text-sm">
-            <Link href={`${base}?vista=calendario`} className={view === "calendario" ? "font-semibold" : "link"}>
+          <nav className="segmented" aria-label="Vista del plan">
+            <Link href={`${base}?vista=calendario`} aria-current={view === "calendario" ? "page" : undefined}>
               Calendario
             </Link>
-            <Link href={`${base}?vista=lista`} className={view === "lista" ? "font-semibold" : "link"}>
+            <Link href={`${base}?vista=lista`} aria-current={view === "lista" ? "page" : undefined}>
               Lista
             </Link>
           </nav>
@@ -211,11 +133,11 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
         {view === "calendario" ? (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] table-fixed border-collapse text-xs">
+              <table className="w-full min-w-[720px] table-fixed border-separate border-spacing-1 text-xs">
                 <thead>
                   <tr>
                     {WEEKDAYS.map((d) => (
-                      <th key={d} className="pb-1 text-left font-medium text-muted">
+                      <th key={d} className="px-1.5 pb-1 text-left text-[11px] font-medium tracking-wide text-muted uppercase">
                         {d}
                       </th>
                     ))}
@@ -225,19 +147,36 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
                   {monthGrid(cycle.period).map((week, i) => (
                     <tr key={i}>
                       {week.map((day, j) => (
-                        <td key={j} className="h-24 border border-border p-1 align-top">
+                        <td
+                          key={j}
+                          className={
+                            day
+                              ? `h-28 rounded-lg border p-1.5 align-top ${
+                                  day === today ? "border-accent/60 ring-2 ring-accent/15" : "border-border"
+                                } ${j >= 5 ? "bg-surface-muted" : "bg-surface"}`
+                              : "align-top"
+                          }
+                        >
                           {day && (
                             <>
-                              <div className="text-muted">{Number(day.slice(8))}</div>
+                              <div
+                                className={
+                                  day === today
+                                    ? "inline-grid size-5 place-items-center rounded-full bg-accent font-semibold text-on-accent"
+                                    : "px-0.5 font-medium text-muted"
+                                }
+                              >
+                                {Number(day.slice(8))}
+                              </div>
                               <ul className="mt-1 flex flex-col gap-1">
                                 {(byDay.get(day) ?? []).map((item) => (
                                   <li key={item.id}>
                                     <Link
                                       href={`${base}/piezas/${item.id}`}
-                                      className={`block truncate rounded px-1 py-0.5 hover:underline ${STATUS_STYLES[statusOf(item.id)]}`}
+                                      className={`block truncate rounded-md px-1.5 py-1 font-medium transition hover:brightness-95 ${STATUS_STYLES[statusOf(item.id)]}`}
                                       title={`${item.title} · ${item.channelName} · ${WORKFLOW_LABELS[statusOf(item.id)]}`}
                                     >
-                                      {formatTimeInZone(item.plannedAt!, tz)} {item.title}
+                                      <span className="font-normal opacity-70">{formatTimeInZone(item.plannedAt!, tz)}</span> {item.title}
                                     </Link>
                                   </li>
                                 ))}
@@ -253,7 +192,7 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
             </div>
             <ul className="flex flex-wrap gap-2 text-xs" aria-label="Leyenda de estados">
               {(["draft", "in_review", "changes_requested", "approved", "scheduled", "published"] as const).map((st) => (
-                <li key={st} className={`rounded px-2 py-0.5 ${STATUS_STYLES[st]} ${st === "draft" ? "border border-border" : ""}`}>
+                <li key={st} className={`rounded-full px-2.5 py-0.5 ${STATUS_STYLES[st]}`}>
                   {WORKFLOW_LABELS[st]}
                 </li>
               ))}
@@ -307,6 +246,98 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
           </table>
         )}
       </section>
+
+      {canWrite && (
+        <section className="card flex flex-col gap-3">
+          <h2 className="h2">Nueva pieza</h2>
+          {channels.some((c) => c.isActive) ? (
+            <ActionForm action={createItemAction.bind(null, projectId, cycle.id, period)} submitLabel="Crear pieza">
+              <label className="field">
+                Título interno
+                <input name="title" className="input" placeholder="Lanzamiento cerveza de otoño" required />
+              </label>
+              <label className="field">
+                Canal y formato
+                <ChannelFormatSelect channels={channels} />
+              </label>
+              <label className="field">
+                Fecha prevista ({tz})
+                <input
+                  type="datetime-local"
+                  name="plannedAt"
+                  className="input"
+                  min={`${period}-01T00:00`}
+                  max={`${period}-31T23:59`}
+                />
+              </label>
+            </ActionForm>
+          ) : (
+            <p className="text-sm text-muted">Configura algún canal en Ajustes antes de crear piezas.</p>
+          )}
+        </section>
+      )}
+
+      <CalendarPlanSection
+        ctx={ctx}
+        projectId={projectId}
+        cycleId={cycle.id}
+        period={cycle.period}
+        writable={canWrite}
+        tz={tz}
+        emptyCycle={items.length === 0}
+      />
+      <IdeasSection ctx={ctx} projectId={projectId} cycleId={cycle.id} writable={canWrite} tz={tz} />
+
+      <CollapsibleCard
+        title="Brief del mes"
+        hint={cycle.objectives ? cycle.objectives.split("\n")[0] : "Objetivos, fechas clave y notas del mes."}
+        defaultOpen={briefEmpty && canManage}
+      >
+        {canManage ? (
+          <ActionForm action={updateBriefAction.bind(null, projectId, cycle.id)} submitLabel="Guardar brief" className="grid gap-3">
+            <label className="field">
+              Objetivos
+              <textarea name="objectives" className="input min-h-20" defaultValue={cycle.objectives ?? ""} />
+            </label>
+            <label className="field">
+              Fechas clave
+              <textarea name="keyDates" className="input min-h-16" defaultValue={cycle.keyDates ?? ""} />
+            </label>
+            <label className="field">
+              Notas
+              <textarea name="notes" className="input min-h-16" defaultValue={cycle.notes ?? ""} />
+            </label>
+          </ActionForm>
+        ) : (
+          <dl className="grid gap-2 text-sm">
+            <dt className="text-muted">Objetivos</dt>
+            <dd className="whitespace-pre-wrap">{cycle.objectives || "—"}</dd>
+            <dt className="text-muted">Fechas clave</dt>
+            <dd className="whitespace-pre-wrap">{cycle.keyDates || "—"}</dd>
+            <dt className="text-muted">Notas</dt>
+            <dd className="whitespace-pre-wrap">{cycle.notes || "—"}</dd>
+          </dl>
+        )}
+      </CollapsibleCard>
+
+      {canManage && (
+        <section className="card flex flex-col gap-3">
+          <h2 className="h2">Cerrar el ciclo</h2>
+          {reportApproved ? (
+            <ActionForm action={closeCycleAction.bind(null, projectId, cycle.id)} submitLabel="Cerrar ciclo" className="grid gap-3">
+              <label className="field">
+                Aprendizajes del mes (qué funcionó, qué cambiar el mes que viene)
+                <textarea name="learnings" className="input min-h-24" required />
+              </label>
+            </ActionForm>
+          ) : (
+            <p className="text-sm text-muted">
+              Para cerrar el mes, el <Link href={`${base}/informe`} className="link">informe</Link> tiene que estar
+              aprobado. Al cerrarlo, todo el ciclo queda en solo lectura.
+            </p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

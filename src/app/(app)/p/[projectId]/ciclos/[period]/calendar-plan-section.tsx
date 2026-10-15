@@ -1,5 +1,6 @@
 import { ActionForm } from "@/components/action-form";
 import { AiGenerationMeta } from "@/components/ai-generation-meta";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { CopyButton } from "@/components/copy-button";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
 import { getAiStatus, getCalendarPlanChatPrompt, listGenerations } from "@/modules/ai/service";
@@ -22,6 +23,7 @@ export async function CalendarPlanSection({
   period,
   writable,
   tz,
+  emptyCycle,
 }: {
   ctx: ProjectContext;
   projectId: string;
@@ -29,6 +31,8 @@ export async function CalendarPlanSection({
   period: string;
   writable: boolean;
   tz: string;
+  /** El ciclo aún no tiene piezas: la sección se muestra desplegada. */
+  emptyCycle: boolean;
 }) {
   const [status, generations] = await Promise.all([
     getAiStatus(ctx),
@@ -46,8 +50,18 @@ export async function CalendarPlanSection({
   const past = generations.filter((g) => g.status !== "draft");
 
   return (
-    <section id="calendario-ia" className="card flex flex-col gap-3" aria-label="Calendario con IA">
-      <h2 className="h2">Calendario con IA</h2>
+    <CollapsibleCard
+      id="calendario-ia"
+      title="Calendario con IA"
+      hint={
+        drafts.length > 0
+          ? drafts.length === 1
+            ? "Hay 1 propuesta pendiente de revisar."
+            : `Hay ${drafts.length} propuestas pendientes de revisar.`
+          : "Claude propone las piezas del mes; tú eliges cuáles añadir."
+      }
+      defaultOpen={drafts.length > 0 || emptyCycle}
+    >
       <p className="text-sm text-muted">
         Claude propone piezas con fecha, canal y formato a partir del brief, lo ya planificado y el mes anterior. No se
         crea nada hasta que marques las que quieres y pulses «Añadir al calendario».
@@ -182,6 +196,6 @@ export async function CalendarPlanSection({
           </ul>
         </details>
       )}
-    </section>
+    </CollapsibleCard>
   );
 }

@@ -1,5 +1,6 @@
 import { ActionForm } from "@/components/action-form";
 import { AiGenerationMeta } from "@/components/ai-generation-meta";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
 import { getAiStatus, listGenerations } from "@/modules/ai/service";
 import { generateIdeasAction, resolveGenerationAction } from "../../ai-actions";
@@ -28,11 +29,17 @@ export async function IdeasSection({
   const past = generations.filter((g) => g.status !== "draft");
 
   return (
-    <section className="card flex flex-col gap-3" aria-label="Ideas con IA">
-      <h2 className="h2">Ideas con IA</h2>
-      <p className="text-sm text-muted">
-        Propuestas a partir del brief y de lo ya planificado. Si una idea te sirve, crea la pieza a mano.
-      </p>
+    <CollapsibleCard
+      title="Ideas con IA"
+      hint={
+        drafts.length > 0
+          ? drafts.length === 1
+            ? "Hay 1 propuesta pendiente de revisar."
+            : `Hay ${drafts.length} propuestas pendientes de revisar.`
+          : "Propuestas a partir del brief y de lo ya planificado. Si una idea te sirve, crea la pieza a mano."
+      }
+      defaultOpen={drafts.length > 0}
+    >
       {status.enabled && !status.configured && (
         <p className="text-sm text-muted">La IA no está configurada en el servidor.</p>
       )}
@@ -85,6 +92,6 @@ export async function IdeasSection({
           </ul>
         </details>
       )}
-    </section>
+    </CollapsibleCard>
   );
 }

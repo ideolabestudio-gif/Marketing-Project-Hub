@@ -16,7 +16,7 @@ export default async function HomePage() {
         <section className="card flex flex-col gap-3">
           <h2 className="h2 flex items-center gap-2">
             Pendiente de mí
-            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">{pending.length}</span>
+            <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent">{pending.length}</span>
           </h2>
           <table className="table">
             <thead>
