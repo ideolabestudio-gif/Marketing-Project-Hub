@@ -92,6 +92,13 @@
       "when": 1791534775406,
       "tag": "0012_brand_library",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792059867201,
+      "tag": "0013_solo_mode",
+      "breakpoints": true
     }
   ]
 }

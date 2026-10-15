@@ -73,6 +73,7 @@ describe("clientes, proyectos y canales", () => {
       timezone: "America/Mexico_City",
       locale: "es-MX",
       requireClientApproval: false,
+      soloMode: false,
     });
   });
 });

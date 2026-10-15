@@ -14,6 +14,7 @@ export async function getProjectFlags(ctx: ProjectContext) {
     .select({
       requireClientApproval: projects.requireClientApproval,
       separationOfDuties: projects.separationOfDuties,
+      soloMode: projects.soloMode,
       timezone: projects.timezone,
     })
     .from(projects)

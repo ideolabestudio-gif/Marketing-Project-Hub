@@ -18,6 +18,7 @@ export async function getProjectWithClient(ctx: ProjectContext) {
       aiMonthlyLimitUsd: projects.aiMonthlyLimitUsd,
       requireClientApproval: projects.requireClientApproval,
       separationOfDuties: projects.separationOfDuties,
+      soloMode: projects.soloMode,
       clientName: clients.name,
     })
     .from(projects)
@@ -32,7 +33,13 @@ export async function updateProject(
   values: Partial<
     Pick<
       typeof projects.$inferInsert,
-      "timezone" | "locale" | "requireClientApproval" | "separationOfDuties" | "aiEnabled" | "aiMonthlyLimitUsd"
+      | "timezone"
+      | "locale"
+      | "requireClientApproval"
+      | "separationOfDuties"
+      | "soloMode"
+      | "aiEnabled"
+      | "aiMonthlyLimitUsd"
     >
   >,
 ) {

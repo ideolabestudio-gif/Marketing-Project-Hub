@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   numeric,
   pgEnum,
   pgTable,
@@ -44,9 +46,20 @@ export const projects = pgTable(
     requireClientApproval: boolean("require_client_approval").notNull().default(true),
     /** Si es true, quien escribe una versión no puede aprobarla internamente. */
     separationOfDuties: boolean("separation_of_duties").notNull().default(true),
+    /**
+     * Trabajo en solitario: no hay equipo ni cliente que revise y quien escribe aprueba
+     * la versión en un solo paso. Implica no exigir al cliente ni separar funciones.
+     */
+    soloMode: boolean("solo_mode").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("projects_client_slug_uq").on(t.clientId, t.slug)],
+  (t) => [
+    unique("projects_client_slug_uq").on(t.clientId, t.slug),
+    check(
+      "projects_solo_mode_ck",
+      sql`NOT ${t.soloMode} OR (NOT ${t.requireClientApproval} AND NOT ${t.separationOfDuties})`,
+    ),
+  ],
 );
 
 export const channels = pgTable(

@@ -15,6 +15,7 @@ import {
   uploadAsset,
 } from "@/modules/content/service";
 import {
+  approveDirectly,
   cancelPublication,
   decideInternal,
   markPublished,
@@ -121,6 +122,20 @@ export async function submitForReviewAction(
     await submitForReview(ctx, { itemId, versionId, comment: formString(formData, "comment") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Enviada a revisión");
+}
+
+export async function approveDirectlyAction(
+  projectId: string,
+  itemId: string,
+  versionId: string,
+  _: ActionState,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "approval.internal");
+    await approveDirectly(ctx, { itemId, versionId, comment: formString(formData, "comment") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Aprobada");
 }
 
 export async function decideInternalAction(

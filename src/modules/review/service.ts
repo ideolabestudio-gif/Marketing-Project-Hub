@@ -60,6 +60,7 @@ export async function getItemReview(ctx: ProjectContext, itemId: string) {
     latestVersion: state.item.latest,
     requireClientApproval: state.flags.requireClientApproval,
     separationOfDuties: state.flags.separationOfDuties,
+    soloMode: state.flags.soloMode,
     isAuthorOfLatest: state.item.latest?.createdBy === ctx.actor.userId,
     events: state.approvals,
     activePublication: state.active,
@@ -187,6 +188,37 @@ export async function decideInternal(ctx: ProjectContext, input: z.input<typeof 
     comment: data.comment,
   });
   await audit(ctx, `review.internal_${data.decision}`, row.id, { itemId: state.item.id, versionNo: latest.versionNo });
+}
+
+const soloSchema = z.object({ itemId: z.string(), versionId: z.string(), comment: commentSchema });
+
+/** Nota que queda en el historial (inmutable) para que se vea cómo se aprobó. */
+const SOLO_APPROVAL_NOTE = "Trabajo en solitario: aprobada en un solo paso";
+
+/**
+ * Trabajo en solitario: quien prepara la pieza la aprueba en un solo paso. Registra
+ * igualmente los dos hechos (envío y aprobación interna) sobre esa versión concreta,
+ * con quién y cuándo, así el resto del flujo y el trigger de publicación no cambian.
+ */
+export async function approveDirectly(ctx: ProjectContext, input: z.input<typeof soloSchema>) {
+  await authorize(ctx, "content.write");
+  await authorize(ctx, "approval.internal");
+  const data = parseInput(soloSchema, input);
+  const state = await computeItemState(ctx, data.itemId);
+  await assertWritableCycle(ctx, state.item.cycleId);
+  const latest = assertLatest(state, data.versionId);
+  if (!state.flags.soloMode) {
+    throw new ValidationError("Este proyecto no está en modo «trabajo en solitario»: envía la pieza a revisión");
+  }
+  if (state.status !== "draft" && state.status !== "in_review") {
+    throw new ValidationError("Solo se puede aprobar una pieza en borrador o en revisión");
+  }
+  const base = { contentItemId: state.item.id, contentVersionId: latest.id, clientApproverName: null, evidence: null };
+  if (state.status === "draft") {
+    await repo.insertApproval(ctx, { ...base, stage: "submission", decision: "submitted", comment: SOLO_APPROVAL_NOTE });
+  }
+  const row = await repo.insertApproval(ctx, { ...base, stage: "internal", decision: "approved", comment: data.comment });
+  await audit(ctx, "review.solo_approved", row.id, { itemId: state.item.id, versionNo: latest.versionNo });
 }
 
 const clientSchema = z.object({
@@ -375,7 +407,9 @@ export async function listMyPendingWork(actor: Actor, now = new Date()) {
     const [rows, flags] = await Promise.all([repo.listWorkflowRows(ctx), repo.getProjectFlags(ctx)]);
     for (const row of statusesFrom(rows, flags.requireClientApproval)) {
       let action: PendingAction | null = null;
-      if (row.status === "in_review" && hasPermission(ctx, "approval.internal")) {
+      const canApproveSolo = hasPermission(ctx, "content.write") && hasPermission(ctx, "approval.internal");
+      if (flags.soloMode && row.status === "draft" && canApproveSolo) action = "review";
+      else if (row.status === "in_review" && hasPermission(ctx, "approval.internal")) {
         if (!(flags.separationOfDuties && row.latestAuthorId === actor.userId)) action = "review";
       } else if (row.status === "awaiting_client" && hasPermission(ctx, "approval.client.record")) action = "client";
       else if (row.status === "changes_requested" && hasPermission(ctx, "content.write")) action = "fix";

@@ -5,7 +5,9 @@ import { approvals, auditEvents, projects, publications } from "@/lib/db/schema"
 import { ConflictError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import { createItem, saveVersion } from "@/modules/content/service";
+import { updateProjectSettings } from "@/modules/projects/service";
 import {
+  approveDirectly,
   cancelPublication,
   decideInternal,
   getItemReview,
@@ -245,6 +247,78 @@ describe("WF-04: separación de funciones", () => {
     await getDb().update(projects).set({ separationOfDuties: false }).where(eq(projects.id, fx.projectA.id));
     await decideInternal(ana, { itemId: item.id, versionId: v.id, decision: "approved" });
     expect(await status(item.id)).toBe("awaiting_client");
+  });
+});
+
+describe("trabajo en solitario", () => {
+  async function soloOn() {
+    await updateProjectSettings(ana, {
+      timezone: "Europe/Madrid",
+      locale: "es-ES",
+      requireClientApproval: true,
+      separationOfDuties: true,
+      soloMode: true,
+    });
+  }
+
+  async function draftByAna() {
+    const item = await createItem(ana, {
+      cycleId: fx.contentA.cycle.id,
+      channelId: fx.channelA.id,
+      format: "post",
+      title: "Pieza en solitario",
+    });
+    const version = await saveVersion(ana, { itemId: item.id, body: "Copy de Ana" });
+    return { itemId: item.id, versionId: version.id };
+  }
+
+  it("activarlo desactiva la aprobación del cliente y la separación de funciones", async () => {
+    await soloOn();
+    const [row] = await getDb().select().from(projects).where(eq(projects.id, fx.projectA.id));
+    expect(row).toMatchObject({ soloMode: true, requireClientApproval: false, separationOfDuties: false });
+  });
+
+  it("la BD no admite el modo solitario con cliente o separación de funciones", async () => {
+    const code = await pgCode(
+      getDb().update(projects).set({ soloMode: true, requireClientApproval: true }).where(eq(projects.id, fx.projectA.id)),
+    );
+    expect(code).toBe("23514");
+  });
+
+  it("quien escribe aprueba su propia versión en un paso y queda registrado", async () => {
+    await soloOn();
+    const { itemId, versionId } = await draftByAna();
+    await approveDirectly(ana, { itemId, versionId, comment: "Listo" });
+    const review = await getItemReview(ana, itemId);
+    expect(review.status).toBe("approved");
+    expect(review.events.map((e) => `${e.stage}:${e.decision}:${e.actorEmail}`)).toEqual([
+      "submission:submitted:ana@ideolab.test",
+      "internal:approved:ana@ideolab.test",
+    ]);
+    expect(review.events.every((e) => e.contentVersionId === versionId)).toBe(true);
+    const audits = await getDb().select().from(auditEvents).where(eq(auditEvents.action, "review.solo_approved"));
+    expect(audits).toHaveLength(1);
+    // Y se puede registrar la publicación (el trigger de la BD lo acepta).
+    await recordPublication(ana, { itemId, versionId, status: "published", at: "2026-10-21T09:00" });
+    expect(await status(itemId)).toBe("published");
+  });
+
+  it("aparece como pendiente de aprobar en «lo que me toca»", async () => {
+    await soloOn();
+    const { itemId } = await draftByAna();
+    const mine = await listMyPendingWork(fx.actors.ana);
+    expect(mine.find((w) => w.itemId === itemId)?.action).toBe("review");
+  });
+
+  it("sin el modo activado, o sin permiso para escribir y aprobar, no se puede", async () => {
+    const { itemId, versionId } = await draftByAna();
+    await expect(approveDirectly(ana, { itemId, versionId })).rejects.toBeInstanceOf(ValidationError);
+    await soloOn();
+    await expect(approveDirectly(edu, { itemId, versionId })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(approveDirectly(rev, { itemId, versionId })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(approveDirectly(ana, { itemId, versionId: fx.contentA.latestVersionId })).rejects.toBeInstanceOf(
+      ConflictError,
+    );
   });
 });
 

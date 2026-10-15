@@ -6,6 +6,7 @@ import { can, type Permission, ROLE_LABELS, ROLES } from "@/modules/access/permi
 import { WORKFLOW_LABELS } from "@/modules/review/domain";
 import type { getItemReview } from "@/modules/review/service";
 import {
+  approveDirectlyAction,
   cancelPublicationAction,
   decideInternalAction,
   markPublishedAction,
@@ -36,6 +37,9 @@ const NEXT_STEP: Record<string, string> = {
   cancelled: "Pieza cancelada.",
 };
 
+const SOLO_DRAFT_STEP =
+  "Cuando el contenido esté listo, apruébalo. Queda registrado quién aprobó qué versión y cuándo.";
+
 /** Explica por qué no aparece el siguiente paso cuando el rol de la persona no lo permite. */
 function MissingPermission({ ctx, permission, what }: { ctx: ProjectContext; permission: Permission; what: string }) {
   const roles = ROLES.filter((r) => can(r, permission)).map((r) => `«${ROLE_LABELS[r]}»`);
@@ -48,7 +52,15 @@ function MissingPermission({ ctx, permission, what }: { ctx: ProjectContext; per
 }
 
 /** El paso siguiente que la persona ve pero no puede dar por su rol. */
-function missingStep(ctx: ProjectContext, status: string): { permission: Permission; what: string } | null {
+function missingStep(
+  ctx: ProjectContext,
+  status: string,
+  soloMode: boolean,
+): { permission: Permission; what: string } | null {
+  if (soloMode && status === "draft") {
+    const permission = (["content.write", "approval.internal"] as const).find((p) => !hasPermission(ctx, p));
+    return permission ? { permission, what: "aprobarla" } : null;
+  }
   const steps: Record<string, { permission: Permission; what: string }> = {
     draft: { permission: "content.write", what: "enviarla a revisión" },
     in_review: { permission: "approval.internal", what: "aprobarla o pedir cambios en la revisión interna" },
@@ -87,14 +99,22 @@ export function ReviewSection({
 }) {
   const { status, latestVersion: latest, activePublication: active } = review;
   const open = !cycleClosed;
-  const canSubmit = open && status === "draft" && latest && hasPermission(ctx, "content.write");
+  const solo = review.soloMode;
+  const canApproveSolo =
+    open &&
+    solo &&
+    status === "draft" &&
+    latest &&
+    hasPermission(ctx, "content.write") &&
+    hasPermission(ctx, "approval.internal");
+  const canSubmit = open && !solo && status === "draft" && latest && hasPermission(ctx, "content.write");
   const canDecideInternal = open && status === "in_review" && latest && hasPermission(ctx, "approval.internal");
   const blockedBySod = review.separationOfDuties && review.isAuthorOfLatest;
   const canRecordClient = open && status === "awaiting_client" && latest && hasPermission(ctx, "approval.client.record");
   const canPublish = open && status === "approved" && latest && hasPermission(ctx, "publish");
   const canManageScheduled = open && active?.status === "scheduled" && hasPermission(ctx, "publish");
   const nowWall = utcToWallTime(new Date(), tz);
-  const missing = open && latest && !ctx.projectArchived ? missingStep(ctx, status) : null;
+  const missing = open && latest && !ctx.projectArchived ? missingStep(ctx, status, solo) : null;
 
   return (
     <section id="revision" className="card flex scroll-mt-20 flex-col gap-4">
@@ -103,11 +123,27 @@ export function ReviewSection({
         <span className="badge">{WORKFLOW_LABELS[status]}</span>
         {latest && <span className="badge">Versión vigente: v{latest.versionNo}</span>}
         <span className="badge">
-          {review.requireClientApproval ? "Requiere aprobación interna y del cliente" : "Requiere aprobación interna"}
+          {solo
+            ? "Trabajo en solitario: se aprueba en un paso"
+            : review.requireClientApproval
+              ? "Requiere aprobación interna y del cliente"
+              : "Requiere aprobación interna"}
         </span>
       </div>
-      <p className="text-sm">{NEXT_STEP[status]}</p>
+      <p className="text-sm">{solo && status === "draft" ? SOLO_DRAFT_STEP : NEXT_STEP[status]}</p>
       {missing && <MissingPermission ctx={ctx} permission={missing.permission} what={missing.what} />}
+
+      {canApproveSolo && (
+        <ActionForm
+          action={approveDirectlyAction.bind(null, projectId, itemId, latest.id)}
+          submitLabel={`Aprobar v${latest.versionNo}`}
+        >
+          <label className="field grow">
+            Nota (opcional)
+            <input name="comment" className="input" placeholder="Revisado y listo para programar" />
+          </label>
+        </ActionForm>
+      )}
 
       {canSubmit && (
         <ActionForm
@@ -128,7 +164,7 @@ export function ReviewSection({
             {hasPermission(ctx, "project.settings") && (
               <>
                 {" "}
-                Si trabajas sin otra persona que revise, puedes desactivarla en los{" "}
+                Si trabajas sin otra persona que revise, activa «Trabajo en solitario» en los{" "}
                 <Link href={`/p/${projectId}/ajustes`} className="link">
                   ajustes del proyecto
                 </Link>

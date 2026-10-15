@@ -46,6 +46,7 @@ Dos niveles:
 
 Reglas adicionales independientes del rol:
 - **Separación de funciones**: quien crea una versión no puede darle la aprobación interna (configurable por proyecto; activado por defecto).
+- **Trabajo en solitario** (por proyecto, desactivado por defecto): cuando no hay equipo ni cliente que revise, quien tiene permiso para escribir y para aprobar aprueba la versión en un solo paso. Se registran igualmente el envío y la aprobación interna sobre esa versión, con autor y fecha, y en auditoría `review.solo_approved`. Implica no exigir al cliente ni separar funciones (lo garantiza la restricción `projects_solo_mode_ck`).
 - Ciclo `closed` ⇒ solo lectura para todos.
 - Proyecto `archived` ⇒ solo lectura; solo admin puede reactivarlo.
 
