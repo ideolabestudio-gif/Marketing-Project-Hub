@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
@@ -124,6 +125,16 @@ export function ReviewSection({
         (blockedBySod ? (
           <p className="text-sm text-muted">
             Has escrito tú esta versión: otra persona con permiso de revisión debe aprobarla (separación de funciones).
+            {hasPermission(ctx, "project.settings") && (
+              <>
+                {" "}
+                Si trabajas sin otra persona que revise, puedes desactivarla en los{" "}
+                <Link href={`/p/${projectId}/ajustes`} className="link">
+                  ajustes del proyecto
+                </Link>
+                .
+              </>
+            )}
           </p>
         ) : (
           <ActionForm
