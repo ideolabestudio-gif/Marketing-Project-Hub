@@ -26,11 +26,14 @@ const settingsSchema = z.object({
   locale: localeSchema,
   requireClientApproval: z.boolean(),
   separationOfDuties: z.boolean(),
+  /** Trabajo en solitario: aprobar en un paso. Desactiva la aprobación del cliente y la separación de funciones. */
+  soloMode: z.boolean().optional().default(false),
 });
 
 export async function updateProjectSettings(ctx: ProjectContext, input: z.input<typeof settingsSchema>) {
   await authorize(ctx, "project.settings");
-  const data = parseInput(settingsSchema, input);
+  const parsed = parseInput(settingsSchema, input);
+  const data = parsed.soloMode ? { ...parsed, requireClientApproval: false, separationOfDuties: false } : parsed;
   await repo.updateProject(ctx, data);
   await recordAudit({
     action: "project.settings_updated",

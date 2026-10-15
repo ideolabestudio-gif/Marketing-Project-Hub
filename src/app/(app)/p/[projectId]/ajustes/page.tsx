@@ -32,7 +32,22 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
             <input name="locale" defaultValue={project.locale} className="input" required />
           </label>
           <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="requireClientApproval" defaultChecked={project.requireClientApproval} />
+            <input type="checkbox" name="soloMode" defaultChecked={project.soloMode} />
+            <span>
+              Trabajo en solitario
+              <span className="block text-muted">
+                Para cuando no hay equipo ni cliente que revise: apruebas cada pieza en un solo paso. Se sigue
+                registrando quién aprobó qué versión y cuándo. Desactiva las dos opciones siguientes.
+              </span>
+            </span>
+          </label>
+          <label className={`flex items-start gap-2 text-sm ${project.soloMode ? "opacity-60" : ""}`}>
+            <input
+              type="checkbox"
+              name="requireClientApproval"
+              defaultChecked={project.requireClientApproval}
+              disabled={project.soloMode}
+            />
             <span>
               Exigir la aprobación del cliente antes de publicar
               <span className="block text-muted">
@@ -40,8 +55,13 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
               </span>
             </span>
           </label>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="separationOfDuties" defaultChecked={project.separationOfDuties} />
+          <label className={`flex items-start gap-2 text-sm ${project.soloMode ? "opacity-60" : ""}`}>
+            <input
+              type="checkbox"
+              name="separationOfDuties"
+              defaultChecked={project.separationOfDuties}
+              disabled={project.soloMode}
+            />
             <span>
               Separación de funciones
               <span className="block text-muted">Quien escribe una versión no puede aprobarla internamente.</span>

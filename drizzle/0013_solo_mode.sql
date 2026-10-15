@@ -1,0 +1,2 @@
+ALTER TABLE "projects" ADD COLUMN "solo_mode" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "projects" ADD CONSTRAINT "projects_solo_mode_ck" CHECK (NOT "projects"."solo_mode" OR (NOT "projects"."require_client_approval" AND NOT "projects"."separation_of_duties"));

@@ -17,6 +17,7 @@ export async function updateSettingsAction(projectId: string, _: ActionState, fo
       locale: formString(formData, "locale"),
       requireClientApproval: formData.get("requireClientApproval") === "on",
       separationOfDuties: formData.get("separationOfDuties") === "on",
+      soloMode: formData.get("soloMode") === "on",
     });
     revalidatePath(`/p/${projectId}`, "layout");
   });

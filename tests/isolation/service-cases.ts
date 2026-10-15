@@ -321,6 +321,21 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
         decision: "approved",
       }),
   },
+  "review.approveDirectly": {
+    kind: "project",
+    own: async (ctx, fx) => {
+      await projects.updateProjectSettings(ctx, {
+        timezone: "Europe/Madrid",
+        locale: "es-ES",
+        requireClientApproval: false,
+        separationOfDuties: false,
+        soloMode: true,
+      });
+      return review.approveDirectly(ctx, { itemId: fx.contentA.item.id, versionId: fx.contentA.latestVersionId });
+    },
+    foreign: (ctx, fx) =>
+      review.approveDirectly(ctx, { itemId: fx.contentB.item.id, versionId: fx.contentB.latestVersionId }),
+  },
   "review.recordClientDecision": {
     kind: "project",
     own: async (ctx, fx) => {
