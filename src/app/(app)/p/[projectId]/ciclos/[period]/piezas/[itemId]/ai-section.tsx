@@ -1,5 +1,6 @@
 import { ActionForm } from "@/components/action-form";
 import { AiGenerationMeta } from "@/components/ai-generation-meta";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
 import { splitEmailDraft } from "@/modules/ai/format";
 import { getAiStatus, listGenerations } from "@/modules/ai/service";
@@ -32,9 +33,18 @@ export async function AiSection({
   const drafts = generations.filter((g) => g.status === "draft");
   const past = generations.filter((g) => g.status !== "draft");
 
+  const hint =
+    drafts.length > 0
+      ? `${drafts.length === 1 ? "1 borrador" : `${drafts.length} borradores`} por revisar`
+      : canGenerate
+        ? "Pide un texto a partir del brief del mes"
+        : past.length > 0
+          ? `${past.length} ${past.length === 1 ? "borrador anterior" : "borradores anteriores"}`
+          : undefined;
+
+  // Plegada salvo que haya borradores esperando: así la ficha se lee sin tanto scroll.
   return (
-    <section className="card flex flex-col gap-3" aria-label="Borradores con IA">
-      <h2 className="h2">Borradores con IA</h2>
+    <CollapsibleCard title="Borradores con IA" hint={hint} defaultOpen={drafts.length > 0}>
       <p className="text-sm text-muted">
         La IA propone un texto a partir del brief del mes y de esta pieza. No cambia nada: si te sirve, edítalo y
         guárdalo como versión nueva (quedará marcada como asistida por IA y tendrá que pasar la revisión).
@@ -116,6 +126,6 @@ export async function AiSection({
           </ul>
         </details>
       )}
-    </section>
+    </CollapsibleCard>
   );
 }

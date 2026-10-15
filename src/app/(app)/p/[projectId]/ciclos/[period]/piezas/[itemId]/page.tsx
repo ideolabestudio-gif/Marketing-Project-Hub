@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { AssetList } from "@/components/asset-list";
 import { ChannelFormatSelect } from "@/components/channel-format-select";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { CopyButton } from "@/components/copy-button";
 import { StatusPill } from "@/components/status-pill";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
@@ -77,11 +78,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           </span>
           <span className="badge">{item.plannedAt ? formatInZone(item.plannedAt, tz) : "Sin fecha"}</span>
           <span className="badge">{current ? `Versión ${current.versionNo}` : "Sin versiones"}</span>
-          {item.aiGenerationId && (
-            <span className="badge-ai">
-              Propuesta por IA en el calendario
-            </span>
-          )}
+          {item.aiGenerationId && <span className="badge-ai">Propuesta por IA en el calendario</span>}
         </div>
       </div>
 
@@ -103,9 +100,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             la publicación en Metricool como pendiente de revisión. Revísala, añade las imágenes o vídeos, prográmala tú
             allí y después registra aquí la programación.
           </p>
-          <pre className="tile max-h-64 overflow-auto text-xs whitespace-pre-wrap">
-            {metricoolText}
-          </pre>
+          <pre className="tile max-h-64 overflow-auto text-xs whitespace-pre-wrap">{metricoolText}</pre>
           <CopyButton text={metricoolText} label="Copiar para Metricool" />
         </section>
       )}
@@ -209,68 +204,75 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           }
         />
         {canEditContent && (
-          <div className="grid gap-3 md:grid-cols-2">
-            <ActionForm
-              action={uploadAssetAction.bind(null, projectId, item.id)}
-              submitLabel="Subir"
-              className="tile flex min-w-0 flex-col items-start gap-3"
-            >
-              <h3 className="eyebrow">Subir archivo</h3>
-              <label className="field w-full">
-                Archivo ({ALLOWED_DESCRIPTION})
-                <input
-                  type="file"
-                  name="file"
-                  className="input"
-                  accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,video/mp4,video/quicktime"
-                  required
-                />
-              </label>
-            </ActionForm>
-            <ActionForm
-              action={addLinkAction.bind(null, projectId, item.id)}
-              submitLabel="Añadir enlace"
-              className="tile flex min-w-0 flex-col items-start gap-3"
-            >
-              <h3 className="eyebrow">Añadir enlace</h3>
-              <label className="field w-full">
-                Enlace (Drive, Canva…)
-                <input type="url" name="url" className="input" required />
-              </label>
-              <label className="field w-full">
-                Nombre
-                <input name="label" className="input" />
-              </label>
-            </ActionForm>
-          </div>
+          <details open={currentAssets.length === 0}>
+            <summary className="text-sm font-medium">Añadir archivo o enlace</summary>
+            <div className="mt-3 flex flex-col gap-3">
+              {canEditContent && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <ActionForm
+                    action={uploadAssetAction.bind(null, projectId, item.id)}
+                    submitLabel="Subir"
+                    className="tile flex min-w-0 flex-col items-start gap-3"
+                  >
+                    <h3 className="eyebrow">Subir archivo</h3>
+                    <label className="field w-full">
+                      Archivo ({ALLOWED_DESCRIPTION})
+                      <input
+                        type="file"
+                        name="file"
+                        className="input"
+                        accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,video/mp4,video/quicktime"
+                        required
+                      />
+                    </label>
+                  </ActionForm>
+                  <ActionForm
+                    action={addLinkAction.bind(null, projectId, item.id)}
+                    submitLabel="Añadir enlace"
+                    className="tile flex min-w-0 flex-col items-start gap-3"
+                  >
+                    <h3 className="eyebrow">Añadir enlace</h3>
+                    <label className="field w-full">
+                      Enlace (Drive, Canva…)
+                      <input type="url" name="url" className="input" required />
+                    </label>
+                    <label className="field w-full">
+                      Nombre
+                      <input name="label" className="input" />
+                    </label>
+                  </ActionForm>
+                </div>
+              )}
+              {canEditContent &&
+                (library.length === 0 ? (
+                  <p className="text-sm text-muted">
+                    Para reutilizar logos, fotos o plantillas, súbelos a la{" "}
+                    <Link href={`/p/${projectId}/ficha`} className="link">
+                      ficha del cliente
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  <ActionForm
+                    action={attachLibraryItemAction.bind(null, projectId, item.id)}
+                    submitLabel="Añadir a la pieza"
+                    className="tile flex flex-wrap items-end gap-3"
+                  >
+                    <label className="field min-w-0 grow basis-64">
+                      Desde la biblioteca del cliente
+                      <select name="libraryItemId" className="input" required>
+                        {library.map((m) => (
+                          <option key={m.id} value={m.id} disabled={currentAssets.some((a) => a.id === m.asset.id)}>
+                            {LIBRARY_CATEGORIES[m.category]} · {m.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </ActionForm>
+                ))}
+            </div>
+          </details>
         )}
-        {canEditContent &&
-          (library.length === 0 ? (
-            <p className="text-sm text-muted">
-              Para reutilizar logos, fotos o plantillas, súbelos a la{" "}
-              <Link href={`/p/${projectId}/ficha`} className="link">
-                ficha del cliente
-              </Link>
-              .
-            </p>
-          ) : (
-            <ActionForm
-              action={attachLibraryItemAction.bind(null, projectId, item.id)}
-              submitLabel="Añadir a la pieza"
-              className="tile flex flex-wrap items-end gap-3"
-            >
-              <label className="field min-w-0 grow basis-64">
-                Desde la biblioteca del cliente
-                <select name="libraryItemId" className="input" required>
-                  {library.map((m) => (
-                    <option key={m.id} value={m.id} disabled={currentAssets.some((a) => a.id === m.asset.id)}>
-                      {LIBRARY_CATEGORIES[m.category]} · {m.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </ActionForm>
-          ))}
         <p className="text-xs text-muted">
           Cada cambio de archivos crea una versión nueva; las versiones anteriores conservan sus archivos.
         </p>
@@ -285,7 +287,8 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             {comments.map((c) => (
               <li key={c.id} className="tile">
                 <div className="text-xs text-muted">
-                  <span className="font-medium text-foreground">{c.authorName ?? c.authorEmail}</span> · {formatInZone(c.createdAt, tz)}
+                  <span className="font-medium text-foreground">{c.authorName ?? c.authorEmail}</span> ·{" "}
+                  {formatInZone(c.createdAt, tz)}
                   {c.versionNo && ` · sobre v${c.versionNo}`}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{c.body}</p>
@@ -294,15 +297,22 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           </ul>
         )}
         {canComment && (
-          <ActionForm action={addCommentAction.bind(null, projectId, item.id)} submitLabel="Comentar" className="grid gap-2">
+          <ActionForm
+            action={addCommentAction.bind(null, projectId, item.id)}
+            submitLabel="Comentar"
+            className="grid gap-2"
+          >
             <textarea name="body" className="input min-h-20" required />
           </ActionForm>
         )}
       </section>
 
       {editable && (
-        <section className="card flex flex-col gap-3">
-          <h2 className="h2">Datos de la pieza</h2>
+        <CollapsibleCard
+          title="Datos de la pieza"
+          hint={`${item.channelName} · ${formatLabel(item.format)} · ${item.plannedAt ? formatInZone(item.plannedAt, tz) : "sin fecha"}`}
+          defaultOpen={cancelled || !item.plannedAt}
+        >
           {!cancelled && (
             <ActionForm action={updateItemAction.bind(null, projectId, item.id)} submitLabel="Guardar datos">
               <label className="field">
@@ -331,7 +341,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           >
             {null}
           </ActionForm>
-        </section>
+        </CollapsibleCard>
       )}
     </div>
   );
