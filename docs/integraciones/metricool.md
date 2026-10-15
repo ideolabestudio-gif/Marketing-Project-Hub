@@ -66,3 +66,7 @@ Si el token caduca, cambia el plan o la API falla, la importación no se ejecuta
   1. Exportando el CSV desde Metricool, si el plan actual lo permite (pendiente de probar con una exportación real: próximos pasos, punto 2 del doc. 08).
   2. Pidiéndoselas a Claude en el chat con el conector de Metricool: «dame en CSV las métricas de octubre de la marca X con estas columnas». Después se importa el CSV en el Hub y una persona revisa el mapeo, como siempre.
 - **Volver a evaluar la API** cuando haya presupuesto para el plan Advanced y Byra (u otro cliente) esté en Metricool. Antes de escribir código, completar §2, §3 y §5 con la documentación oficial.
+
+## 9. Programar sin API (15-10-2026)
+
+Las piezas de redes **aprobadas** muestran en su página «Llevar a Metricool con Claude»: un mensaje para copiar en un chat de Claude con el conector de Metricool activado (`src/modules/content/metricool-handoff.ts`). El mensaje lleva la marca, la red, el formato, la fecha prevista, el texto literal de la versión aprobada y el material. Pide a Claude crear la publicación **pendiente de revisión**, nunca publicarla ni programarla directamente. La persona la revisa, añade los archivos y la programa en Metricool, y después registra la programación en el Hub como siempre. El Hub no llama a Metricool (principios 1 y 4).
