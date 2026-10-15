@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { AssetList } from "@/components/asset-list";
 import { ChannelFormatSelect } from "@/components/channel-format-select";
+import { CopyButton } from "@/components/copy-button";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ALLOWED_DESCRIPTION } from "@/modules/content/files";
 import { formatLabel } from "@/modules/content/formats";
+import { buildMetricoolHandoff } from "@/modules/content/metricool-handoff";
 import { getItemDetail, LIBRARY_CATEGORIES, listLibrary } from "@/modules/content/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { WORKFLOW_LABELS } from "@/modules/review/domain";
@@ -46,6 +48,20 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
   const editVoidsApproval = ["in_review", "awaiting_client", "approved"].includes(review.status);
   const canComment = hasPermission(ctx, "comment.write") && item.cycleStatus !== "closed";
   const isEmail = item.channelKind === "email";
+  const metricoolText =
+    review.status === "approved" && !isEmail && current
+      ? buildMetricoolHandoff({
+          brand: project.clientName,
+          channelName: item.channelName,
+          format: item.format,
+          plannedAt: item.plannedAt,
+          timeZone: tz,
+          versionNo: current.versionNo,
+          body: current.body,
+          linkUrl: current.linkUrl,
+          assets: currentAssets,
+        })
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,6 +94,21 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
         plannedAt={item.plannedAt}
         cycleClosed={item.cycleStatus === "closed"}
       />
+
+      {metricoolText && (
+        <section className="card flex flex-col gap-3">
+          <h2 className="h2">Llevar a Metricool con Claude</h2>
+          <p className="text-sm">
+            Copia este mensaje y pégalo en un chat de Claude que tenga activado el conector de Metricool. Claude dejará
+            la publicación en Metricool como pendiente de revisión. Revísala, añade las imágenes o vídeos, prográmala tú
+            allí y después registra aquí la programación.
+          </p>
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-background p-3 text-xs">
+            {metricoolText}
+          </pre>
+          <CopyButton text={metricoolText} label="Copiar para Metricool" />
+        </section>
+      )}
 
       <section className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
