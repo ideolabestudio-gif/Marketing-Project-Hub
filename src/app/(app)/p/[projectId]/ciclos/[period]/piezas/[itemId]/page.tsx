@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { AssetList } from "@/components/asset-list";
 import { ChannelFormatSelect } from "@/components/channel-format-select";
+import { FileInput } from "@/components/file-input";
 import { CollapsibleCard } from "@/components/collapsible-card";
 import { CopyButton } from "@/components/copy-button";
 import { StatusPill } from "@/components/status-pill";
@@ -217,10 +218,8 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
                     <h3 className="eyebrow">Subir archivo</h3>
                     <label className="field w-full">
                       Archivo ({ALLOWED_DESCRIPTION})
-                      <input
-                        type="file"
+                      <FileInput
                         name="file"
-                        className="input"
                         accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,video/mp4,video/quicktime"
                         required
                       />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
+import { FileInput } from "@/components/file-input";
 import { formatMetric, SOURCE_LABELS } from "@/lib/format";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, formatPeriod } from "@/lib/time";
@@ -199,7 +200,7 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
               </label>
               <label className="field min-w-0 grow basis-64">
                 Archivo
-                <input type="file" name="file" accept=".csv,text/csv,text/plain" className="input" required />
+                <FileInput name="file" accept=".csv,text/csv,text/plain" required />
               </label>
             </ActionForm>
           </>
