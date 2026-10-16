@@ -1,15 +1,15 @@
 import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
 
-/** Color de cada pieza según su estado (calendario del ciclo y panel de inicio). */
+/** Color de cada pieza según su estado (calendario del ciclo y panel de inicio). Los tonos están en globals.css. */
 export const STATUS_STYLES: Record<WorkflowStatus, string> = {
   idea: "bg-background border border-border",
   draft: "bg-background border border-border",
-  in_review: "bg-amber-100 text-amber-950",
-  awaiting_client: "bg-amber-100 text-amber-950",
-  changes_requested: "bg-red-100 text-red-950",
-  approved: "bg-sky-100 text-sky-950",
-  scheduled: "bg-indigo-100 text-indigo-950",
-  published: "bg-green-100 text-green-950",
+  in_review: "bg-status-review text-status-review-ink",
+  awaiting_client: "bg-status-review text-status-review-ink",
+  changes_requested: "bg-status-changes text-status-changes-ink",
+  approved: "bg-status-approved text-status-approved-ink",
+  scheduled: "bg-status-scheduled text-status-scheduled-ink",
+  published: "bg-status-published text-status-published-ink",
   cancelled: "bg-background border border-border line-through opacity-60",
 };
 

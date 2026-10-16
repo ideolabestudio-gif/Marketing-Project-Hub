@@ -32,6 +32,18 @@
   --diff-add-ink: #0f4a22;
   --diff-del: #fde0e0;
   --diff-del-ink: #7a1620;
+  /* Estado de cada pieza: mismo color en claro y en oscuro, con el fondo adaptado. */
+  --status-review: #fef3c6;
+  --status-review-ink: #461901;
+  --status-changes: #ffe2e2;
+  --status-changes-ink: #460809;
+  --status-approved: #dff2fe;
+  --status-approved-ink: #052f4a;
+  --status-scheduled: #e0e7ff;
+  --status-scheduled-ink: #1e1a4d;
+  --status-published: #dcfce7;
+  --status-published-ink: #032e15;
+  color-scheme: light;
   --shadow: 0 1px 2px rgb(29 29 27 / 0.04), 0 1px 3px rgb(29 29 27 / 0.06);
   --shadow-hover: 0 4px 12px rgb(29 29 27 / 0.08), 0 1px 3px rgb(29 29 27 / 0.06);
 }
@@ -63,6 +75,17 @@
     --diff-add-ink: #b4f0c6;
     --diff-del: #47191e;
     --diff-del-ink: #ffc2c7;
+    --status-review: #3d2c0b;
+    --status-review-ink: #fcd98a;
+    --status-changes: #4a1a1e;
+    --status-changes-ink: #ffb8bd;
+    --status-approved: #0e3247;
+    --status-approved-ink: #a9dcfa;
+    --status-scheduled: #27264f;
+    --status-scheduled-ink: #c7cbff;
+    --status-published: #133b22;
+    --status-published-ink: #a6ebbd;
+    color-scheme: dark;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-hover: 0 4px 14px rgb(0 0 0 / 0.4);
   }
@@ -93,6 +116,16 @@
   --color-diff-add-ink: var(--diff-add-ink);
   --color-diff-del: var(--diff-del);
   --color-diff-del-ink: var(--diff-del-ink);
+  --color-status-review: var(--status-review);
+  --color-status-review-ink: var(--status-review-ink);
+  --color-status-changes: var(--status-changes);
+  --color-status-changes-ink: var(--status-changes-ink);
+  --color-status-approved: var(--status-approved);
+  --color-status-approved-ink: var(--status-approved-ink);
+  --color-status-scheduled: var(--status-scheduled);
+  --color-status-scheduled-ink: var(--status-scheduled-ink);
+  --color-status-published: var(--status-published);
+  --color-status-published-ink: var(--status-published-ink);
 }
 
 body {
@@ -142,11 +175,11 @@ input[type="radio"] {
   .h1 { @apply text-[1.75rem] leading-tight font-semibold tracking-tight; }
   .h2 { @apply text-lg font-semibold tracking-tight; }
   /* Selector de archivo con el mismo aspecto que los botones secundarios. */
-  .input[type="file"] { @apply cursor-pointer py-1.5 text-muted; }
-  .input[type="file"]::file-selector-button {
-    @apply mr-3 cursor-pointer rounded-md border border-border-strong bg-surface-muted px-3 py-1 text-sm font-medium text-foreground transition-colors;
+  .file-picker { @apply flex cursor-pointer items-center gap-3 py-1.5 text-muted focus-within:border-accent focus-within:ring-3 focus-within:ring-(--ring); }
+  .file-picker-button {
+    @apply shrink-0 rounded-md border border-border-strong bg-surface-muted px-3 py-1 text-sm font-medium text-foreground transition-colors;
   }
-  .input[type="file"]:hover::file-selector-button { @apply bg-accent-soft; }
+  .file-picker:hover .file-picker-button { @apply bg-accent-soft; }
   /* Aviso (en revisión, sin revisar, configuración pendiente…). */
   .notice { @apply rounded-lg border border-warning-ink/15 bg-warning-soft px-3.5 py-2.5 text-sm text-warning-ink; }
   .error-box { @apply rounded-lg border border-danger/25 bg-danger-soft px-3.5 py-2.5 text-sm text-danger; }

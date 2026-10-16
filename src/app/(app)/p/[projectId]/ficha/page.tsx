@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
+import { FileInput } from "@/components/file-input";
 import { AssetList } from "@/components/asset-list";
 import { projectContextForPage } from "@/lib/project-page";
 import { formatInZone } from "@/lib/time";
@@ -150,10 +151,8 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
               <h3 className="eyebrow">Subir archivo</h3>
               <label className="field">
                 Archivo ({ALLOWED_DESCRIPTION})
-                <input
-                  type="file"
+                <FileInput
                   name="file"
-                  className="input"
                   accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,video/mp4,video/quicktime"
                   required
                 />
