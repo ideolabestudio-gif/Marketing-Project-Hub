@@ -476,6 +476,16 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
         entries: [{ index: 0, title: "Intruso", plannedAt: `${FIXTURE_PERIOD}-21T18:30` }],
       }),
   },
+  "ai.getReportInterpretationChatPrompt": {
+    kind: "project",
+    own: (ctx, fx) => ai.getReportInterpretationChatPrompt(ctx, { cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => ai.getReportInterpretationChatPrompt(ctx, { cycleId: fx.contentB.cycle.id }),
+  },
+  "ai.importReportInterpretation": {
+    kind: "project",
+    own: (ctx, fx) => ai.importReportInterpretation(ctx, { cycleId: fx.contentA.cycle.id, output: "Lectura escrita en el chat" }),
+    foreign: (ctx, fx) => ai.importReportInterpretation(ctx, { cycleId: fx.contentB.cycle.id, output: "Lectura intrusa" }),
+  },
   "ai.generateReportInterpretation": {
     kind: "project",
     own: (ctx, fx) => ai.generateReportInterpretation(ctx, { cycleId: fx.contentA.cycle.id }),

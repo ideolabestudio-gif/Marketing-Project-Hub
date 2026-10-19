@@ -36,7 +36,7 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
               <p>Podrá, solo en los proyectos de los que eres miembro y con tus permisos:</p>
               <ul className="mt-1 list-disc pl-5">
                 <li>Ver proyectos, ciclos, piezas, métricas e informes.</li>
-                <li>Dejar borradores de calendario y de texto para que los revises.</li>
+                <li>Dejar borradores de calendario, de texto y del análisis del informe para que los revises.</li>
                 <li>Subir un CSV de métricas que tú confirmas en el Hub.</li>
               </ul>
               <p className="mt-2">No podrá aprobar, publicar, enviar ni borrar nada.</p>

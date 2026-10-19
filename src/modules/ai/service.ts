@@ -350,6 +350,62 @@ export async function importCopyDraft(ctx: ProjectContext, input: z.input<typeof
   return row;
 }
 
+/**
+ * Sin API: el texto completo para escribir la interpretación del informe en un chat de
+ * Claude (o con el conector). No llama a ningún proveedor ni guarda nada.
+ */
+export async function getReportInterpretationChatPrompt(ctx: ProjectContext, input: z.input<typeof cycleSchema>) {
+  const data = parseInput(cycleSchema, input);
+  await authorize(ctx, "ai.generate");
+  const context = await reportContext(ctx, data.cycleId);
+  return [REPORT_INTERPRETATION.system, buildPrompt(context, data.instructions)].join("\n\n");
+}
+
+const importReportSchema = z.object({
+  cycleId: z.string(),
+  output: z.string().trim().min(1, "Falta el texto del análisis").max(20000, "El texto es demasiado largo"),
+  instructions: instructionsSchema,
+});
+
+/**
+ * Guarda como borrador de interpretación del informe un texto escrito en un chat de
+ * Claude. Queda en ai_generations (sin coste) y solo llega al informe si una persona lo
+ * añade con applyReportInterpretation; allí queda marcado y sin revisar. No toca el informe.
+ */
+export async function importReportInterpretation(ctx: ProjectContext, input: z.input<typeof importReportSchema>) {
+  const data = parseInput(importReportSchema, input);
+  await authorize(ctx, "ai.generate");
+  const context = await reportContext(ctx, data.cycleId);
+  const cycle = await getCycle(ctx, context.cycleId);
+  assertCycleWritable(cycle);
+  const row = await repo.insertGeneration(ctx, {
+    cycleId: cycle.id,
+    contentItemId: null,
+    purpose: "report_interpretation",
+    provider: "chat",
+    model: "Chat de Claude",
+    promptTemplate: REPORT_INTERPRETATION.key,
+    promptTemplateVersion: REPORT_INTERPRETATION.version,
+    instructions: data.instructions,
+    inputRefs: context.inputRefs,
+    output: data.output,
+    error: null,
+    status: "draft",
+    inputTokens: 0,
+    outputTokens: 0,
+    costUsd: 0,
+  });
+  await recordAudit({
+    action: "ai.imported",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "ai_generation",
+    entityId: row.id,
+    data: { purpose: "report_interpretation" },
+  });
+  return row;
+}
+
 /** Lectura de las métricas registradas para el informe. No toca el informe. */
 export async function generateReportInterpretation(ctx: ProjectContext, input: z.input<typeof cycleSchema>) {
   const data = parseInput(cycleSchema, input);

@@ -1,14 +1,16 @@
 import { z } from "zod";
 import { NotFoundError } from "@/lib/errors";
 import { utcToWallTime } from "@/lib/time";
-import { requireProjectAccess } from "@/modules/access/context";
+import { hasPermission, requireProjectAccess } from "@/modules/access/context";
 import type { Permission } from "@/modules/access/permissions";
 import { listMyProjects } from "@/modules/access/service";
 import {
   getCalendarPlanChatPrompt,
   getCopyDraftChatPrompt,
+  getReportInterpretationChatPrompt,
   importCalendarPlan,
   importCopyDraft,
+  importReportInterpretation,
   prepareNextMonthCalendar,
 } from "@/modules/ai/service";
 import { BRAND_FIELDS, getBrandProfile } from "@/modules/brand/service";
@@ -19,6 +21,7 @@ import type { Actor } from "@/modules/identity/actor";
 import { getMetricSummary, uploadMetricCsv } from "@/modules/metrics/service";
 import { oauthUrls } from "@/modules/oauth/config";
 import { getProject, listChannels } from "@/modules/projects/service";
+import { createReport, getReport } from "@/modules/reports/service";
 import { WORKFLOW_LABELS } from "@/modules/review/domain";
 import { listCycleStatuses } from "@/modules/review/service";
 
@@ -328,6 +331,53 @@ export const TOOLS = [
       const { item } = await getItemDetail(ctx, input.pieza_id);
       return {
         text: `Borrador guardado. Revísalo en ${hubUrl(`/p/${ctx.projectId}/ciclos/${item.cyclePeriod}/piezas/${item.id}`)}`,
+      };
+    },
+  }),
+
+  tool({
+    name: "preparar_analisis_informe",
+    title: "Preparar análisis del informe",
+    description:
+      "Devuelve las instrucciones y las métricas registradas para escribir el análisis del informe de un mes. Escríbelo siguiendo esas instrucciones y guárdalo con guardar_analisis_informe.",
+    input: z.object({ proyecto_id: projectId, periodo: period, indicaciones: instructions }),
+    readOnly: true,
+    run: async (actor, input) => {
+      const { ctx, cycle } = await cycleOf(actor, input.proyecto_id, input.periodo, "ai.generate");
+      const prompt = await getReportInterpretationChatPrompt(ctx, { cycleId: cycle.id, instructions: input.indicaciones });
+      return {
+        text: [
+          "Escribe el análisis con estas instrucciones y guárdalo con guardar_analisis_informe para el mismo mes.",
+          "",
+          prompt,
+        ].join("\n"),
+      };
+    },
+  }),
+
+  tool({
+    name: "guardar_analisis_informe",
+    title: "Guardar análisis del informe",
+    description:
+      "Guarda en el informe del mes un borrador de análisis. No cambia el informe: una persona lo añade, queda marcado como asistido por IA y hay que revisarlo antes de aprobar. Usa solo cifras de preparar_analisis_informe.",
+    input: z.object({
+      proyecto_id: projectId,
+      periodo: period,
+      texto: z.string().describe("Análisis listo para el informe, en párrafos y sin títulos"),
+      indicaciones: instructions,
+    }),
+    readOnly: false,
+    run: async (actor, input) => {
+      const { ctx, cycle } = await cycleOf(actor, input.proyecto_id, input.periodo, "ai.generate");
+      await importReportInterpretation(ctx, { cycleId: cycle.id, output: input.texto, instructions: input.indicaciones });
+      // El borrador se ve en la página del informe: si aún no existe, se crea con su estructura propuesta.
+      let note = "";
+      if (!(await getReport(ctx, cycle.id))) {
+        if (hasPermission(ctx, "report.write")) await createReport(ctx, { cycleId: cycle.id });
+        else note = " El mes aún no tiene informe: pide a quien redacta los informes que lo cree para verlo.";
+      }
+      return {
+        text: `Análisis guardado como borrador. Revísalo y pulsa «Añadir al informe» en ${hubUrl(`/p/${ctx.projectId}/ciclos/${cycle.period}/informe`)}.${note}`,
       };
     },
   }),

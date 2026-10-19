@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
-import { aiGenerations, contentVersions, metricImports } from "@/lib/db/schema";
+import { aiGenerations, contentVersions, metricImports, reportSections, reports } from "@/lib/db/schema";
 import { callTool, handleMessage, listTools } from "@/modules/mcp/server";
 import { calendarPlanReply, FIXTURE_PERIOD, MARKER_A, MARKER_B, seedTwoProjects, type Fixture } from "../fixtures/two-projects";
 
@@ -84,6 +84,8 @@ describe("aislamiento por proyecto en las herramientas", () => {
       await call("ver_ciclo", { proyecto_id: fx.projectB.id, periodo: FIXTURE_PERIOD }),
       await call("ver_pieza", { proyecto_id: fx.projectA.id, pieza_id: fx.contentB.item.id }),
       await call("guardar_borrador_texto", { proyecto_id: fx.projectA.id, pieza_id: fx.contentB.item.id, texto: "x" }),
+      await call("preparar_analisis_informe", { proyecto_id: fx.projectB.id, periodo: FIXTURE_PERIOD }),
+      await call("guardar_analisis_informe", { proyecto_id: fx.projectB.id, periodo: FIXTURE_PERIOD, texto: "x" }),
       await call("subir_csv_metricas", {
         proyecto_id: fx.projectA.id,
         periodo: FIXTURE_PERIOD,
@@ -154,6 +156,39 @@ describe("borradores desde Claude", () => {
     const r = await call("preparar_calendario", { proyecto_id: fx.projectA.id });
     expect(r.isError).toBeFalsy();
     expect(r.text).toMatch(/^Ciclo \d{4}-\d{2}/);
+  });
+
+  it("preparar_analisis_informe y guardar_analisis_informe dejan un borrador sin tocar el informe", async () => {
+    const before = await getDb().select().from(reportSections).where(eq(reportSections.reportId, fx.metricsA.report.id));
+    const prep = await call("preparar_analisis_informe", { proyecto_id: fx.projectA.id, periodo: FIXTURE_PERIOD });
+    expect(prep.isError).toBeFalsy();
+    expect(prep.text).toContain("Usa únicamente las cifras de <datos>");
+    expect(prep.text).not.toContain(MARKER_B);
+    const r = await call("guardar_analisis_informe", {
+      proyecto_id: fx.projectA.id,
+      periodo: FIXTURE_PERIOD,
+      texto: "Lectura propuesta por Claude",
+    });
+    expect(r.isError).toBeFalsy();
+    expect(r.text).toContain(`/ciclos/${FIXTURE_PERIOD}/informe`);
+    const drafts = await getDb()
+      .select()
+      .from(aiGenerations)
+      .where(and(eq(aiGenerations.cycleId, fx.contentA.cycle.id), eq(aiGenerations.provider, "chat")));
+    expect(drafts).toMatchObject([
+      { status: "draft", purpose: "report_interpretation", output: "Lectura propuesta por Claude", costUsd: 0 },
+    ]);
+    const after = await getDb().select().from(reportSections).where(eq(reportSections.reportId, fx.metricsA.report.id));
+    expect(after).toHaveLength(before.length);
+  });
+
+  it("guardar_analisis_informe crea el informe del mes si aún no existe", async () => {
+    const prep = await call("preparar_calendario", { proyecto_id: fx.projectA.id });
+    const period = prep.text.match(/^Ciclo (\d{4}-\d{2})/)![1];
+    const r = await call("guardar_analisis_informe", { proyecto_id: fx.projectA.id, periodo: period, texto: "Lectura" });
+    expect(r.isError).toBeFalsy();
+    const created = await getDb().select().from(reports).where(eq(reports.projectId, fx.projectA.id));
+    expect(created).toHaveLength(2);
   });
 
   it("subir_csv_metricas deja una importación pendiente de confirmar", async () => {
