@@ -43,11 +43,6 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {project.designUrl && (
-            <a href={project.designUrl} className="btn btn-primary" target="_blank" rel="noopener noreferrer">
-              Crear diseño <span aria-hidden="true">↗</span>
-            </a>
-          )}
           <a
             href={project.metricoolUrl ?? METRICOOL_HOME_URL}
             className="btn btn-secondary"

@@ -68,9 +68,16 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={cycleUrl} className="link text-sm">
-          ← Plan del mes
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link href={cycleUrl} className="link text-sm">
+            ← Plan del mes
+          </Link>
+          {project.designUrl && !isEmail && (
+            <a href={project.designUrl} className="btn btn-primary" target="_blank" rel="noopener noreferrer">
+              Crear diseño <span aria-hidden="true">↗</span>
+            </a>
+          )}
+        </div>
         <h1 className={`h1 mt-1 ${cancelled ? "line-through opacity-60" : ""}`}>{item.title}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <StatusPill status={review.status} />
