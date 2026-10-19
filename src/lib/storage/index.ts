@@ -2,8 +2,8 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 /**
- * Almacenamiento de archivos (puerto + adaptador). Hoy: disco local (en Render, un disco
- * persistente). Se puede sustituir por un adaptador S3 sin tocar los módulos.
+ * Almacenamiento de archivos en disco. Los archivos nuevos se guardan en la base de datos
+ * (tabla asset_files); este disco solo se lee para servir los subidos antes de ese cambio.
  * Las claves siempre tienen la forma projects/{projectId}/assets/{assetId}.
  */
 export interface StorageProvider {

@@ -18,8 +18,8 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm run db:migrate && npm run start
     healthCheckPath: /health
-    # Archivos subidos (imágenes, PDF, vídeos de las piezas). Los discos persistentes
-    # requieren un plan de pago; comprueba en el panel sus copias (instantáneas).
+    # Los archivos subidos se guardan en la base de datos. Este disco solo sirve para leer
+    # los subidos antes de ese cambio; se puede quitar cuando ya no queden.
     disk:
       name: mph-files
       mountPath: /var/data

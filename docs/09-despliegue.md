@@ -38,7 +38,7 @@ Para trabajo real, usar el Blueprint (`render.yaml`) de las secciones siguientes
 | `BOOTSTRAP_ADMIN_EMAILS` | Tu email de Google (o varios, separados por comas). Entrarán como administradores la primera vez |
 | `AUTH_GOOGLE_HOSTED_DOMAIN` | Solo si usáis Google Workspace: vuestro dominio (p. ej. `ideolab.es`). Si no, déjala vacía |
 
-3. El Blueprint crea también un **disco persistente** de 10 GB montado en `/var/data` para los archivos subidos (`STORAGE_DIR=/var/data/storage`). Requiere plan de pago; revisa en el panel que el disco tenga copias (instantáneas).
+3. Los archivos subidos se guardan en la base de datos, así que no hace falta disco persistente (no se pierden al reiniciar, también en el plan gratuito). El disco del Blueprint (`STORAGE_DIR=/var/data/storage`) solo sirve para leer archivos subidos antes de ese cambio; se puede quitar cuando ya no queden.
 4. Confirma. En cada despliegue se ejecuta `npm ci && npm run build`, y al arrancar `npm run db:migrate && npm run start` (las migraciones son idempotentes).
 5. Comprueba `https://<tu-servicio>/health` → `{"ok":true}`.
 

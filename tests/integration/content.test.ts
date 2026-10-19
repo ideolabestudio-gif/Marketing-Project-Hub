@@ -1,9 +1,10 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
-import { assets, cycles, auditEvents } from "@/lib/db/schema";
+import { assetFiles, assets, cycles, auditEvents } from "@/lib/db/schema";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import {
@@ -11,6 +12,7 @@ import {
   addLinkAsset,
   compareVersions,
   createItem,
+  getAssetFile,
   getItemDetail,
   getVersion,
   listItems,
@@ -209,8 +211,48 @@ describe("archivos", () => {
     expect(row.storageKey).toBe(`projects/${fx.projectA.id}/assets/${row.id}`);
     expect(row.mimeType).toBe("image/png");
     expect(row.sha256).toMatch(/^[0-9a-f]{64}$/);
-    const stored = await readFile(join(process.env.STORAGE_DIR!, row.storageKey!));
-    expect(new Uint8Array(stored)).toEqual(TINY_PNG);
+    const [stored] = await getDb().select().from(assetFiles).where(eq(assetFiles.assetId, row.id));
+    expect(stored.projectId).toBe(fx.projectA.id);
+    expect(new Uint8Array(stored.bytes)).toEqual(TINY_PNG);
+    expect(new Uint8Array((await getAssetFile(ctx, row.id)).bytes)).toEqual(TINY_PNG);
+  });
+
+  it("sirve los archivos antiguos que solo están en disco y los copia a la base de datos", async () => {
+    const id = randomUUID();
+    const storageKey = `projects/${fx.projectA.id}/assets/${id}`;
+    const path = join(process.env.STORAGE_DIR!, storageKey);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, TINY_PNG);
+    await getDb().insert(assets).values({
+      id,
+      projectId: fx.projectA.id,
+      kind: "file",
+      storageKey,
+      filename: "antiguo.png",
+      mimeType: "image/png",
+      sizeBytes: TINY_PNG.byteLength,
+      sha256: "0".repeat(64),
+      uploadedBy: fx.users.ana.id,
+    });
+    expect(new Uint8Array((await getAssetFile(ctx, id)).bytes)).toEqual(TINY_PNG);
+    const copied = await getDb().select().from(assetFiles).where(eq(assetFiles.assetId, id));
+    expect(copied).toHaveLength(1);
+  });
+
+  it("un archivo antiguo perdido del disco da «no encontrado», no un error del servidor", async () => {
+    const id = randomUUID();
+    await getDb().insert(assets).values({
+      id,
+      projectId: fx.projectA.id,
+      kind: "file",
+      storageKey: `projects/${fx.projectA.id}/assets/${id}`,
+      filename: "perdido.png",
+      mimeType: "image/png",
+      sizeBytes: 1,
+      sha256: "0".repeat(64),
+      uploadedBy: fx.users.ana.id,
+    });
+    await expect(getAssetFile(ctx, id)).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("rechaza tipos no admitidos aunque la extensión parezca válida (SVG, HTML)", async () => {
