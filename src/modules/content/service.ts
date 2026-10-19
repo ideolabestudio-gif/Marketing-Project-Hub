@@ -91,7 +91,16 @@ export async function getAssetFile(ctx: ProjectContext, assetId: string) {
   await authorize(ctx, "project.read");
   const asset = isUuid(assetId) ? await repo.findAsset(ctx, assetId) : undefined;
   if (!asset || asset.kind !== "file" || !asset.storageKey) throw new NotFoundError();
-  const bytes = await getStorage().get(asset.storageKey);
+  let bytes = await repo.findAssetBytes(ctx, asset.id);
+  if (!bytes) {
+    // Archivo subido antes de guardarlos en la base de datos: se lee del disco y se copia.
+    bytes = await getStorage()
+      .get(asset.storageKey)
+      .catch(() => {
+        throw new NotFoundError();
+      });
+    await repo.insertAssetBytes(ctx, asset.id, bytes);
+  }
   return { filename: asset.filename, mimeType: asset.mimeType ?? "application/octet-stream", bytes };
 }
 
@@ -312,9 +321,8 @@ export async function saveVersion(ctx: ProjectContext, input: z.input<typeof ver
 const MAX_ASSETS_PER_VERSION = 20;
 
 /**
- * Valida el archivo (tamaño y tipo real por sus primeros bytes) y lo guarda en el
- * almacenamiento del proyecto. Se escribe antes que la fila: si la transacción falla
- * queda un huérfano inofensivo, nunca una fila apuntando a un archivo inexistente.
+ * Valida el archivo (tamaño y tipo real por sus primeros bytes) y lo prepara para
+ * guardarse en la base de datos junto con su fila, en la misma transacción.
  */
 async function storeFile(ctx: ProjectContext, input: { filename: string; bytes: Uint8Array }): Promise<repo.NewAsset> {
   if (input.bytes.byteLength === 0) throw new ValidationError("El archivo está vacío");
@@ -323,7 +331,6 @@ async function storeFile(ctx: ProjectContext, input: { filename: string; bytes: 
   if (!mimeType) throw new ValidationError(`Tipo de archivo no admitido (${ALLOWED_DESCRIPTION})`);
   const assetId = randomUUID();
   const storageKey = assetStorageKey(ctx.projectId, assetId);
-  await getStorage().put(storageKey, input.bytes);
   return {
     id: assetId,
     kind: "file",
@@ -333,6 +340,7 @@ async function storeFile(ctx: ProjectContext, input: { filename: string; bytes: 
     mimeType,
     sizeBytes: input.bytes.byteLength,
     sha256: createHash("sha256").update(input.bytes).digest("hex"),
+    bytes: input.bytes,
   };
 }
 

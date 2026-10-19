@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, max, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
+  assetFiles,
   assets,
   channels,
   comments,
@@ -155,7 +156,32 @@ export async function findAsset(ctx: ProjectContext, assetId: string): Promise<A
   return row;
 }
 
-export type NewAsset = Pick<AssetRow, "id" | "kind" | "storageKey" | "url" | "filename" | "mimeType" | "sizeBytes" | "sha256">;
+export type NewAsset = Pick<AssetRow, "id" | "kind" | "storageKey" | "url" | "filename" | "mimeType" | "sizeBytes" | "sha256"> & {
+  /** Contenido del archivo (solo kind = file); se guarda en la misma transacción que el activo. */
+  bytes?: Uint8Array;
+};
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+async function insertAsset(tx: Tx, ctx: ProjectContext, { bytes, ...asset }: NewAsset): Promise<void> {
+  await tx.insert(assets).values({ ...asset, projectId: ctx.projectId, uploadedBy: ctx.actor.userId });
+  if (bytes) await tx.insert(assetFiles).values({ projectId: ctx.projectId, assetId: asset.id, bytes });
+}
+
+/** Contenido de un archivo guardado en la base de datos (undefined si es anterior a esa tabla). */
+export async function findAssetBytes(ctx: ProjectContext, assetId: string): Promise<Uint8Array | undefined> {
+  const [row] = await getDb()
+    .select({ bytes: assetFiles.bytes })
+    .from(assetFiles)
+    .where(and(eq(assetFiles.projectId, ctx.projectId), eq(assetFiles.assetId, assetId)))
+    .limit(1);
+  return row?.bytes;
+}
+
+/** Copia a la base de datos un archivo antiguo que solo estaba en disco. */
+export async function insertAssetBytes(ctx: ProjectContext, assetId: string, bytes: Uint8Array): Promise<void> {
+  await getDb().insert(assetFiles).values({ projectId: ctx.projectId, assetId, bytes }).onConflictDoNothing();
+}
 
 /**
  * Crea la versión siguiente de una pieza en una transacción: (opcional) registra un
@@ -181,7 +207,7 @@ export async function createVersion(
 
     const assetIds = [...input.assetIds];
     if (input.newAsset) {
-      await tx.insert(assets).values({ ...input.newAsset, projectId: ctx.projectId, uploadedBy: ctx.actor.userId });
+      await insertAsset(tx, ctx, input.newAsset);
       assetIds.push(input.newAsset.id);
     }
 
@@ -301,7 +327,7 @@ export async function insertLibraryItem(
   input: { asset: NewAsset } & Pick<LibraryItemRow, "category" | "title" | "description">,
 ): Promise<LibraryItemRow> {
   return getDb().transaction(async (tx) => {
-    await tx.insert(assets).values({ ...input.asset, projectId: ctx.projectId, uploadedBy: ctx.actor.userId });
+    await insertAsset(tx, ctx, input.asset);
     const [row] = await tx
       .insert(libraryItems)
       .values({

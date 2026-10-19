@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   check,
+  customType,
   foreignKey,
   index,
   integer,
@@ -145,6 +146,35 @@ export const assets = pgTable(
             AND ${t.storageKey} LIKE 'projects/' || ${t.projectId}::text || '/%')
        OR (${t.kind} = 'link' AND ${t.url} IS NOT NULL AND ${t.storageKey} IS NULL)`,
     ),
+  ],
+);
+
+const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType: () => "bytea",
+  toDriver: (value) => Buffer.from(value.buffer, value.byteOffset, value.byteLength),
+});
+
+/**
+ * Contenido de un archivo subido. Vive en la base de datos (no en disco) para que no se
+ * pierda al reiniciar el servidor ni dependa de un disco persistente. Inmutable.
+ */
+export const assetFiles = pgTable(
+  "asset_files",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    assetId: uuid("asset_id").notNull(),
+    bytes: bytea("bytes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.projectId, t.assetId] }),
+    foreignKey({
+      name: "asset_files_asset_fk",
+      columns: [t.projectId, t.assetId],
+      foreignColumns: [assets.projectId, assets.id],
+    }),
   ],
 );
 
