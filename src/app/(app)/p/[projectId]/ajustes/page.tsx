@@ -79,7 +79,8 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Enlaces del proyecto</h2>
         <p className="text-sm text-muted">
-          Aparecen como botones en la página del proyecto y se abren en una pestaña nueva. El Hub no se conecta con
+          «Crear diseño» aparece en cada post del calendario y «Abrir Metricool» en la página del proyecto; los dos se
+          abren en una pestaña nueva. El Hub no se conecta con
           estas herramientas: solo te lleva a ellas.
         </p>
         <ActionForm action={updateLinksAction.bind(null, projectId)} submitLabel="Guardar" className="grid gap-3">
