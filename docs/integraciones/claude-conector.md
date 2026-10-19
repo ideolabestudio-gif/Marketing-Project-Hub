@@ -19,6 +19,7 @@ No es una integración saliente: es Claude quien llama al Hub. El Hub no hace ni
 | `preparar_calendario` | Devuelve el prompt del calendario (el mismo del modo chat); sin periodo abre el ciclo del mes que viene, como «Preparar calendario» | `ai.generate` (+ `cycle.manage` para abrir el ciclo) |
 | `guardar_propuesta_calendario` | Guarda la propuesta en `ai_generations` (provider `chat`); no crea piezas | `ai.generate` |
 | `preparar_texto_pieza` / `guardar_borrador_texto` | Prompt y borrador de texto de una pieza en `ai_generations`; no crea versiones | `ai.generate` |
+| `preparar_analisis_informe` / `guardar_analisis_informe` | Prompt (métricas registradas del mes) y borrador de interpretación del informe en `ai_generations`; no crea secciones. Si el mes no tiene informe, lo crea con su estructura propuesta (`report.write`) | `ai.generate` |
 | `subir_csv_metricas` | Crea una importación pendiente; una persona asigna columnas y la aplica | `metrics.write` |
 
 No hay herramientas para aprobar, publicar, programar, enviar, cerrar ni borrar (lo comprueba `tests/integration/mcp.test.ts`).
