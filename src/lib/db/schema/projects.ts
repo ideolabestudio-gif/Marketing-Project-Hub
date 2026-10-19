@@ -51,6 +51,10 @@ export const projects = pgTable(
      * la versión en un solo paso. Implica no exigir al cliente ni separar funciones.
      */
     soloMode: boolean("solo_mode").notNull().default(false),
+    /** Enlace a la plantilla o proyecto de Claude Design donde se crean los diseños del cliente. */
+    designUrl: text("design_url"),
+    /** Enlace a la marca del cliente en Metricool (si falta, se abre la página principal de Metricool). */
+    metricoolUrl: text("metricool_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

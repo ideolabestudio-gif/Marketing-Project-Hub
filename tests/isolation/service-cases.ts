@@ -98,6 +98,12 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     own: (ctx) => projects.updateAiSettings(ctx, { aiEnabled: true, aiMonthlyLimitUsd: 10 }),
     foreign: { none: "No recibe IDs: el proyecto sale del contexto" },
   },
+  "projects.updateProjectLinks": {
+    kind: "project",
+    own: (ctx) =>
+      projects.updateProjectLinks(ctx, { designUrl: "https://claude.ai/design/ejemplo", metricoolUrl: "" }),
+    foreign: { none: "No recibe IDs: el proyecto sale del contexto" },
+  },
   "projects.listChannels": {
     kind: "project",
     own: (ctx) => projects.listChannels(ctx),

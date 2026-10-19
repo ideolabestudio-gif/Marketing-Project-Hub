@@ -68,6 +68,37 @@ export async function updateAiSettings(ctx: ProjectContext, input: z.input<typeo
   });
 }
 
+/** Enlace opcional: vacío = sin enlace. Solo http(s), para no abrir otros esquemas desde la UI. */
+const externalLinkSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine((u) => u === "" || /^https?:\/\/[^\s]+$/i.test(u), "El enlace debe empezar por http:// o https://")
+  .transform((u) => u || null);
+
+const linksSchema = z.object({
+  designUrl: externalLinkSchema,
+  metricoolUrl: externalLinkSchema,
+});
+
+/** URL por defecto del botón de Metricool cuando el proyecto no tiene una propia. */
+export const METRICOOL_HOME_URL = "https://app.metricool.com";
+
+/** Guarda los enlaces de los botones «Crear diseño» (Claude Design) y «Abrir Metricool». */
+export async function updateProjectLinks(ctx: ProjectContext, input: z.input<typeof linksSchema>) {
+  await authorize(ctx, "project.settings");
+  const data = parseInput(linksSchema, input);
+  await repo.updateProject(ctx, data);
+  await recordAudit({
+    action: "project.links_updated",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "project",
+    entityId: ctx.projectId,
+    data,
+  });
+}
+
 export async function listChannels(ctx: ProjectContext) {
   await authorize(ctx, "project.read");
   return repo.listChannels(ctx);

@@ -8,6 +8,7 @@ import {
   createChannel,
   getProject,
   listChannels,
+  updateProjectLinks,
   updateProjectSettings,
 } from "@/modules/projects/service";
 import { seedTwoProjects, type Fixture } from "../fixtures/two-projects";
@@ -75,5 +76,25 @@ describe("clientes, proyectos y canales", () => {
       requireClientApproval: false,
       soloMode: false,
     });
+  });
+
+  it("guarda los enlaces de Claude Design y Metricool solo en su proyecto y rechaza esquemas que no sean http(s)", async () => {
+    const ctxA = await requireProjectAccess(fx.actors.ana, fx.projectA.id, "project.settings");
+    await updateProjectLinks(ctxA, {
+      designUrl: " https://claude.ai/design/p/alfa ",
+      metricoolUrl: "https://app.metricool.com/evolution/web?blogId=1",
+    });
+    expect(await getProject(ctxA)).toMatchObject({
+      designUrl: "https://claude.ai/design/p/alfa",
+      metricoolUrl: "https://app.metricool.com/evolution/web?blogId=1",
+    });
+    const ctxB = await requireProjectAccess(fx.actors.bea, fx.projectB.id);
+    expect(await getProject(ctxB)).toMatchObject({ designUrl: null, metricoolUrl: null });
+
+    await updateProjectLinks(ctxA, { designUrl: "", metricoolUrl: "" });
+    expect(await getProject(ctxA)).toMatchObject({ designUrl: null, metricoolUrl: null });
+    await expect(
+      updateProjectLinks(ctxA, { designUrl: "javascript:alert(1)", metricoolUrl: "" }),
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 });
