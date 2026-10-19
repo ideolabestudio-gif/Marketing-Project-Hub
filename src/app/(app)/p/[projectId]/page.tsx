@@ -8,7 +8,7 @@ import { listProjectMembers } from "@/modules/access/service";
 import { getAiStatus } from "@/modules/ai/service";
 import { PLATFORMS } from "@/modules/projects/catalog";
 import { CYCLE_STATUS_LABELS, listCycles } from "@/modules/cycles/service";
-import { getProject, listChannels } from "@/modules/projects/service";
+import { getProject, listChannels, METRICOOL_HOME_URL } from "@/modules/projects/service";
 import { openCycleAction } from "./actions";
 import { prepareNextMonthCalendarAction } from "./ai-actions";
 
@@ -32,7 +32,7 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-sm text-muted">{project.clientName}</div>
           <h1 className="h1">{project.name}</h1>
@@ -42,7 +42,20 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
             {project.status === "archived" && <span className="badge">Archivado · solo lectura</span>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {project.designUrl && (
+            <a href={project.designUrl} className="btn btn-primary" target="_blank" rel="noopener noreferrer">
+              Crear diseño <span aria-hidden="true">↗</span>
+            </a>
+          )}
+          <a
+            href={project.metricoolUrl ?? METRICOOL_HOME_URL}
+            className="btn btn-secondary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Abrir Metricool <span aria-hidden="true">↗</span>
+          </a>
           <Link href={`/p/${projectId}/ficha`} className="btn btn-secondary">
             Ficha del cliente
           </Link>

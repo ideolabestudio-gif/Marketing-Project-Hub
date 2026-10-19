@@ -3,8 +3,8 @@ import { ActionForm } from "@/components/action-form";
 import { projectContextForPage } from "@/lib/project-page";
 import { PLATFORMS, PLATFORM_KEYS } from "@/modules/projects/catalog";
 import { getAiStatus } from "@/modules/ai/service";
-import { getProject, listChannels } from "@/modules/projects/service";
-import { createChannelAction, setChannelActiveAction, updateAiSettingsAction, updateSettingsAction } from "./actions";
+import { getProject, listChannels, METRICOOL_HOME_URL } from "@/modules/projects/service";
+import { createChannelAction, setChannelActiveAction, updateAiSettingsAction, updateLinksAction, updateSettingsAction } from "./actions";
 
 export default async function ProjectSettingsPage({ params }: PageProps<"/p/[projectId]/ajustes">) {
   const { projectId } = await params;
@@ -71,6 +71,40 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
             <span>
               Separación de funciones
               <span className="block text-muted">Quien escribe una versión no puede aprobarla internamente.</span>
+            </span>
+          </label>
+        </ActionForm>
+      </section>
+
+      <section className="card flex flex-col gap-3">
+        <h2 className="h2">Enlaces del proyecto</h2>
+        <p className="text-sm text-muted">
+          Aparecen como botones en la página del proyecto y se abren en una pestaña nueva. El Hub no se conecta con
+          estas herramientas: solo te lleva a ellas.
+        </p>
+        <ActionForm action={updateLinksAction.bind(null, projectId)} submitLabel="Guardar" className="grid gap-3">
+          <label className="field">
+            Claude Design (botón «Crear diseño»)
+            <input
+              type="url"
+              name="designUrl"
+              defaultValue={project.designUrl ?? ""}
+              className="input"
+              placeholder="https://claude.ai/design/…"
+            />
+            <span className="text-xs text-muted">Si lo dejas vacío, el botón no aparece.</span>
+          </label>
+          <label className="field">
+            Metricool (botón «Abrir Metricool»)
+            <input
+              type="url"
+              name="metricoolUrl"
+              defaultValue={project.metricoolUrl ?? ""}
+              className="input"
+              placeholder={METRICOOL_HOME_URL}
+            />
+            <span className="text-xs text-muted">
+              Pega el enlace de la marca de este cliente. Si lo dejas vacío, se abre {METRICOOL_HOME_URL}.
             </span>
           </label>
         </ActionForm>

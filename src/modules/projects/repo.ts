@@ -19,6 +19,8 @@ export async function getProjectWithClient(ctx: ProjectContext) {
       requireClientApproval: projects.requireClientApproval,
       separationOfDuties: projects.separationOfDuties,
       soloMode: projects.soloMode,
+      designUrl: projects.designUrl,
+      metricoolUrl: projects.metricoolUrl,
       clientName: clients.name,
     })
     .from(projects)
@@ -40,6 +42,8 @@ export async function updateProject(
       | "soloMode"
       | "aiEnabled"
       | "aiMonthlyLimitUsd"
+      | "designUrl"
+      | "metricoolUrl"
     >
   >,
 ) {
