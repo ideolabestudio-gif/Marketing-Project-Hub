@@ -15,6 +15,7 @@ import { WORKFLOW_LABELS, type WorkflowStatus } from "@/modules/review/domain";
 import { listCycleStatuses } from "@/modules/review/service";
 import { CalendarPlanSection } from "./calendar-plan-section";
 import { IdeasSection } from "./ideas-section";
+import { MetricoolMonthSection } from "./metricool-month-section";
 import { closeCycleAction, createItemAction, reopenCycleAction, setStatusAction, updateBriefAction } from "./actions";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -43,6 +44,10 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
   const tz = project.timezone;
   const today = zonedDay(new Date(), tz);
   const briefEmpty = !cycle.objectives && !cycle.keyDates && !cycle.notes;
+
+  const toSchedule = items
+    .filter((item) => item.channelKind !== "email" && statusOf(item.id) === "approved")
+    .map((item) => item.id);
 
   const byDay = new Map<string, typeof items>();
   const undated: typeof items = [];
@@ -234,6 +239,8 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
           </table>
         )}
       </section>
+
+      <MetricoolMonthSection ctx={ctx} base={base} brand={project.clientName} tz={tz} itemIds={toSchedule} />
 
       {canWrite && (
         <section className="card flex flex-col gap-3">

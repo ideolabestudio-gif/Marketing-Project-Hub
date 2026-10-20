@@ -109,7 +109,7 @@ export default async function HomePage() {
               <div>
                 <h2 className="h2">Por programar en Metricool</h2>
                 <p className="text-sm text-muted">
-                  Abre cada pieza, pulsa «Copiar para Metricool», pégalo en Claude y registra aquí la programación.
+                  Pulsa «Copiar para Metricool» en cada pieza, o cópialas todas a la vez desde el plan del mes, pégalo en Claude y registra aquí la programación.
                 </p>
               </div>
               {toSchedule.length === 0 ? (
