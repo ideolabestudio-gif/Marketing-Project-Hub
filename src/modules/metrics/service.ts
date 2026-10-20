@@ -4,7 +4,7 @@ import { previousPeriod } from "@/lib/time";
 import { isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
-import { assertCycleWritable, getCycle, getCycleByPeriod } from "@/modules/cycles/service";
+import { assertCycleWritable, getCycle, listCycles } from "@/modules/cycles/service";
 import { assertAdmin, type Actor } from "@/modules/identity/actor";
 import { listChannels } from "@/modules/projects/service";
 import {
@@ -377,7 +377,12 @@ export type MetricSummaryRow = {
   /** Variación porcentual respecto al mes anterior; null si falta alguno de los dos datos. */
   change: number | null;
   source: string | null;
+  /** Valor de cada mes de `periods` (el último es este mes); null = sin dato. */
+  history: (number | null)[];
 };
+
+/** Meses que se muestran en la evolución del informe (incluido el del ciclo). */
+export const HISTORY_MONTHS = 6;
 
 /**
  * Valores del ciclo y del mes anterior, por canal y métrica del catálogo. Si falta un
@@ -386,16 +391,16 @@ export type MetricSummaryRow = {
 export async function getMetricSummary(ctx: ProjectContext, input: { cycleId: string; channelId?: string | null }) {
   await authorize(ctx, "project.read");
   const cycle = await getCycle(ctx, input.cycleId);
-  let previousCycleId: string | null = null;
-  try {
-    previousCycleId = (await getCycleByPeriod(ctx, previousPeriod(cycle.period))).id;
-  } catch (err) {
-    if (!(err instanceof NotFoundError)) throw err;
-  }
+  const periods = [cycle.period];
+  while (periods.length < HISTORY_MONTHS) periods.unshift(previousPeriod(periods[0]));
+  const cycleIdByPeriod = new Map(
+    (await listCycles(ctx)).filter((c) => periods.includes(c.period)).map((c) => [c.period, c.id]),
+  );
+  const previousCycleId = cycleIdByPeriod.get(periods[periods.length - 2]) ?? null;
   const [channels, definitions, values] = await Promise.all([
     listChannels(ctx),
     repo.listDefinitions(),
-    repo.currentChannelValues(ctx, [cycle.id, ...(previousCycleId ? [previousCycleId] : [])]),
+    repo.currentChannelValues(ctx, [...cycleIdByPeriod.values()]),
   ]);
   const selected = channels.filter((c) => (input.channelId ? c.id === input.channelId : true));
   if (input.channelId && selected.length === 0) throw new NotFoundError("Canal no encontrado");
@@ -411,10 +416,11 @@ export async function getMetricSummary(ctx: ProjectContext, input: { cycleId: st
         const value = cur ? cur.value : null;
         const previous = prev ? prev.value : null;
         const change = value !== null && previous !== null && previous !== 0 ? ((value - previous) / previous) * 100 : null;
-        return { channelId: channel.id, definition: d, value, previous, change, source: cur?.source ?? null };
+        const history = periods.map((p) => find(cycleIdByPeriod.get(p) ?? null, channel.id, d.key)?.value ?? null);
+        return { channelId: channel.id, definition: d, value, previous, change, source: cur?.source ?? null, history };
       })
       // Se muestran las métricas activas y cualquier métrica con datos en algún mes.
       .filter((r) => r.definition.isActive || r.value !== null || r.previous !== null);
-    return { channel, hasPrevious: previousCycleId !== null, rows };
+    return { channel, hasPrevious: previousCycleId !== null, periods, rows };
   });
 }

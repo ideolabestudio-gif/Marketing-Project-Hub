@@ -3,10 +3,11 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@
 import { isForeignKeyViolation, isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
-import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
-import { getMetricSummary } from "@/modules/metrics/service";
+import { previousPeriod } from "@/lib/time";
+import { assertCycleWritable, getCycle, getCycleByPeriod } from "@/modules/cycles/service";
+import { getMetricSummary, listMetricCatalog } from "@/modules/metrics/service";
 import { getProject, listChannels } from "@/modules/projects/service";
-import { listCyclePublications } from "@/modules/review/service";
+import { listCyclePublications, listCycleStatuses } from "@/modules/review/service";
 import * as repo from "./repo";
 
 // Un informe mezcla DATOS (métricas registradas y publicaciones del Hub, nunca
@@ -25,34 +26,133 @@ export async function getReport(ctx: ProjectContext, cycleId: string) {
   await authorize(ctx, "project.read");
   const cycle = await getCycle(ctx, cycleId);
   const report = await repo.findReportByCycle(ctx, cycle.id);
-  return report ? { report, sections: await repo.listSections(ctx, report.id) } : null;
+  if (!report) return null;
+  const [sections, highlights] = await Promise.all([repo.listSections(ctx, report.id), repo.listHighlights(ctx, report.id)]);
+  return { report, sections, highlights };
 }
 
-/** Crea el informe del ciclo con una estructura propuesta, editable después. */
-export async function createReport(ctx: ProjectContext, input: { cycleId: string }) {
+/** Como mucho, cifras destacadas por informe. */
+export const MAX_HIGHLIGHTS = 4;
+
+/** Cifras destacadas que se proponen la primera vez, por tipo de canal. */
+const DEFAULT_HIGHLIGHTS: Record<string, string[]> = {
+  social: ["social.followers", "social.reach"],
+  email: ["email.subscribers", "email.open_rate"],
+};
+
+/** Informe del mes anterior del proyecto, si existe. */
+async function findPreviousReport(ctx: ProjectContext, period: string) {
+  const previous = await getCycleByPeriod(ctx, previousPeriod(period)).catch((err) => {
+    if (err instanceof NotFoundError) return null;
+    throw err;
+  });
+  return previous ? repo.findReportByCycle(ctx, previous.id) : undefined;
+}
+
+/** ¿Hay informe del mes anterior para copiar su estructura? */
+export async function hasPreviousReport(ctx: ProjectContext, cycleId: string): Promise<boolean> {
+  await authorize(ctx, "project.read");
+  const cycle = await getCycle(ctx, cycleId);
+  return Boolean(await findPreviousReport(ctx, cycle.period));
+}
+
+/**
+ * Crea el informe del ciclo con una estructura propuesta, editable después. Con
+ * `fromPrevious`, copia títulos, orden y canales del informe del mes anterior (los textos
+ * vacíos; nunca las secciones de IA). Las cifras destacadas se heredan del mes anterior.
+ */
+export async function createReport(ctx: ProjectContext, input: { cycleId: string; fromPrevious?: boolean }) {
   await authorize(ctx, "report.write");
   const cycle = await getCycle(ctx, input.cycleId);
   assertCycleWritable(cycle);
   const channels = (await listChannels(ctx)).filter((c) => c.isActive);
+  const active = new Set(channels.map((c) => c.id));
+  const previous = await findPreviousReport(ctx, cycle.period);
+  if (input.fromPrevious && !previous) throw new ValidationError("El mes anterior no tiene informe");
+
+  const sections =
+    input.fromPrevious && previous
+      ? (await repo.listSections(ctx, previous.id))
+          .filter((s) => s.kind !== "ai_interpretation" && (s.channelId === null || active.has(s.channelId)))
+          .map((s) => ({
+            kind: s.kind,
+            title: s.title,
+            body: s.kind === "human_analysis" ? "" : null,
+            channelId: s.channelId,
+            comparePrevious: s.comparePrevious,
+            showEmptyMetrics: s.showEmptyMetrics,
+          }))
+      : [
+          { kind: "human_analysis" as const, title: "Resumen del mes", body: "", channelId: null, comparePrevious: true },
+          ...channels.map((c) => ({
+            kind: "data" as const,
+            title: c.displayName,
+            body: null,
+            channelId: c.id,
+            comparePrevious: true,
+          })),
+          { kind: "publications" as const, title: "Contenido publicado", body: null, channelId: null, comparePrevious: true },
+          {
+            kind: "human_analysis" as const,
+            title: "Conclusiones y próximos pasos",
+            body: "",
+            channelId: null,
+            comparePrevious: true,
+          },
+        ];
+
+  let highlights: repo.NewHighlight[];
+  if (previous) {
+    highlights = (await repo.listHighlights(ctx, previous.id))
+      .filter((h) => active.has(h.channelId))
+      .map((h) => ({ channelId: h.channelId, metricKey: h.metricKey }));
+  } else {
+    const catalog = new Set((await listMetricCatalog(ctx)).map((d) => d.key));
+    highlights = channels.flatMap((c) =>
+      (DEFAULT_HIGHLIGHTS[c.kind] ?? []).filter((k) => catalog.has(k)).map((metricKey) => ({ channelId: c.id, metricKey })),
+    );
+  }
+
   try {
-    const report = await repo.createReportWithSections(ctx, cycle.id, [
-      { kind: "human_analysis", title: "Resumen del mes", body: "", channelId: null, comparePrevious: true },
-      ...channels.map((c) => ({
-        kind: "data" as const,
-        title: c.displayName,
-        body: null,
-        channelId: c.id,
-        comparePrevious: true,
-      })),
-      { kind: "publications", title: "Contenido publicado", body: null, channelId: null, comparePrevious: true },
-      { kind: "human_analysis", title: "Conclusiones y próximos pasos", body: "", channelId: null, comparePrevious: true },
-    ]);
-    await audit(ctx, "report.created", report.id);
+    const report = await repo.createReportWithSections(ctx, cycle.id, sections, highlights.slice(0, MAX_HIGHLIGHTS));
+    await audit(ctx, "report.created", report.id, input.fromPrevious ? { from: previous?.id } : undefined);
     return report;
   } catch (err) {
     if (isUniqueViolation(err)) throw new ConflictError("Este ciclo ya tiene informe");
     throw err;
   }
+}
+
+const highlightSchema = z.object({ reportId: z.string(), channelId: z.string(), metricKey: z.string() });
+
+/** Añade una cifra destacada (métrica de un canal) al principio del informe. */
+export async function addReportHighlight(ctx: ProjectContext, input: z.input<typeof highlightSchema>) {
+  const data = parseInput(highlightSchema, input);
+  const report = await loadEditableReport(ctx, data.reportId);
+  const channel = (await listChannels(ctx)).find((c) => c.id === data.channelId);
+  if (!channel) throw new NotFoundError("Canal no encontrado");
+  const definition = (await listMetricCatalog(ctx)).find((d) => d.key === data.metricKey);
+  if (!definition || definition.kind !== channel.kind) throw new ValidationError("Esa métrica no es de este tipo de canal");
+  if ((await repo.listHighlights(ctx, report.id)).length >= MAX_HIGHLIGHTS) {
+    throw new ValidationError(`Como mucho ${MAX_HIGHLIGHTS} cifras destacadas: quita una antes`);
+  }
+  try {
+    const highlight = await repo.insertHighlight(ctx, report.id, { channelId: channel.id, metricKey: definition.key });
+    await audit(ctx, "report.highlight_added", report.id, { highlightId: highlight.id, metricKey: definition.key });
+    return highlight;
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new ConflictError("Esa cifra ya está destacada");
+    throw err;
+  }
+}
+
+export async function removeReportHighlight(ctx: ProjectContext, input: { highlightId: string }) {
+  await authorize(ctx, "report.write");
+  const highlight = isUuid(input.highlightId) ? await repo.findHighlight(ctx, input.highlightId) : undefined;
+  if (!highlight) throw new NotFoundError();
+  const report = await loadEditableReport(ctx, highlight.reportId);
+  await repo.deleteHighlight(ctx, highlight.id);
+  await audit(ctx, "report.highlight_removed", report.id, { highlightId: highlight.id, metricKey: highlight.metricKey });
 }
 
 async function loadEditableReport(ctx: ProjectContext, reportId: string) {
@@ -229,22 +329,45 @@ export async function getReportView(ctx: ProjectContext, cycleId: string) {
   const cycle = await getCycle(ctx, cycleId);
   const report = await repo.findReportByCycle(ctx, cycle.id);
   if (!report) throw new NotFoundError("Este ciclo todavía no tiene informe");
-  const [project, sections, publications] = await Promise.all([
+  const [project, sections, publications, highlightRows, allMetrics, statuses] = await Promise.all([
     getProject(ctx),
     repo.listSections(ctx, report.id),
     listCyclePublications(ctx, cycle.id),
+    repo.listHighlights(ctx, report.id),
+    getMetricSummary(ctx, { cycleId: cycle.id }),
+    listCycleStatuses(ctx, cycle.id),
   ]);
+  // Cada cifra destacada lleva su fila del resumen (valor, mes anterior, evolución).
+  const highlights = highlightRows.flatMap((h) => {
+    const summary = allMetrics.find((m) => m.channel.id === h.channelId);
+    const row = summary?.rows.find((r) => r.definition.key === h.metricKey);
+    return summary && row ? [{ id: h.id, channel: summary.channel, periods: summary.periods, row }] : [];
+  });
+  /** Piezas del calendario del mes (sin las canceladas): lo previsto frente a lo publicado. */
+  const plannedCount = Object.values(statuses).filter((st) => st !== "cancelled").length;
   const resolved = [];
   for (const section of sections) {
     if (section.kind === "data") {
       resolved.push({ section, metrics: await getMetricSummary(ctx, { cycleId: cycle.id, channelId: section.channelId }) });
     } else if (section.kind === "publications") {
-      resolved.push({ section, publications });
+      // Primero lo publicado; después lo que sigue programado.
+      resolved.push({
+        section,
+        publications: [...publications].sort((a, b) => Number(a.status !== "published") - Number(b.status !== "published")),
+      });
     } else {
       resolved.push({ section });
     }
   }
-  return { project, cycle, report, sections: resolved, checks: reportChecks(resolved, publications) };
+  return {
+    project,
+    cycle,
+    report,
+    highlights,
+    plannedCount,
+    sections: resolved,
+    checks: reportChecks(resolved, publications),
+  };
 }
 
 /**

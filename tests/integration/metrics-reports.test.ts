@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ReportBody } from "@/components/report-body";
 import { getDb } from "@/lib/db/client";
 import { formatMetric } from "@/lib/format";
-import { metricImports, metricValues, reportSections } from "@/lib/db/schema";
+import { metricImports, metricValues, reportHighlights, reportSections } from "@/lib/db/schema";
 import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import { closeCycle, openCycle, reopenCycle } from "@/modules/cycles/service";
@@ -23,10 +23,13 @@ import {
 } from "@/modules/metrics/service";
 import { findDefinition } from "@/modules/metrics/repo";
 import {
+  addReportHighlight,
   addReportSection,
   approveReport,
   createReport,
+  getReport,
   getReportView,
+  removeReportHighlight,
   markAiSectionReviewed,
   reopenReport,
   updateReportSection,
@@ -269,6 +272,67 @@ describe("resumen e informe", () => {
 
     await reopenReport(ctx, { reportId: fx.metricsA.report.id, reason: "Añadir dato" });
     await expect(updateReportSection(ctx, { sectionId: section.id, title: "Otro", body: "Nuevo" })).resolves.toBeUndefined();
+  });
+
+  it("cifras destacadas: se proponen al crear, muestran valor y evolución, y valen solo métricas del canal", async () => {
+    const sept = await openCycle(ctx, { period: "2026-09" });
+    await recordMetricValue(ctx, { cycleId: sept.id, channelId: channelA(), metricKey: "social.followers", value: "1000" });
+    const view = await getReportView(ctx, cycleA());
+    expect(view.highlights.map((h) => h.row.definition.key)).toEqual(["social.followers", "social.reach"]);
+    const followers = view.highlights[0].row;
+    expect(followers).toMatchObject({ value: 1250, previous: 1000, change: 25 });
+    expect(followers.history).toEqual([null, null, null, null, 1000, 1250]);
+    expect(view.highlights[0].periods.at(-1)).toBe("2026-10");
+
+    const html = renderToStaticMarkup(createElement(ReportBody, { view }));
+    expect(html).toContain("Cifras destacadas");
+    expect(html).toContain("vs. septiembre<");
+    expect(html).toContain("Últimos 6 meses");
+    expect(html).toContain("Septiembre de 2026: 1000");
+
+    await expect(
+      addReportHighlight(ctx, { reportId: fx.metricsA.report.id, channelId: channelA(), metricKey: "email.open_rate" }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await addReportHighlight(ctx, { reportId: fx.metricsA.report.id, channelId: channelA(), metricKey: "social.posts" });
+    await addReportHighlight(ctx, { reportId: fx.metricsA.report.id, channelId: channelA(), metricKey: "social.interactions" });
+    await expect(
+      addReportHighlight(ctx, { reportId: fx.metricsA.report.id, channelId: channelA(), metricKey: "social.impressions" }),
+    ).rejects.toThrow(/Como mucho/);
+    await removeReportHighlight(ctx, { highlightId: fx.metricsA.highlights[1].id });
+    expect((await getReportView(ctx, cycleA())).highlights).toHaveLength(3);
+  });
+
+  it("con el informe aprobado, las cifras destacadas quedan bloqueadas (también en BD)", async () => {
+    await fillAnalysisAndApprove();
+    await expect(removeReportHighlight(ctx, { highlightId: fx.metricsA.highlights[0].id })).rejects.toBeInstanceOf(
+      ValidationError,
+    );
+    expect(
+      await pgCode(getDb().delete(reportHighlights).where(eq(reportHighlights.id, fx.metricsA.highlights[0].id))),
+    ).toBe("42501");
+  });
+
+  it("copia la estructura y las cifras del mes anterior, sin textos ni secciones de IA", async () => {
+    const nov = await openCycle(ctx, { period: "2026-11" });
+    await createReport(ctx, { cycleId: nov.id, fromPrevious: true });
+    const copy = (await getReport(ctx, nov.id))!;
+    const original = fx.metricsA.sections.filter((s) => s.kind !== "ai_interpretation");
+    expect(copy.sections.map((s) => [s.kind, s.title, s.channelId])).toEqual(
+      original.map((s) => [s.kind, s.title, s.channelId]),
+    );
+    expect(copy.sections.filter((s) => s.kind === "human_analysis").every((s) => s.body === "")).toBe(true);
+    expect(copy.highlights.map((h) => h.metricKey)).toEqual(fx.metricsA.highlights.map((h) => h.metricKey));
+
+    const dec = await openCycle(ctx, { period: "2026-12" });
+    await expect(createReport(ctx, { cycleId: dec.id, fromPrevious: true })).resolves.toBeDefined();
+    const jan = await openCycle(ctx, { period: "2027-02" });
+    await expect(createReport(ctx, { cycleId: jan.id, fromPrevious: true })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("el contenido publicado lleva un resumen frente a lo previsto en el calendario", async () => {
+    const html = renderToStaticMarkup(createElement(ReportBody, { view: await getReportView(ctx, cycleA()) }));
+    expect(html).toMatch(/0 publicadas<!-- --> y 1 programada|0 publicadas y 1 programada/);
+    expect(html).toMatch(/piezas<!-- --> del calendario del mes|piezas del calendario del mes/);
   });
 
   it("aprueba quien tiene report.approve; el editor redacta pero no aprueba", async () => {

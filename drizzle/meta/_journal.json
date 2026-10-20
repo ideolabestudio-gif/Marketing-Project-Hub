@@ -120,6 +120,13 @@
       "when": 1792489463020,
       "tag": "0016_report_empty_metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792490427539,
+      "tag": "0017_report_highlights",
+      "breakpoints": true
     }
   ]
 }

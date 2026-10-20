@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { projectContextForAction } from "@/lib/project-page";
 import {
+  addReportHighlight,
   addReportSection,
   approveReport,
   createReport,
   deleteReportSection,
   markAiSectionReviewed,
   moveReportSection,
+  removeReportHighlight,
   reopenReport,
   updateReportSection,
 } from "@/modules/reports/service";
@@ -24,10 +26,10 @@ function sectionFields(formData: FormData) {
   };
 }
 
-export async function createReportAction(projectId: string, cycleId: string) {
+export async function createReportAction(projectId: string, cycleId: string, fromPrevious: boolean) {
   return runAction(async () => {
     const ctx = await projectContextForAction(projectId, "report.write");
-    await createReport(ctx, { cycleId });
+    await createReport(ctx, { cycleId, fromPrevious });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Informe creado");
 }
@@ -90,4 +92,22 @@ export async function markAiSectionReviewedAction(projectId: string, sectionId: 
     await markAiSectionReviewed(ctx, { sectionId });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Marcada como revisada");
+}
+
+export async function addHighlightAction(projectId: string, reportId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "report.write");
+    // El valor del desplegable es «canal|métrica».
+    const [channelId = "", metricKey = ""] = formString(formData, "pick").split("|");
+    await addReportHighlight(ctx, { reportId, channelId, metricKey });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Cifra destacada añadida");
+}
+
+export async function removeHighlightAction(projectId: string, highlightId: string) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "report.write");
+    await removeReportHighlight(ctx, { highlightId });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Cifra quitada");
 }

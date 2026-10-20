@@ -272,6 +272,7 @@ async function seedMetrics(manager: Actor, projectId: string, cycleId: string, c
     csvImport,
     report: report.report,
     sections: report.sections,
+    highlights: report.highlights,
   };
 }
 
