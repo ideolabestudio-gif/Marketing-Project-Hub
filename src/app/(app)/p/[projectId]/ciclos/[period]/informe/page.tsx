@@ -1,69 +1,74 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { ReportBody, type SectionTools } from "@/components/report-body";
+import { ReportBody, type HighlightTools, type SectionTools } from "@/components/report-body";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
-import { formatInZone, formatPeriod } from "@/lib/time";
+import { formatInZone, formatPeriod, previousPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { getCycleByPeriod } from "@/modules/cycles/service";
+import { listMetricCatalog } from "@/modules/metrics/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import {
   getReport,
   getReportView,
+  hasPreviousReport,
+  MAX_HIGHLIGHTS,
   SECTION_KIND_LABELS,
   type ReportCheck,
   type ReportSection,
 } from "@/modules/reports/service";
 import {
+  addHighlightAction,
   addSectionAction,
   approveReportAction,
   createReportAction,
   deleteSectionAction,
   markAiSectionReviewedAction,
   moveSectionAction,
+  removeHighlightAction,
   reopenReportAction,
   updateSectionAction,
 } from "./actions";
+import { AddSectionFields } from "./add-section-fields";
 import { ReportAiSection } from "./report-ai-section";
 
 type Channel = Awaited<ReturnType<typeof listChannels>>[number];
 
-function SectionFields({ section, channels }: { section?: ReportSection; channels: Channel[] }) {
-  const kind = section?.kind;
+/** Campos de una sección existente según su tipo (para añadir, ver add-section-fields). */
+function SectionFields({ section, channels }: { section: ReportSection; channels: Channel[] }) {
+  const { kind } = section;
   return (
     <>
       <label className="field">
         Título
-        <input name="title" className="input" defaultValue={section?.title ?? ""} required />
+        <input name="title" className="input" defaultValue={section.title} required />
       </label>
-      {(kind === undefined || kind === "data") && (
+      {kind === "data" && (
+        <>
+          <label className="field">
+            Canal
+            <select name="channelId" className="input" defaultValue={section.channelId ?? ""}>
+              <option value="">Todos los canales</option>
+              {channels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="comparePrevious" defaultChecked={section.comparePrevious} />
+            Comparar con el mes anterior
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="showEmptyMetrics" defaultChecked={section.showEmptyMetrics} />
+            Mostrar también las métricas sin dato
+          </label>
+        </>
+      )}
+      {(kind === "human_analysis" || kind === "ai_interpretation") && (
         <label className="field">
-          Canal {kind === undefined && "(solo secciones de datos)"}
-          <select name="channelId" className="input" defaultValue={section?.channelId ?? ""}>
-            <option value="">Todos los canales</option>
-            {channels.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {(kind === undefined || kind === "human_analysis" || kind === "ai_interpretation") && (
-        <label className="field">
-          Texto {kind === undefined && "(solo secciones de análisis)"}
-          <textarea name="body" className="input min-h-32" defaultValue={section?.body ?? ""} />
-        </label>
-      )}
-      {(kind === undefined || kind === "data") && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="comparePrevious" defaultChecked={section?.comparePrevious ?? true} />
-          Comparar con el mes anterior
-        </label>
-      )}
-      {(kind === undefined || kind === "data") && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="showEmptyMetrics" defaultChecked={section?.showEmptyMetrics ?? false} />
-          Mostrar también las métricas sin dato
+          Texto
+          <textarea name="body" className="input min-h-32" defaultValue={section.body ?? ""} />
         </label>
       )}
     </>
@@ -123,18 +128,36 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
   );
 
   if (!current) {
+    const canCopy = canWrite && (await hasPreviousReport(ctx, cycle.id));
+    const previousMonth = formatPeriod(previousPeriod(cycle.period), project.locale).toLowerCase();
     return (
       <div className="flex flex-col gap-6">
         {header}
         <section className="card flex flex-col gap-3">
           <p className="text-sm">Este ciclo todavía no tiene informe.</p>
           {canWrite ? (
-            <ActionForm action={createReportAction.bind(null, projectId, cycle.id)} submitLabel="Crear informe">
-              <span className="text-sm text-muted">
-                Se crea con una estructura propuesta (resumen, datos de cada canal, contenido publicado y conclusiones)
-                que puedes cambiar.
-              </span>
-            </ActionForm>
+            <div className="flex flex-col gap-3">
+              {canCopy && (
+                <ActionForm
+                  action={createReportAction.bind(null, projectId, cycle.id, true)}
+                  submitLabel={`Usar la estructura de ${previousMonth}`}
+                >
+                  <span className="text-sm text-muted">
+                    Mismos títulos, orden, canales y cifras destacadas que el informe de {previousMonth}, con los textos
+                    vacíos.
+                  </span>
+                </ActionForm>
+              )}
+              <ActionForm
+                action={createReportAction.bind(null, projectId, cycle.id, false)}
+                submitLabel={canCopy ? "Empezar con la estructura propuesta" : "Crear informe"}
+                variant={canCopy ? "secondary" : "primary"}
+              >
+                <span className="text-sm text-muted">
+                  Resumen, datos de cada canal, contenido publicado y conclusiones; puedes cambiarla después.
+                </span>
+              </ActionForm>
+            </div>
           ) : (
             <p className="text-sm text-muted">Lo crea una persona con permiso para redactar informes.</p>
           )}
@@ -146,10 +169,56 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
   const { report, sections } = current;
   const approved = report.status === "approved";
   const editable = canWrite && !approved;
-  const view = await getReportView(ctx, cycle.id);
+  const [view, catalog] = await Promise.all([getReportView(ctx, cycle.id), listMetricCatalog(ctx)]);
   const activeChannels = channels.filter((c) => c.isActive || sections.some((s) => s.channelId === c.id));
   const blocking = view.checks.filter((c) => c.level === "required").length;
   const tz = project.timezone;
+
+  // Cifras destacadas: «Quitar» en cada una y un desplegable con las métricas de cada canal.
+  const chosen = new Set(view.highlights.map((h) => `${h.channel.id}|${h.row.definition.key}`));
+  const highlightTools: HighlightTools | undefined = editable
+    ? {
+        remove: Object.fromEntries(
+          view.highlights.map((h) => [
+            h.id,
+            <div key={h.id} className="no-print mt-1">
+              <ActionForm action={removeHighlightAction.bind(null, projectId, h.id)} submitLabel="Quitar" variant="secondary">
+                {null}
+              </ActionForm>
+            </div>,
+          ]),
+        ),
+        add:
+          view.highlights.length < MAX_HIGHLIGHTS ? (
+            <details className="no-print" open={view.highlights.length === 0}>
+              <summary className="text-sm">
+                Añadir cifra destacada ({view.highlights.length} de {MAX_HIGHLIGHTS})
+              </summary>
+              <ActionForm action={addHighlightAction.bind(null, projectId, report.id)} submitLabel="Añadir" className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="field grow">
+                  Métrica
+                  <select name="pick" className="input" required defaultValue="">
+                    <option value="" disabled>
+                      Elige canal y métrica
+                    </option>
+                    {activeChannels.map((c) => (
+                      <optgroup key={c.id} label={c.displayName}>
+                        {catalog
+                          .filter((d) => d.kind === c.kind && !chosen.has(`${c.id}|${d.key}`))
+                          .map((d) => (
+                            <option key={d.key} value={`${c.id}|${d.key}`}>
+                              {c.displayName} · {d.label}
+                            </option>
+                          ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+              </ActionForm>
+            </details>
+          ) : undefined,
+      }
+    : undefined;
 
   // Edición en su sitio: cada sección del informe lleva su barra y su formulario plegable.
   const tools: Record<string, SectionTools> | undefined = editable
@@ -274,7 +343,7 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
           </p>
         )}
         <div className="card report-paper mx-auto w-full max-w-3xl sm:p-10">
-          <ReportBody view={view} tools={tools}>
+          <ReportBody view={view} tools={tools} highlightTools={highlightTools}>
             {editable && (
               <details className="no-print rounded-lg border border-dashed border-border-strong p-3">
                 <summary className="text-sm font-medium">Añadir sección</summary>
@@ -283,19 +352,13 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
                   submitLabel="Añadir sección"
                   className="mt-3 grid gap-3"
                 >
-                  <label className="field">
-                    Tipo
-                    <select name="kind" className="input" defaultValue="human_analysis">
-                      {Object.entries(SECTION_KIND_LABELS)
-                        .filter(([k]) => k !== "ai_interpretation")
-                        .map(([k, label]) => (
-                          <option key={k} value={k}>
-                            {label}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <SectionFields channels={activeChannels} />
+                  <AddSectionFields
+                    kinds={(["human_analysis", "data", "publications"] as const).map((k) => ({
+                      value: k,
+                      label: SECTION_KIND_LABELS[k],
+                    }))}
+                    channels={activeChannels.map((c) => ({ id: c.id, displayName: c.displayName }))}
+                  />
                 </ActionForm>
               </details>
             )}

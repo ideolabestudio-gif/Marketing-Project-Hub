@@ -1,10 +1,11 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { reportSections, reports } from "@/lib/db/schema";
+import { reportHighlights, reportSections, reports } from "@/lib/db/schema";
 import type { ProjectContext } from "@/modules/access/context";
 
 export type ReportRow = typeof reports.$inferSelect;
 export type SectionRow = typeof reportSections.$inferSelect;
+export type HighlightRow = typeof reportHighlights.$inferSelect;
 
 export async function findReportByCycle(ctx: ProjectContext, cycleId: string): Promise<ReportRow | undefined> {
   const [row] = await getDb()
@@ -44,10 +45,13 @@ export async function findSection(ctx: ProjectContext, sectionId: string): Promi
 type NewSection = Pick<SectionRow, "kind" | "title" | "body" | "channelId" | "comparePrevious"> &
   Partial<Pick<SectionRow, "aiGenerationId" | "showEmptyMetrics">>;
 
+export type NewHighlight = Pick<HighlightRow, "channelId" | "metricKey">;
+
 export async function createReportWithSections(
   ctx: ProjectContext,
   cycleId: string,
   sections: NewSection[],
+  highlights: NewHighlight[] = [],
 ): Promise<ReportRow> {
   return getDb().transaction(async (tx) => {
     const [report] = await tx
@@ -57,6 +61,11 @@ export async function createReportWithSections(
     if (sections.length > 0) {
       await tx.insert(reportSections).values(
         sections.map((s, i) => ({ ...s, projectId: ctx.projectId, reportId: report.id, position: (i + 1) * 10 })),
+      );
+    }
+    if (highlights.length > 0) {
+      await tx.insert(reportHighlights).values(
+        highlights.map((h, i) => ({ ...h, projectId: ctx.projectId, reportId: report.id, position: (i + 1) * 10 })),
       );
     }
     return report;
@@ -111,4 +120,39 @@ export async function updateReport(
     .update(reports)
     .set({ ...values, updatedAt: new Date() })
     .where(and(eq(reports.projectId, ctx.projectId), eq(reports.id, reportId)));
+}
+
+export async function listHighlights(ctx: ProjectContext, reportId: string): Promise<HighlightRow[]> {
+  return getDb()
+    .select()
+    .from(reportHighlights)
+    .where(and(eq(reportHighlights.projectId, ctx.projectId), eq(reportHighlights.reportId, reportId)))
+    .orderBy(asc(reportHighlights.position));
+}
+
+export async function findHighlight(ctx: ProjectContext, highlightId: string): Promise<HighlightRow | undefined> {
+  const [row] = await getDb()
+    .select()
+    .from(reportHighlights)
+    .where(and(eq(reportHighlights.projectId, ctx.projectId), eq(reportHighlights.id, highlightId)))
+    .limit(1);
+  return row;
+}
+
+export async function insertHighlight(ctx: ProjectContext, reportId: string, highlight: NewHighlight): Promise<HighlightRow> {
+  const [{ max }] = await getDb()
+    .select({ max: sql<number>`coalesce(max(${reportHighlights.position}), 0)` })
+    .from(reportHighlights)
+    .where(and(eq(reportHighlights.projectId, ctx.projectId), eq(reportHighlights.reportId, reportId)));
+  const [row] = await getDb()
+    .insert(reportHighlights)
+    .values({ ...highlight, projectId: ctx.projectId, reportId, position: Number(max) + 10 })
+    .returning();
+  return row;
+}
+
+export async function deleteHighlight(ctx: ProjectContext, highlightId: string): Promise<void> {
+  await getDb()
+    .delete(reportHighlights)
+    .where(and(eq(reportHighlights.projectId, ctx.projectId), eq(reportHighlights.id, highlightId)));
 }

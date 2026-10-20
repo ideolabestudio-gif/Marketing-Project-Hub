@@ -14,6 +14,7 @@ import {
 import { cycles } from "./cycles";
 import { aiGenerations } from "./ai";
 import { users } from "./identity";
+import { metricDefinitions } from "./metrics";
 import { channels, projects } from "./projects";
 
 export const reportStatus = pgEnum("report_status", ["draft", "approved"]);
@@ -98,5 +99,41 @@ export const reportSections = pgTable(
     }),
     // Se compara como texto: el valor del enum se añade en la misma migración.
     check("report_sections_ai_ck", sql`(${t.kind}::text = 'ai_interpretation') = (${t.aiGenerationId} IS NOT NULL)`),
+  ],
+);
+
+/**
+ * Cifras destacadas al principio de un informe: qué métrica de qué canal. El valor sale
+ * siempre de metric_values (si falta, «sin dato»). Al crear el informe se copian las del
+ * mes anterior; con el informe aprobado quedan bloqueadas (trigger, como las secciones).
+ */
+export const reportHighlights = pgTable(
+  "report_highlights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    reportId: uuid("report_id").notNull(),
+    channelId: uuid("channel_id").notNull(),
+    metricKey: text("metric_key")
+      .notNull()
+      .references(() => metricDefinitions.key),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("report_highlights_project_id_id_uq").on(t.projectId, t.id),
+    unique("report_highlights_metric_uq").on(t.reportId, t.channelId, t.metricKey),
+    foreignKey({
+      name: "report_highlights_report_fk",
+      columns: [t.projectId, t.reportId],
+      foreignColumns: [reports.projectId, reports.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "report_highlights_channel_fk",
+      columns: [t.projectId, t.channelId],
+      foreignColumns: [channels.projectId, channels.id],
+    }),
   ],
 );

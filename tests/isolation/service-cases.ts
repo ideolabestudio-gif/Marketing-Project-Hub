@@ -626,6 +626,40 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     own: async (ctx) => reports.createReport(ctx, { cycleId: (await cycles.openCycle(ctx, { period: "2026-11" })).id }),
     foreign: (ctx, fx) => reports.createReport(ctx, { cycleId: fx.contentB.cycle.id }),
   },
+  "reports.hasPreviousReport": {
+    kind: "project",
+    own: (ctx, fx) => reports.hasPreviousReport(ctx, fx.contentA.cycle.id),
+    foreign: (ctx, fx) => reports.hasPreviousReport(ctx, fx.contentB.cycle.id),
+  },
+  "reports.addReportHighlight": {
+    kind: "project",
+    own: (ctx, fx) =>
+      reports.addReportHighlight(ctx, {
+        reportId: fx.metricsA.report.id,
+        channelId: fx.channelA.id,
+        metricKey: "social.interactions",
+      }),
+    // Informe propio + canal ajeno, e informe ajeno.
+    foreign: async (ctx, fx) => {
+      await expectNotFound(
+        reports.addReportHighlight(ctx, {
+          reportId: fx.metricsA.report.id,
+          channelId: fx.channelB.id,
+          metricKey: "social.interactions",
+        }),
+      );
+      return reports.addReportHighlight(ctx, {
+        reportId: fx.metricsB.report.id,
+        channelId: fx.channelA.id,
+        metricKey: "social.interactions",
+      });
+    },
+  },
+  "reports.removeReportHighlight": {
+    kind: "project",
+    own: (ctx, fx) => reports.removeReportHighlight(ctx, { highlightId: fx.metricsA.highlights[0].id }),
+    foreign: (ctx, fx) => reports.removeReportHighlight(ctx, { highlightId: fx.metricsB.highlights[0].id }),
+  },
   "reports.addReportSection": {
     kind: "project",
     own: (ctx, fx) =>
