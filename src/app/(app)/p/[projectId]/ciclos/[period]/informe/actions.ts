@@ -20,6 +20,7 @@ function sectionFields(formData: FormData) {
     body: formString(formData, "body"),
     channelId: formString(formData, "channelId") || undefined,
     comparePrevious: formData.get("comparePrevious") === "on",
+    showEmptyMetrics: formData.get("showEmptyMetrics") === "on",
   };
 }
 

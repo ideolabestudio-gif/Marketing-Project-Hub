@@ -1,0 +1,1 @@
+ALTER TABLE "report_sections" ADD COLUMN "show_empty_metrics" boolean DEFAULT false NOT NULL;

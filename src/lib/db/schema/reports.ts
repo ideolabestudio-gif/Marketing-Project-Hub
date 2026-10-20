@@ -70,6 +70,8 @@ export const reportSections = pgTable(
     /** Solo secciones de datos: canal a mostrar (null = todos los canales). */
     channelId: uuid("channel_id"),
     comparePrevious: boolean("compare_previous").notNull().default(true),
+    /** Solo secciones de datos: mostrar también las métricas sin dato (por defecto se resumen en una línea). */
+    showEmptyMetrics: boolean("show_empty_metrics").notNull().default(false),
     /** Solo ai_interpretation: generación de la que sale y quién la revisó. */
     aiGenerationId: uuid("ai_generation_id"),
     reviewedBy: uuid("reviewed_by").references(() => users.id),

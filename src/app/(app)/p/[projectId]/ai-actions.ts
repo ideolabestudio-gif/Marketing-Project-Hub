@@ -12,6 +12,7 @@ import {
   generateCopyDraft,
   generateIdeas,
   generateReportInterpretation,
+  importReportInterpretation,
   resolveGeneration,
   applyCopyDraft,
   applyReportInterpretation,
@@ -109,6 +110,15 @@ export async function generateInterpretationAction(
     await generateReportInterpretation(ctx, { cycleId, instructions: formString(formData, "instructions") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Interpretación generada: revísala abajo");
+}
+
+/** Guarda la lectura escrita en un chat de Claude como borrador del informe. */
+export async function importInterpretationAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "ai.generate");
+    await importReportInterpretation(ctx, { cycleId, output: formString(formData, "output") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Lectura guardada: revísala abajo");
 }
 
 export async function applyInterpretationAction(

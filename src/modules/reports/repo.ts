@@ -42,7 +42,7 @@ export async function findSection(ctx: ProjectContext, sectionId: string): Promi
 }
 
 type NewSection = Pick<SectionRow, "kind" | "title" | "body" | "channelId" | "comparePrevious"> &
-  Partial<Pick<SectionRow, "aiGenerationId">>;
+  Partial<Pick<SectionRow, "aiGenerationId" | "showEmptyMetrics">>;
 
 export async function createReportWithSections(
   ctx: ProjectContext,
@@ -79,7 +79,7 @@ export async function updateSection(
   ctx: ProjectContext,
   sectionId: string,
   values: Partial<
-    Pick<SectionRow, "title" | "body" | "channelId" | "comparePrevious" | "position" | "reviewedBy" | "reviewedAt">
+    Pick<SectionRow, "title" | "body" | "channelId" | "comparePrevious" | "showEmptyMetrics" | "position" | "reviewedBy" | "reviewedAt">
   >,
 ): Promise<void> {
   await getDb()

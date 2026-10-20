@@ -83,6 +83,7 @@ const sectionSchema = z.object({
   body: z.string().max(20000).optional(),
   channelId: z.string().optional(),
   comparePrevious: z.boolean().default(true),
+  showEmptyMetrics: z.boolean().default(false),
 });
 
 const addSectionSchema = sectionSchema.extend({
@@ -99,6 +100,7 @@ export async function addReportSection(ctx: ProjectContext, input: z.input<typeo
     body: data.kind === "human_analysis" ? (data.body ?? "") : null,
     channelId: data.kind === "data" ? await resolveChannelId(ctx, data.channelId) : null,
     comparePrevious: data.comparePrevious,
+    showEmptyMetrics: data.kind === "data" && data.showEmptyMetrics,
   });
   await audit(ctx, "report.section_added", report.id, { sectionId: section.id });
   return section;
@@ -116,6 +118,7 @@ export async function updateReportSection(ctx: ProjectContext, input: z.input<ty
     body,
     channelId: section.kind === "data" ? await resolveChannelId(ctx, data.channelId) : null,
     comparePrevious: data.comparePrevious,
+    showEmptyMetrics: section.kind === "data" && data.showEmptyMetrics,
     // Si cambia el texto de la IA, hay que volver a revisarlo.
     ...(section.kind === "ai_interpretation" && body !== section.body ? { reviewedBy: null, reviewedAt: null } : {}),
   });
@@ -241,7 +244,67 @@ export async function getReportView(ctx: ProjectContext, cycleId: string) {
       resolved.push({ section });
     }
   }
-  return { project, cycle, report, sections: resolved };
+  return { project, cycle, report, sections: resolved, checks: reportChecks(resolved, publications) };
+}
+
+/**
+ * Lo que falta antes de aprobar. Lo "required" lo exige también approveReport; los avisos
+ * ("warning") no bloquean: señalan datos que quizá falten por registrar.
+ */
+export type ReportCheck = {
+  level: "required" | "warning";
+  message: string;
+  /** Sección a la que lleva el aviso. */
+  sectionId?: string;
+  /** Página del ciclo donde se arregla. */
+  fix?: "metrics" | "cycle";
+};
+
+type ResolvedSection = {
+  section: ReportSection;
+  metrics?: Awaited<ReturnType<typeof getMetricSummary>>;
+};
+
+function reportChecks(
+  sections: ResolvedSection[],
+  publications: Awaited<ReturnType<typeof listCyclePublications>>,
+): ReportCheck[] {
+  const checks: ReportCheck[] = [];
+  if (sections.length === 0) checks.push({ level: "required", message: "El informe no tiene secciones." });
+  for (const { section } of sections) {
+    if ((section.kind === "human_analysis" || section.kind === "ai_interpretation") && !section.body?.trim()) {
+      checks.push({ level: "required", message: `«${section.title}» está vacía: escribe el texto o elimínala.`, sectionId: section.id });
+    } else if (section.kind === "ai_interpretation" && !section.reviewedBy) {
+      checks.push({ level: "required", message: `«${section.title}» (IA) está sin revisar.`, sectionId: section.id });
+    }
+  }
+  const seen = new Set<string>();
+  for (const { section, metrics } of sections) {
+    for (const { channel, rows } of metrics ?? []) {
+      if (seen.has(channel.id)) continue;
+      seen.add(channel.id);
+      if (rows.every((r) => r.value === null)) {
+        checks.push({
+          level: "warning",
+          message: `No hay métricas de ${channel.displayName} registradas este mes.`,
+          sectionId: section.id,
+          fix: "metrics",
+        });
+      }
+    }
+  }
+  const scheduled = publications.filter((p) => p.status !== "published").length;
+  if (scheduled > 0) {
+    checks.push({
+      level: "warning",
+      message:
+        scheduled === 1
+          ? "1 pieza sigue como programada: si ya salió, registra su publicación."
+          : `${scheduled} piezas siguen como programadas: si ya salieron, registra su publicación.`,
+      fix: "cycle",
+    });
+  }
+  return checks;
 }
 
 async function audit(ctx: ProjectContext, action: string, reportId: string, data?: Record<string, unknown>) {
