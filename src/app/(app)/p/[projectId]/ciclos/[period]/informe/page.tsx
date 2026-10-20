@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { AiGenerationMeta } from "@/components/ai-generation-meta";
-import { ReportBody } from "@/components/report-body";
+import { ReportBody, type SectionTools } from "@/components/report-body";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, formatPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
-import { getAiStatus, listGenerations } from "@/modules/ai/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
-import { getReport, getReportView, SECTION_KIND_LABELS, type ReportSection } from "@/modules/reports/service";
+import {
+  getReport,
+  getReportView,
+  SECTION_KIND_LABELS,
+  type ReportCheck,
+  type ReportSection,
+} from "@/modules/reports/service";
 import {
   addSectionAction,
   approveReportAction,
@@ -19,7 +23,7 @@ import {
   reopenReportAction,
   updateSectionAction,
 } from "./actions";
-import { applyInterpretationAction, generateInterpretationAction, resolveGenerationAction } from "../../../ai-actions";
+import { ReportAiSection } from "./report-ai-section";
 
 type Channel = Awaited<ReturnType<typeof listChannels>>[number];
 
@@ -56,7 +60,46 @@ function SectionFields({ section, channels }: { section?: ReportSection; channel
           Comparar con el mes anterior
         </label>
       )}
+      {(kind === undefined || kind === "data") && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="showEmptyMetrics" defaultChecked={section?.showEmptyMetrics ?? false} />
+          Mostrar también las métricas sin dato
+        </label>
+      )}
     </>
+  );
+}
+
+/** Lo que falta antes de aprobar, con enlace a donde se arregla. */
+function ApprovalChecklist({ checks, base }: { checks: ReportCheck[]; base: string }) {
+  if (checks.length === 0) return <p className="text-sm text-success">✓ Todo listo para aprobar.</p>;
+  return (
+    <ul className="flex flex-col gap-2 text-sm">
+      {checks.map((c, i) => (
+        <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+          <span aria-hidden className={c.level === "required" ? "text-danger" : "text-warning-ink"}>
+            {c.level === "required" ? "●" : "▲"}
+          </span>
+          <span>
+            {c.message}
+            {c.level === "warning" && <span className="text-muted"> (no impide aprobar)</span>}
+          </span>
+          {c.fix === "metrics" ? (
+            <Link href={`${base}/metricas`} className="link">
+              Registrar o importar métricas
+            </Link>
+          ) : c.fix === "cycle" ? (
+            <Link href={base} className="link">
+              Ir al calendario
+            </Link>
+          ) : c.sectionId ? (
+            <a href={`#seccion-${c.sectionId}`} className="link">
+              Ir a la sección
+            </a>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -103,14 +146,64 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
   const { report, sections } = current;
   const approved = report.status === "approved";
   const editable = canWrite && !approved;
-  const [view, ai, interpretations] = await Promise.all([
-    getReportView(ctx, cycle.id),
-    getAiStatus(ctx),
-    listGenerations(ctx, { cycleId: cycle.id, purpose: "report_interpretation" }),
-  ]);
-  const drafts = interpretations.filter((g) => g.status === "draft");
-  const canGenerate = ai.enabled && ai.configured && editable && hasPermission(ctx, "ai.generate");
+  const view = await getReportView(ctx, cycle.id);
   const activeChannels = channels.filter((c) => c.isActive || sections.some((s) => s.channelId === c.id));
+  const blocking = view.checks.filter((c) => c.level === "required").length;
+  const tz = project.timezone;
+
+  // Edición en su sitio: cada sección del informe lleva su barra y su formulario plegable.
+  const tools: Record<string, SectionTools> | undefined = editable
+    ? Object.fromEntries(
+        sections.map((s, i) => {
+          const hasText = s.kind === "human_analysis" || s.kind === "ai_interpretation";
+          const bar = (
+            <div className="no-print flex flex-wrap items-center gap-2">
+              <span className={s.kind === "ai_interpretation" ? "badge-ai" : "badge"}>{SECTION_KIND_LABELS[s.kind]}</span>
+              {s.kind === "ai_interpretation" &&
+                (s.reviewedAt ? (
+                  <span className="text-xs text-success">Revisada el {formatInZone(s.reviewedAt, tz)}</span>
+                ) : (
+                  <ActionForm
+                    action={markAiSectionReviewedAction.bind(null, projectId, s.id)}
+                    submitLabel="La he revisado"
+                    variant="secondary"
+                  >
+                    <span className="text-xs text-warning-ink">Sin revisar: compruébala contra los datos.</span>
+                  </ActionForm>
+                ))}
+              <div className="ml-auto flex gap-2">
+                {i > 0 && (
+                  <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "up")} submitLabel="↑" variant="secondary">
+                    {null}
+                  </ActionForm>
+                )}
+                {i < sections.length - 1 && (
+                  <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "down")} submitLabel="↓" variant="secondary">
+                    {null}
+                  </ActionForm>
+                )}
+                <ActionForm action={deleteSectionAction.bind(null, projectId, s.id)} submitLabel="Eliminar" variant="danger">
+                  {null}
+                </ActionForm>
+              </div>
+            </div>
+          );
+          const editor = (
+            <details className="no-print" open={hasText && !s.body?.trim()}>
+              <summary className="text-sm">Editar sección</summary>
+              <ActionForm
+                action={updateSectionAction.bind(null, projectId, s.id)}
+                submitLabel="Guardar sección"
+                className="mt-3 grid gap-3"
+              >
+                <SectionFields section={s} channels={activeChannels} />
+              </ActionForm>
+            </details>
+          );
+          return [s.id, { bar, editor }];
+        }),
+      )
+    : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,7 +214,7 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
             <span className="badge">{approved ? "Aprobado" : "Borrador"}</span>
             <span className="badge">{sections.length} secciones</span>
             {approved && report.approvedAt && (
-              <span className="text-sm text-muted">Aprobado el {formatInZone(report.approvedAt, project.timezone)}</span>
+              <span className="text-sm text-muted">Aprobado el {formatInZone(report.approvedAt, tz)}</span>
             )}
           </div>
         </div>
@@ -129,11 +222,6 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
           <Link href={`${base}/informe/imprimir`} className="btn btn-secondary">
             Ver para imprimir / PDF
           </Link>
-          {canApprove && !approved && (
-            <ActionForm action={approveReportAction.bind(null, projectId, report.id)} submitLabel="Aprobar informe">
-              <span className="text-sm text-muted">Al aprobarlo queda bloqueado.</span>
-            </ActionForm>
-          )}
           {canApprove && approved && (
             <ActionForm
               action={reopenReportAction.bind(null, projectId, report.id)}
@@ -146,128 +234,72 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
         </div>
       </div>
 
-      {editable && (
-        <section className="card flex flex-col gap-4">
+      {!approved && (canWrite || canApprove) && (
+        <section className="card flex flex-col gap-3" aria-label="Antes de aprobar">
           <div>
-            <h2 className="h2">Secciones</h2>
-            <p className="mt-0.5 text-sm text-muted">Edita el texto y el orden; la vista previa de abajo es lo que verá el cliente.</p>
+            <h2 className="h2">Antes de aprobar</h2>
+            <p className="mt-0.5 text-sm text-muted">
+              Lo marcado con ● hay que resolverlo; lo marcado con ▲ es un aviso. Al aprobar, el informe queda bloqueado.
+            </p>
           </div>
-          {sections.map((s, i) => (
-            <div key={s.id} className="tile flex flex-col gap-3" aria-label={`Sección ${s.title}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-muted tabular-nums">{i + 1}.</span>
-                <span className={s.kind === "ai_interpretation" ? "badge-ai" : "badge"}>
-                  {SECTION_KIND_LABELS[s.kind]}
-                </span>
-                {s.kind === "ai_interpretation" &&
-                  (s.reviewedAt ? (
-                    <span className="text-xs text-success">Revisada el {formatInZone(s.reviewedAt, project.timezone)}</span>
-                  ) : (
-                    <ActionForm
-                      action={markAiSectionReviewedAction.bind(null, projectId, s.id)}
-                      submitLabel="La he revisado"
-                      variant="secondary"
-                    >
-                      <span className="text-xs text-warning-ink">Sin revisar: compruébala contra los datos.</span>
-                    </ActionForm>
-                  ))}
-                <div className="ml-auto flex gap-2">
-                  {i > 0 && (
-                    <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "up")} submitLabel="↑" variant="secondary">
-                      {null}
-                    </ActionForm>
-                  )}
-                  {i < sections.length - 1 && (
-                    <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "down")} submitLabel="↓" variant="secondary">
-                      {null}
-                    </ActionForm>
-                  )}
-                  <ActionForm action={deleteSectionAction.bind(null, projectId, s.id)} submitLabel="Eliminar" variant="danger">
-                    {null}
-                  </ActionForm>
-                </div>
-              </div>
-              <ActionForm
-                action={updateSectionAction.bind(null, projectId, s.id)}
-                submitLabel="Guardar sección"
-                className="grid gap-3"
-              >
-                <SectionFields section={s} channels={activeChannels} />
-              </ActionForm>
-            </div>
-          ))}
-          <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border-strong p-3">
-            <h3 className="eyebrow">Añadir sección</h3>
-            <ActionForm action={addSectionAction.bind(null, projectId, report.id)} submitLabel="Añadir sección" className="grid gap-3">
-              <label className="field">
-                Tipo
-                <select name="kind" className="input" defaultValue="human_analysis">
-                  {Object.entries(SECTION_KIND_LABELS).map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <SectionFields channels={activeChannels} />
-            </ActionForm>
-          </div>
-        </section>
-      )}
-
-      {(canGenerate || (editable && drafts.length > 0)) && (
-        <section className="card flex flex-col gap-3" aria-label="Interpretación con IA">
-          <h2 className="h2">Interpretación con IA</h2>
-          <p className="text-sm text-muted">
-            La IA recibe solo las métricas registradas de este proyecto (y las publicaciones del mes) y propone una
-            lectura. Si la añades al informe, aparece marcada como asistida por IA y hay que revisarla antes de aprobar.
-          </p>
-          {canGenerate && (
-            <ActionForm action={generateInterpretationAction.bind(null, projectId, cycle.id)} submitLabel="Generar interpretación">
-              <label className="field grow">
-                Indicaciones (opcional)
-                <input name="instructions" className="input" placeholder="Céntrate en Instagram" />
-              </label>
-            </ActionForm>
-          )}
-          {drafts.map((g) => (
-            <div key={g.id} className="ai-box">
-              <AiGenerationMeta generation={g} tz={project.timezone} />
-              {g.unverifiedNumbers.length > 0 && (
-                <p className="notice">
-                  Cifras que no están en los datos registrados: {g.unverifiedNumbers.join(", ")}. Corrígelas o quítalas.
-                </p>
-              )}
-              <ActionForm
-                action={applyInterpretationAction.bind(null, projectId, g.id)}
-                submitLabel="Añadir al informe"
-                className="grid gap-2"
-              >
-                <label className="field">
-                  Título de la sección
-                  <input name="title" className="input" defaultValue="Lectura de los resultados" required />
-                </label>
-                <label className="field">
-                  Texto (puedes editarlo)
-                  <textarea name="body" className="input min-h-40" defaultValue={g.output} />
-                </label>
-              </ActionForm>
-              <ActionForm
-                action={resolveGenerationAction.bind(null, projectId, g.id, "discarded")}
-                submitLabel="Descartar"
-                variant="secondary"
-              >
+          <ApprovalChecklist checks={view.checks} base={base} />
+          {canApprove &&
+            (blocking > 0 ? (
+              <button type="button" className="btn btn-primary self-start" disabled>
+                Aprobar informe
+              </button>
+            ) : (
+              <ActionForm action={approveReportAction.bind(null, projectId, report.id)} submitLabel="Aprobar informe">
                 {null}
               </ActionForm>
-            </div>
-          ))}
+            ))}
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="h2">Vista previa</h2>
+      {editable && (
+        <ReportAiSection
+          ctx={ctx}
+          projectId={projectId}
+          cycleId={cycle.id}
+          monthLabel={formatPeriod(cycle.period, project.locale).toLowerCase()}
+          projectName={project.name}
+          tz={tz}
+        />
+      )}
+
+      <section className="flex flex-col gap-3" aria-label="Informe">
+        {editable && (
+          <p className="text-sm text-muted">
+            Así lo verá el cliente. Cambia cada sección con «Editar sección»; las marcas de edición no salen en el PDF.
+          </p>
+        )}
         <div className="card report-paper mx-auto w-full max-w-3xl sm:p-10">
-          <ReportBody view={view} />
+          <ReportBody view={view} tools={tools}>
+            {editable && (
+              <details className="no-print rounded-lg border border-dashed border-border-strong p-3">
+                <summary className="text-sm font-medium">Añadir sección</summary>
+                <ActionForm
+                  action={addSectionAction.bind(null, projectId, report.id)}
+                  submitLabel="Añadir sección"
+                  className="mt-3 grid gap-3"
+                >
+                  <label className="field">
+                    Tipo
+                    <select name="kind" className="input" defaultValue="human_analysis">
+                      {Object.entries(SECTION_KIND_LABELS)
+                        .filter(([k]) => k !== "ai_interpretation")
+                        .map(([k, label]) => (
+                          <option key={k} value={k}>
+                            {label}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <SectionFields channels={activeChannels} />
+                </ActionForm>
+              </details>
+            )}
+          </ReportBody>
         </div>
       </section>
     </div>

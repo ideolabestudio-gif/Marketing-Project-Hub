@@ -25,6 +25,7 @@ import { findDefinition } from "@/modules/metrics/repo";
 import {
   addReportSection,
   approveReport,
+  createReport,
   getReportView,
   markAiSectionReviewed,
   reopenReport,
@@ -215,11 +216,42 @@ describe("resumen e informe", () => {
 
   it("el informe pinta «sin dato» y solo datos del proyecto (WF-07, EX-01)", async () => {
     const html = renderToStaticMarkup(createElement(ReportBody, { view: await getReportView(ctx, cycleA()) }));
-    expect(html).toContain("sin dato");
+    // Por defecto las métricas sin valor no ocupan filas, pero se nombran: nada se esconde.
+    expect(html).toContain("Sin dato este mes: ");
+    expect(html).toContain("alcance");
+    expect(html).not.toMatch(/<td[^>]*>sin dato</);
     expect(html).toContain(`>${formatMetric(1250, "count")}<`);
     expect(html).toContain("Resumen ALFA-SECRET");
     expect(html).toContain("BORRADOR");
     expect(html).not.toContain(MARKER_B);
+
+    const data = fx.metricsA.sections.find((s) => s.kind === "data")!;
+    await updateReportSection(ctx, { sectionId: data.id, title: data.title, channelId: channelA(), showEmptyMetrics: true });
+    const all = renderToStaticMarkup(createElement(ReportBody, { view: await getReportView(ctx, cycleA()) }));
+    expect(all).toMatch(/<td[^>]*>sin dato</);
+    expect(all).not.toContain("Sin dato este mes: ");
+  });
+
+  it("dice qué falta antes de aprobar: lo obligatorio coincide con lo que exige approveReport", async () => {
+    const { checks } = await getReportView(ctx, cycleA());
+    const required = checks.filter((c) => c.level === "required");
+    expect(required.map((c) => c.message).join(" ")).toMatch(/Conclusiones/);
+    expect(required.some((c) => c.sectionId === fx.aiA.aiSection.id)).toBe(true);
+    for (const s of fx.metricsA.sections.filter((x) => x.kind === "human_analysis")) {
+      await updateReportSection(ctx, { sectionId: s.id, title: s.title, body: "Análisis del equipo" });
+    }
+    await markAiSectionReviewed(ctx, { sectionId: fx.aiA.aiSection.id });
+    const after = (await getReportView(ctx, cycleA())).checks;
+    expect(after.filter((c) => c.level === "required")).toEqual([]);
+    expect(JSON.stringify(after)).not.toContain(MARKER_B);
+    await approveReport(ctx, { reportId: fx.metricsA.report.id });
+  });
+
+  it("avisa de los canales sin ninguna métrica este mes, sin bloquear", async () => {
+    const empty = await openCycle(ctx, { period: "2026-12" });
+    await createReport(ctx, { cycleId: empty.id });
+    const { checks } = await getReportView(ctx, empty.id);
+    expect(checks).toContainEqual(expect.objectContaining({ level: "warning", fix: "metrics" }));
   });
 
   it("no se aprueba con análisis vacío; aprobado queda bloqueado (también en BD) hasta reabrirlo", async () => {
