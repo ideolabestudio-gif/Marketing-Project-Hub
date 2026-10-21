@@ -138,7 +138,7 @@ export const TOOLS = [
           canal_id: c.id,
           nombre: c.displayName,
           plataforma: c.platform,
-          tipo: c.kind === "email" ? "email" : "red social",
+          tipo: c.kind === "email" ? "email" : c.kind === "shop" ? "tienda online" : "red social",
           activo: c.isActive,
         })),
         ciclos: cycles.map((c) => ({ periodo: c.period, estado: CYCLE_STATUS_LABELS[c.status] })),

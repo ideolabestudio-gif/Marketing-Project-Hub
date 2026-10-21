@@ -8,7 +8,9 @@ import { formatMetric } from "@/lib/format";
 import { metricImports, metricValues, reportHighlights, reportSections } from "@/lib/db/schema";
 import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { requireProjectAccess, type ProjectContext } from "@/modules/access/context";
+import { createItem } from "@/modules/content/service";
 import { closeCycle, openCycle, reopenCycle } from "@/modules/cycles/service";
+import { createChannel } from "@/modules/projects/service";
 import {
   adminCreateMetricDefinition,
   adminUpdateMetricDefinition,
@@ -170,6 +172,50 @@ describe("importación CSV genérica", () => {
       }),
     ).rejects.toBeInstanceOf(ValidationError);
     await expect(discardMetricImport(ctx, { importId: fx.metricsA.csvImport.id })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("tienda online: el informe de Ingresos de WooCommerce se reconoce y se suma por días", async () => {
+    const shop = await createChannel(ctx, { platform: "woocommerce", displayName: "Tienda" });
+    expect(shop.kind).toBe("shop");
+    // Mismas cabeceras que la descarga de WooCommerce (Analíticas › Ingresos), cifras inventadas para la prueba.
+    const text = [
+      '"Fecha","Número de artículos vendidos","Cantidad de pedidos.","Importe neto promedio de ventas ","Importe del cupón","Cantidad de envíos","Cantidad de ventas bruto","Cantidad de ventas netas","Cantidad reembolsada"',
+      '"2026-10-1","7","2","17.53","0.00","0.00","150.00","123.96","0.00"',
+      '"2026-10-2","0","0","0","0.00","0.00","0.00","0.00","0.00"',
+      '"2026-10-3","2","1","0","4.59","0.00","0.00","-10.41","0.00"',
+    ].join("\n");
+    const imp = await uploadMetricCsv(ctx, { cycleId: cycleA(), channelId: shop.id, filename: "report.csv", text });
+    const preview = await getMetricImport(ctx, imp.id);
+    expect(preview.suggestedFormat).toBe("en");
+    const suggested = Object.fromEntries(preview.suggestions.map((s) => [s.definition.key, s.column]));
+    expect(suggested).toEqual({
+      "shop.orders": 2,
+      "shop.items_sold": 1,
+      "shop.gross_sales": 6,
+      "shop.net_sales": 7,
+      "shop.coupons": 4,
+      "shop.refunds": 8,
+      "shop.shipping": 5,
+    });
+    // Solo métricas de tienda: el promedio diario no tiene métrica (no se calcula ni se suma).
+    expect(preview.suggestions.every((s) => s.definition.kind === "shop")).toBe(true);
+
+    await applyMetricImport(ctx, {
+      importId: imp.id,
+      numberFormat: "en",
+      mappings: preview.suggestions.map((s) => ({ metricKey: s.definition.key, column: s.column!, aggregation: "sum" as const })),
+    });
+    const [summary] = await getMetricSummary(ctx, { cycleId: cycleA(), channelId: shop.id });
+    const value = (key: string) => summary.rows.find((r) => r.definition.key === key)!.value;
+    expect(value("shop.orders")).toBe(3);
+    expect(value("shop.items_sold")).toBe(9);
+    expect(value("shop.net_sales")).toBe(113.55);
+    expect(value("shop.coupons")).toBe(4.59);
+
+    // La tienda no tiene piezas en el calendario.
+    await expect(
+      createItem(ctx, { cycleId: cycleA(), channelId: shop.id, format: "post", title: "No" }),
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("una columna no numérica se rechaza entera, sin aplicar nada", async () => {

@@ -5,6 +5,7 @@ import { isUuid, parseInput } from "@/lib/validation";
 import { authorize, hasPermission, requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import { listMyProjects } from "@/modules/access/service";
 import { recordAudit } from "@/modules/audit/service";
+import type { ChannelKind } from "@/modules/content/formats";
 import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
 import {
@@ -393,7 +394,7 @@ export async function listMyPendingWork(actor: Actor, now = new Date()) {
     itemId: string;
     title: string;
     channelName: string;
-    channelKind: "social" | "email";
+    channelKind: ChannelKind;
     format: string;
     period: string;
     plannedAt: Date | null;
@@ -455,7 +456,7 @@ export async function listMyWeek(actor: Actor, now = new Date()) {
     itemId: string;
     title: string;
     channelName: string;
-    channelKind: "social" | "email";
+    channelKind: ChannelKind;
     format: string;
     period: string;
     plannedAt: Date;

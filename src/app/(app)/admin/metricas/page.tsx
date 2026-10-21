@@ -52,6 +52,7 @@ export default async function MetricCatalogPage() {
   const groups = [
     { kind: "social", title: "Redes sociales" },
     { kind: "email", title: "Email marketing" },
+    { kind: "shop", title: "Tienda online" },
   ] as const;
 
   return (

@@ -38,6 +38,7 @@ export const MAX_HIGHLIGHTS = 4;
 const DEFAULT_HIGHLIGHTS: Record<string, string[]> = {
   social: ["social.followers", "social.reach"],
   email: ["email.subscribers", "email.open_rate"],
+  shop: ["shop.net_sales", "shop.orders"],
 };
 
 /** Informe del mes anterior del proyecto, si existe. */

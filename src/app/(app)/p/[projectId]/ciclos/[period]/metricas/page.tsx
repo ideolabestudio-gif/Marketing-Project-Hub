@@ -5,6 +5,7 @@ import { formatMetric, SOURCE_LABELS } from "@/lib/format";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, formatPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
+import { CHANNEL_KIND_LABELS } from "@/modules/content/formats";
 import { NUMBER_FORMAT_LABELS, NUMBER_FORMATS } from "@/modules/metrics/csv";
 import { getCycleMetrics } from "@/modules/metrics/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
@@ -57,7 +58,7 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="h2">{channel.displayName}</h2>
               <div className="flex flex-wrap gap-2">
-                <span className="badge">{channel.kind === "email" ? "Email" : "Redes"}</span>
+                <span className="badge">{CHANNEL_KIND_LABELS[channel.kind]}</span>
                 <span className="badge">
                   {defs.filter((d) => current(d.key)).length} de {defs.length} con dato
                 </span>
@@ -178,7 +179,7 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
         {canWrite && channels.some((c) => c.isActive) && (
           <>
             <p className="text-sm text-muted">
-              Sube la exportación (Metricool, MailerLite, una hoja de cálculo…). En el paso siguiente eliges qué columna
+              Sube la exportación (Metricool, MailerLite, el informe de Ingresos de WooCommerce, una hoja de cálculo…). En el paso siguiente eliges qué columna
               corresponde a cada métrica y cómo se resumen las filas. El archivo original se conserva.
             </p>
             <ActionForm
