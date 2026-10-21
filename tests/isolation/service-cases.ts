@@ -180,6 +180,16 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     },
     foreign: (ctx, fx) => cycles.reopenCycle(ctx, { cycleId: fx.contentB.cycle.id, reason: "Intruso" }),
   },
+  "cycles.getCycleContents": {
+    kind: "project",
+    own: (ctx, fx) => cycles.getCycleContents(ctx, fx.contentA.cycle.id),
+    foreign: (ctx, fx) => cycles.getCycleContents(ctx, fx.contentB.cycle.id),
+  },
+  "cycles.deleteCycle": {
+    kind: "project",
+    own: (ctx, fx) => cycles.deleteCycle(ctx, { cycleId: fx.contentA.cycle.id, confirmation: FIXTURE_PERIOD }),
+    foreign: (ctx, fx) => cycles.deleteCycle(ctx, { cycleId: fx.contentB.cycle.id, confirmation: FIXTURE_PERIOD }),
+  },
   "cycles.assertCycleWritable": { kind: "internal", reason: "Función pura sobre un ciclo ya cargado con contexto" },
 
   // --- brand (ficha del cliente) ---
