@@ -94,6 +94,12 @@ export function formatPeriod(period: string, locale = "es-ES"): string {
   return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
 
+/** Mes en curso en la zona del proyecto (AAAA-MM). */
+export function currentPeriod(now: Date, timeZone: string): string {
+  const p = zonedParts(now, timeZone);
+  return `${p.year}-${pad(p.month)}`;
+}
+
 /** Mes siguiente al instante dado, en la zona del proyecto (para proponer el próximo ciclo). */
 export function nextPeriod(now: Date, timeZone: string): string {
   const p = zonedParts(now, timeZone);

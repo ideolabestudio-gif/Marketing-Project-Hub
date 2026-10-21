@@ -12,6 +12,7 @@ import {
   decideInternal,
   getItemReview,
   listMyPendingWork,
+  listMyMonths,
   listMyWeek,
   markPublished,
   recordClientDecision,
@@ -417,5 +418,26 @@ describe("esta semana", () => {
   it("no incluye piezas sin fecha ni de semanas futuras", async () => {
     const week = await listMyWeek(fx.actors.ana, new Date("2026-10-01T09:00:00Z"));
     expect(week).toEqual([]);
+  });
+});
+
+describe("mes en curso de cada proyecto (inicio)", () => {
+  it("da el mes en curso de mis proyectos con sus piezas aprobadas y programadas", async () => {
+    const months = await listMyMonths(fx.actors.ana, new Date("2026-10-15T09:00:00Z"));
+    expect(months.map((m) => m.projectId)).toEqual([fx.projectA.id]);
+    const [october] = months;
+    expect(october.period).toBe("2026-10");
+    expect(october.cycleOpen).toBe(true);
+    expect(october.total).toBeGreaterThan(0);
+    expect(october.out).toBeGreaterThanOrEqual(1); // la pieza programada del día 20
+    expect(october.approved).toBeGreaterThanOrEqual(october.out);
+    expect(october.approved).toBeLessThanOrEqual(october.total);
+
+    // En noviembre todavía no hay ciclo: no cuenta piezas de otros meses.
+    const [november] = await listMyMonths(fx.actors.ana, new Date("2026-11-03T09:00:00Z"));
+    expect(november).toMatchObject({ period: "2026-11", cycleOpen: false, total: 0, approved: 0, out: 0 });
+
+    const rob = await listMyMonths(fx.actors.rob, new Date("2026-10-15T09:00:00Z"));
+    expect(rob.map((m) => m.projectId)).toEqual([fx.projectB.id]);
   });
 });

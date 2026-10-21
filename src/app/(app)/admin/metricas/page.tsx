@@ -4,6 +4,10 @@ import { requireAdminActor } from "@/modules/identity/next";
 import { adminListMetricDefinitions, type MetricDefinition } from "@/modules/metrics/service";
 import { createMetricDefinitionAction, updateMetricDefinitionAction } from "../actions";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Catálogo de métricas · Administración" };
+
 const AGGREGATION_OPTIONS = {
   sum: "Suma de las filas",
   last: "Última fila",

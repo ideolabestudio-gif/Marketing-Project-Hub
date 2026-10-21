@@ -1,10 +1,19 @@
 import Link from "next/link";
+import { Breadcrumbs, cycleCrumbs } from "@/components/breadcrumbs";
 import { notFound } from "next/navigation";
 import { AssetList } from "@/components/asset-list";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
-import { formatInZone } from "@/lib/time";
+import { formatInZone, formatPeriod } from "@/lib/time";
 import { compareVersions, getItemDetail } from "@/modules/content/service";
 import { getProject } from "@/modules/projects/service";
+
+import type { Metadata } from "next";
+import { itemTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ciclos/[period]/piezas/[itemId]/versiones">): Promise<Metadata> {
+  const { projectId, period, itemId } = await params;
+  return itemTitle(projectId, period, itemId, "Versiones");
+}
 
 function toInt(value: string | string[] | undefined): number | undefined {
   const n = Number(Array.isArray(value) ? value[0] : value);
@@ -34,9 +43,12 @@ export default async function VersionsPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={itemUrl} className="link text-sm">
-          ← {item.title}
-        </Link>
+        <Breadcrumbs help="piezas"
+          items={[
+            ...cycleCrumbs(projectId, project.name, period, formatPeriod(period, project.locale)),
+            { label: item.title, href: itemUrl },
+          ]}
+        />
         <h1 className="h1 mt-1">Historial de versiones</h1>
       </div>
 

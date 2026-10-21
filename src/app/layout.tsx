@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Marketing Project Hub",
+  title: { default: "Marketing Project Hub", template: "%s · Marketing Project Hub" },
   description: "Gestión del ciclo mensual de redes sociales y email marketing de Ideolab",
 };
 

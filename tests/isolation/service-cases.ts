@@ -421,6 +421,7 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
   },
   "review.listMyPendingWork": { kind: "actor", reason: "Probado en review.test.ts (cada usuario ve solo lo suyo)" },
   "review.listMyWeek": { kind: "actor", reason: "Probado en review.test.ts (cada usuario ve solo sus proyectos)" },
+  "review.listMyMonths": { kind: "actor", reason: "Probado en review.test.ts (cada usuario ve solo sus proyectos)" },
   "review.isLocked": { kind: "internal", reason: "Función pura sobre un estado" },
 
   // --- audit ---

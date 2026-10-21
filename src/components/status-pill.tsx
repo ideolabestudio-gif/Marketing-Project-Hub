@@ -13,6 +13,22 @@ export const STATUS_STYLES: Record<WorkflowStatus, string> = {
   cancelled: "bg-background border border-border line-through opacity-60",
 };
 
+/**
+ * Símbolo de cada estado, para que el estado no dependa solo del color (calendario y leyenda).
+ * Es decorativo: junto a él va siempre el nombre del estado, visible o para lectores de pantalla.
+ */
+export const STATUS_SYMBOLS: Record<WorkflowStatus, string> = {
+  idea: "○",
+  draft: "✎",
+  in_review: "◔",
+  awaiting_client: "◑",
+  changes_requested: "!",
+  approved: "✓",
+  scheduled: "◷",
+  published: "●",
+  cancelled: "✕",
+};
+
 export function StatusPill({ status }: { status: WorkflowStatus }) {
   return (
     <span

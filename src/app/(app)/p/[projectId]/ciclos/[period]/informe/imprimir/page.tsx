@@ -5,6 +5,14 @@ import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { getCycleByPeriod } from "@/modules/cycles/service";
 import { getReportView } from "@/modules/reports/service";
 
+import type { Metadata } from "next";
+import { cycleTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ciclos/[period]/informe/imprimir">): Promise<Metadata> {
+  const { projectId, period } = await params;
+  return cycleTitle(projectId, period, "Informe");
+}
+
 /** Vista limpia del informe para imprimir o guardar como PDF desde el navegador. */
 export default async function PrintReportPage({ params }: PageProps<"/p/[projectId]/ciclos/[period]/informe/imprimir">) {
   const { projectId, period } = await params;

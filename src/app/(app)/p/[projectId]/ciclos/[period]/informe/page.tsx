@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Breadcrumbs, cycleCrumbs } from "@/components/breadcrumbs";
 import { ActionForm } from "@/components/action-form";
 import { ReportBody, type HighlightTools, type SectionTools } from "@/components/report-body";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
@@ -30,6 +31,14 @@ import {
 } from "./actions";
 import { AddSectionFields } from "./add-section-fields";
 import { ReportAiSection } from "./report-ai-section";
+
+import type { Metadata } from "next";
+import { cycleTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ciclos/[period]/informe">): Promise<Metadata> {
+  const { projectId, period } = await params;
+  return cycleTitle(projectId, period, "Informe");
+}
 
 type Channel = Awaited<ReturnType<typeof listChannels>>[number];
 
@@ -120,9 +129,7 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
 
   const header = (
     <div>
-      <Link href={base} className="link text-sm">
-        ← {formatPeriod(cycle.period, project.locale)}
-      </Link>
+      <Breadcrumbs help="informe" items={cycleCrumbs(projectId, project.name, period, formatPeriod(cycle.period, project.locale))} />
       <h1 className="h1 mt-1">Informe del mes</h1>
     </div>
   );

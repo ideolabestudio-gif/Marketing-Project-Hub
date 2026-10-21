@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
-import { wallTimeToUtc, weekOf, zonedDay } from "@/lib/time";
+import { currentPeriod, wallTimeToUtc, weekOf, zonedDay } from "@/lib/time";
 import { isUuid, parseInput } from "@/lib/validation";
 import { authorize, hasPermission, requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import { listMyProjects } from "@/modules/access/service";
 import { recordAudit } from "@/modules/audit/service";
 import type { ChannelKind } from "@/modules/content/formats";
-import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
+import { assertCycleWritable, getCycle, listCycles } from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
 import {
   deriveVersionState,
@@ -495,6 +495,49 @@ export async function listMyWeek(actor: Actor, now = new Date()) {
     }
   }
   return result.sort((a, b) => a.plannedAt.getTime() - b.plannedAt.getTime());
+}
+
+/**
+ * El mes en curso de cada proyecto del usuario (en la zona de cada proyecto), para ir
+ * directo a él desde el inicio: si está abierto y cuántas piezas lleva aprobadas y
+ * programadas. Solo lectura; cada proyecto con su propio contexto autorizado.
+ */
+export async function listMyMonths(actor: Actor, now = new Date()) {
+  const memberships = await listMyProjects(actor);
+  const result: {
+    projectId: string;
+    period: string;
+    cycleOpen: boolean;
+    cycleClosed: boolean;
+    total: number;
+    approved: number;
+    out: number;
+  }[] = [];
+  for (const m of memberships) {
+    if (m.projectStatus === "archived") continue;
+    const ctx = await requireProjectAccess(actor, m.projectId);
+    await authorize(ctx, "project.read");
+    const [rows, flags, cycles] = await Promise.all([
+      repo.listWorkflowRows(ctx),
+      repo.getProjectFlags(ctx),
+      listCycles(ctx),
+    ]);
+    const period = currentPeriod(now, flags.timezone);
+    const cycle = cycles.find((c) => c.period === period);
+    const active = statusesFrom(rows, flags.requireClientApproval).filter(
+      (r) => r.period === period && r.status !== "cancelled",
+    );
+    result.push({
+      projectId: m.projectId,
+      period,
+      cycleOpen: Boolean(cycle),
+      cycleClosed: cycle?.status === "closed",
+      total: active.length,
+      approved: active.filter((r) => ["approved", "scheduled", "published"].includes(r.status)).length,
+      out: active.filter((r) => DONE_STATUSES.includes(r.status)).length,
+    });
+  }
+  return result;
 }
 
 export function isLocked(status: WorkflowStatus): boolean {

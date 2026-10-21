@@ -4,6 +4,10 @@ import { requireAdminActor } from "@/modules/identity/next";
 import { adminListClients, adminListProjects } from "@/modules/projects/service";
 import { createClientAction, createProjectAction } from "./actions";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Clientes y proyectos · Administración" };
+
 export default async function AdminPage() {
   const actor = await requireAdminActor();
   const [clients, projects] = await Promise.all([adminListClients(actor), adminListProjects(actor)]);

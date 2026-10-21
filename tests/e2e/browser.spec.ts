@@ -16,7 +16,8 @@ test("un usuario recorre su proyecto y no puede entrar al de otro cliente cambia
   await page.locator(`a[href="/p/${s.projectA}"]`).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(MARKER_A);
 
-  await page.getByRole("link", { name: /octubre/i }).click();
+  // Pestaña del mes en curso en el menú del proyecto.
+  await page.getByRole("navigation", { name: "Proyecto" }).getByRole("link", { name: /octubre/i }).click();
   await page.getByRole("link", { name: "Lista" }).click();
   await page.getByRole("link", { name: `Pieza ${MARKER_A}` }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Pieza ${MARKER_A}`);
