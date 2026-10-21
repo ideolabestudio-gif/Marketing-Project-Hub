@@ -17,6 +17,7 @@ import { CalendarPlanSection } from "./calendar-plan-section";
 import { IdeasSection } from "./ideas-section";
 import { MetricoolMonthSection } from "./metricool-month-section";
 import { closeCycleAction, createItemAction, reopenCycleAction, setStatusAction, updateBriefAction } from "./actions";
+import { DeleteCycleSection } from "./delete-cycle-section";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -332,6 +333,18 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
             </p>
           )}
         </section>
+      )}
+
+      {isManager && (
+        <DeleteCycleSection
+          ctx={ctx}
+          projectId={projectId}
+          cycleId={cycle.id}
+          period={cycle.period}
+          periodLabel={formatPeriod(cycle.period, project.locale)}
+          closed={closed}
+          reportApproved={reportApproved}
+        />
       )}
     </div>
   );

@@ -168,3 +168,46 @@ export async function reopenCycle(ctx: ProjectContext, input: z.input<typeof reo
     data: { reason: data.reason },
   });
 }
+
+export type CycleContents = repo.CycleContents;
+
+/** Lo que se perdería al eliminar el ciclo (para avisar antes de confirmar). */
+export async function getCycleContents(ctx: ProjectContext, cycleId: string): Promise<CycleContents> {
+  await authorize(ctx, "cycle.manage");
+  const cycle = await getCycle(ctx, cycleId);
+  return repo.countCycleContents(ctx, cycle.id);
+}
+
+const deleteSchema = z.object({
+  cycleId: z.string(),
+  confirmation: z.string().trim(),
+});
+
+/**
+ * Elimina un ciclo (p. ej. uno de prueba) con todas sus piezas, versiones, aprobaciones,
+ * registros de publicación, métricas, informe y borradores de IA. No se puede deshacer:
+ * exige escribir el mes (AAAA-MM) para confirmar. Un ciclo cerrado o con el informe
+ * aprobado hay que reabrirlo antes. La auditoría conserva qué se borró, quién y cuándo.
+ */
+export async function deleteCycle(ctx: ProjectContext, input: z.input<typeof deleteSchema>): Promise<void> {
+  await authorize(ctx, "cycle.manage");
+  const data = parseInput(deleteSchema, input);
+  const cycle = await getCycle(ctx, data.cycleId);
+  if (cycle.status === "closed") throw new ValidationError("El ciclo está cerrado: reábrelo antes de eliminarlo");
+  if (await repo.hasApprovedReport(ctx, cycle.id)) {
+    throw new ValidationError("El informe del mes está aprobado: reábrelo antes de eliminar el ciclo");
+  }
+  if (data.confirmation !== cycle.period) {
+    throw new ValidationError(`Para confirmar, escribe ${cycle.period}`);
+  }
+  const contents = await repo.countCycleContents(ctx, cycle.id);
+  await repo.purgeCycle(ctx, cycle.id);
+  await recordAudit({
+    action: "cycle.deleted",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "cycle",
+    entityId: cycle.id,
+    data: { period: cycle.period, ...contents },
+  });
+}

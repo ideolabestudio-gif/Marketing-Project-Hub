@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { projectContextForAction } from "@/lib/project-page";
 import { createItem } from "@/modules/content/service";
-import { closeCycle, reopenCycle, setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
+import { closeCycle, deleteCycle, reopenCycle, setCycleStatus, updateCycleBrief } from "@/modules/cycles/service";
 
 export async function updateBriefAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
   return runAction(async () => {
@@ -68,4 +68,14 @@ export async function reopenCycleAction(projectId: string, cycleId: string, _: A
     await reopenCycle(ctx, { cycleId, reason: formString(formData, "reason") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Ciclo reabierto");
+}
+
+export async function deleteCycleAction(projectId: string, cycleId: string, _: ActionState, formData: FormData) {
+  const result = await runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "cycle.manage");
+    await deleteCycle(ctx, { cycleId, confirmation: formString(formData, "confirmation") });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Ciclo eliminado");
+  if (result?.ok) redirect(`/p/${projectId}`);
+  return result;
 }
