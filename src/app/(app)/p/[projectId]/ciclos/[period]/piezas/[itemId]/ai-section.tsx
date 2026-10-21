@@ -100,6 +100,7 @@ export async function AiSection({
               <ActionForm
                 action={resolveGenerationAction.bind(null, projectId, g.id, "discarded")}
                 submitLabel="Descartar"
+                confirm="¿Descartar este borrador?"
                 variant="secondary"
               >
                 {null}

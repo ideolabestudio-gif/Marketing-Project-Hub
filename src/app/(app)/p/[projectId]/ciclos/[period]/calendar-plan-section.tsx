@@ -165,6 +165,7 @@ export async function CalendarPlanSection({
               <ActionForm
                 action={resolveGenerationAction.bind(null, projectId, g.id, "discarded")}
                 submitLabel="Descartar propuesta"
+                confirm="¿Descartar toda la propuesta?"
                 variant="secondary"
               >
                 {null}

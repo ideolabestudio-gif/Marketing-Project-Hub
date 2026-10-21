@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { formString, runAction, type ActionState } from "@/lib/action-state";
 import { ValidationError } from "@/lib/errors";
 import { projectContextForAction } from "@/lib/project-page";
@@ -8,6 +9,7 @@ import {
   addComment,
   addLinkAsset,
   attachLibraryItem,
+  duplicateItem,
   removeAsset,
   saveVersion,
   setItemCancelled,
@@ -40,6 +42,20 @@ export async function updateItemAction(projectId: string, itemId: string, _: Act
     });
     revalidatePath(`/p/${projectId}`, "layout");
   });
+}
+
+export async function duplicateItemAction(projectId: string, itemId: string, _: ActionState, formData: FormData) {
+  let target: { id: string; period: string } | undefined;
+  const result = await runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "content.write");
+    const [cycleId, period] = formString(formData, "cycle").split("|");
+    const copy = await duplicateItem(ctx, { itemId, cycleId: cycleId ?? "" });
+    target = { id: copy.id, period: period ?? "" };
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Pieza duplicada");
+  // El periodo viene del formulario: si no cuadra con el de la copia, la página de la pieza responde 404.
+  if (result?.ok && target) redirect(`/p/${projectId}/ciclos/${target.period}/piezas/${target.id}`);
+  return result;
 }
 
 export async function setCancelledAction(projectId: string, itemId: string, cancelled: boolean) {

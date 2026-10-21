@@ -139,6 +139,7 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
                         <ActionForm
                           action={removeLibraryItemAction.bind(null, projectId, entry.id)}
                           submitLabel="Quitar"
+                          confirm="¿Quitar este material de la biblioteca?"
                           variant="danger"
                         >
                           {null}

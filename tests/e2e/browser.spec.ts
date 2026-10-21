@@ -67,3 +67,27 @@ test("los enlaces de Claude Design y Metricool se configuran en Ajustes y aparec
     "https://app.metricool.com/planner?blogId=1",
   );
 });
+
+/** Saltar al contenido, buscar piezas y la ficha de una pieza con «Qué toca ahora»: nunca asoma el proyecto B. */
+test("saltar al contenido y buscar piezas solo dentro del proyecto", async ({ page, context, baseURL }) => {
+  const s = readState();
+  await context.addCookies([{ name: "mph_session", value: s.tokens.ana, url: baseURL! }]);
+
+  await page.goto(`/p/${s.projectA}`);
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Saltar al contenido" });
+  await expect(skip).toBeFocused();
+  await skip.press("Enter");
+  await expect(page.locator("#contenido")).toBeFocused();
+
+  const search = page.getByRole("search");
+  await search.getByRole("searchbox").fill("pieza");
+  await search.getByRole("button", { name: "Buscar" }).click();
+  await page.getByRole("list", { name: "Resultados" }).getByRole("link", { name: `Pieza ${MARKER_A}` }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Pieza ${MARKER_A}`);
+  await expect(page.getByText("Qué toca ahora")).toBeVisible();
+  expect(await page.content()).not.toContain(MARKER_B);
+
+  await page.goto(`/p/${s.projectA}?buscar=${encodeURIComponent(MARKER_B)}`);
+  await expect(page.getByRole("status").filter({ hasText: "Ninguna pieza contiene" })).toBeVisible();
+});

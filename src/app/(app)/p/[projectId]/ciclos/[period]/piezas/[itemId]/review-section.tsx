@@ -25,7 +25,7 @@ const EVENT_LABELS: Record<string, string> = {
   "client:changes_requested": "Cambios pedidos por el cliente",
 };
 
-const NEXT_STEP: Record<string, string> = {
+export const NEXT_STEP: Record<string, string> = {
   idea: "Escribe el contenido para crear la primera versión.",
   draft: "Cuando el contenido esté listo, envíalo a revisión.",
   in_review: "Pendiente de la revisión interna.",
@@ -37,7 +37,7 @@ const NEXT_STEP: Record<string, string> = {
   cancelled: "Pieza cancelada.",
 };
 
-const SOLO_DRAFT_STEP =
+export const SOLO_DRAFT_STEP =
   "Cuando el contenido esté listo, apruébalo. Queda registrado quién aprobó qué versión y cuándo.";
 
 /** Explica por qué no aparece el siguiente paso cuando el rol de la persona no lo permite. */

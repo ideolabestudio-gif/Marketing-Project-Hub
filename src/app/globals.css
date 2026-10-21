@@ -218,7 +218,8 @@ input[type="radio"] {
   .help-body td { @apply border-b border-border py-2 pr-4 align-top; }
   .help-body dt { @apply mt-2 font-medium first:mt-0; }
   .help-body dd { @apply text-muted; }
-  .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink; }
+  .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink focus-visible:ring-3 focus-visible:ring-(--ring) focus-visible:outline-none; }
+  .nav-link[aria-current="page"] { @apply bg-accent-soft font-medium text-accent-ink; }
 }
 
 @keyframes target-flash {

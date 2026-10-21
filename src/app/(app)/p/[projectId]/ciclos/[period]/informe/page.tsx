@@ -249,16 +249,26 @@ export default async function ReportPage({ params }: PageProps<"/p/[projectId]/c
                 ))}
               <div className="ml-auto flex gap-2">
                 {i > 0 && (
-                  <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "up")} submitLabel="↑" variant="secondary">
+                  <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "up")}
+                    submitLabel="↑"
+                    submitAriaLabel="Subir la sección"
+                    buttonClassName="min-h-11 min-w-11 justify-center"
+                    variant="secondary"
+                  >
                     {null}
                   </ActionForm>
                 )}
                 {i < sections.length - 1 && (
-                  <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "down")} submitLabel="↓" variant="secondary">
+                  <ActionForm action={moveSectionAction.bind(null, projectId, s.id, "down")}
+                    submitLabel="↓"
+                    submitAriaLabel="Bajar la sección"
+                    buttonClassName="min-h-11 min-w-11 justify-center"
+                    variant="secondary"
+                  >
                     {null}
                   </ActionForm>
                 )}
-                <ActionForm action={deleteSectionAction.bind(null, projectId, s.id)} submitLabel="Eliminar" variant="danger">
+                <ActionForm action={deleteSectionAction.bind(null, projectId, s.id)} submitLabel="Eliminar" variant="danger" confirm="¿Eliminar la sección?">
                   {null}
                 </ActionForm>
               </div>

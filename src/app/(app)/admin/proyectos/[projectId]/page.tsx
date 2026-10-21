@@ -68,6 +68,7 @@ export default async function AdminProjectPage({ params }: PageProps<"/admin/pro
                     <ActionForm
                       action={removeMembershipAction.bind(null, projectId, m.userId)}
                       submitLabel="Retirar"
+                      confirm="¿Retirar a esta persona del proyecto?"
                       variant="danger"
                     >
                       {null}

@@ -203,6 +203,63 @@ export async function updateItem(ctx: ProjectContext, input: z.input<typeof upda
   });
 }
 
+const duplicateSchema = z.object({ itemId: z.string(), cycleId: z.string() });
+
+/**
+ * Crea una pieza nueva igual que otra (canal, formato y texto vigente, con sus archivos)
+ * en el mismo mes o en otro mes abierto. Nace en borrador, sin aprobaciones: hay que
+ * revisarla como cualquier otra. En el mismo mes conserva la fecha; en otro, queda sin fecha.
+ */
+export async function duplicateItem(ctx: ProjectContext, input: z.input<typeof duplicateSchema>) {
+  await authorize(ctx, "content.write");
+  const data = parseInput(duplicateSchema, input);
+  const source = await loadItem(ctx, data.itemId);
+  const cycle = await getCycle(ctx, data.cycleId);
+  assertCycleWritable(cycle);
+  const channel = await resolveChannel(ctx, source.channelId, source.format);
+  const item = await repo.insertItem(ctx, {
+    cycleId: cycle.id,
+    channelId: channel.id,
+    format: source.format,
+    title: `${source.title} (copia)`.slice(0, 200),
+    plannedAt: cycle.id === source.cycleId ? source.plannedAt : null,
+  });
+  const current = await repo.findVersion(ctx, source.id);
+  if (current) {
+    const assets = await repo.listVersionAssets(ctx, current.id);
+    // La versión nueva es de quien duplica; si el texto venía de un borrador con IA, la nota lo dice.
+    const origin = current.origin === "ai_assisted" ? " (texto asistido por IA)" : "";
+    await repo.createVersion(ctx, {
+      itemId: item.id,
+      content: {
+        body: current.body,
+        emailSubject: current.emailSubject,
+        emailPreheader: current.emailPreheader,
+        linkUrl: current.linkUrl,
+      },
+      note: `Copia de «${source.title}» v${current.versionNo}${origin}`.slice(0, 500),
+      assetIds: assets.map((a) => a.id),
+    });
+  }
+  await recordAudit({
+    action: "content_item.duplicated",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "content_item",
+    entityId: item.id,
+    data: { sourceItemId: source.id, sourceVersionNo: current?.versionNo ?? null },
+  });
+  return item;
+}
+
+/** Busca piezas por título en todos los meses del proyecto (como mucho 50). */
+export async function searchItems(ctx: ProjectContext, input: { query: string }) {
+  await authorize(ctx, "project.read");
+  const text = input.query.trim().slice(0, 100);
+  if (text.length < 2) return [];
+  return repo.searchItems(ctx, text, 50);
+}
+
 export async function setItemCancelled(ctx: ProjectContext, input: { itemId: string; cancelled: boolean }) {
   const item = await loadItemForWrite(ctx, input.itemId, { allowCancelled: true });
   if (input.cancelled === (item.status === "cancelled")) return;

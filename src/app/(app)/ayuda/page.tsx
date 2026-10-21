@@ -49,7 +49,8 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <ul>
           <li>
             <strong>Menú del proyecto</strong>: Resumen · el mes en curso · Ficha del cliente · Ajustes, y el botón{" "}
-            <em>Abrir Metricool ↗</em>.
+            <em>Abrir Metricool ↗</em>. Junto al nombre del cliente, <em>Cambiar de proyecto</em> salta a otro de tus
+            proyectos sin volver al inicio.
           </li>
           <li>
             <strong>Menú del mes</strong>: Plan · Brief · Métricas · Informe. Las flechas ‹ › de la derecha llevan a la misma
@@ -59,6 +60,12 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <p>
           Encima del título de cada página, las <strong>migas de pan</strong> (Inicio / Proyecto / Mes / …) llevan a
           cualquier nivel superior de un clic, y <em>? Ayuda</em> abre el apartado de esta guía que explica esa página.
+        </p>
+        <p>
+          Con teclado, la primera tecla Tab muestra <strong>Saltar al contenido</strong> para no recorrer los menús, y la
+          página en la que estás queda marcada en cada menú. Los botones dicen «Un momento…» mientras trabajan y, si algo
+          falla, el aviso aparece junto al botón. Lo que no se puede deshacer (eliminar, quitar, descartar, retirar) pide
+          confirmación: el primer clic pregunta y hay que pulsar «Sí, …» para hacerlo.
         </p>
       </>
     ),
@@ -98,6 +105,10 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           El <strong>Resumen</strong> muestra tu rol, la zona horaria (todas las horas del proyecto van en ella), los meses
           (el mes en curso, marcado), los canales y el equipo. Desde aquí se abre un mes nuevo y se prepara el calendario
           del mes que viene.
+        </p>
+        <p>
+          <strong>Buscar piezas</strong> encuentra una pieza por su título en todos los meses del proyecto (por ejemplo,
+          para reutilizar el post de rebajas del año pasado).
         </p>
         <table>
           <thead>
@@ -202,13 +213,24 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           </li>
           <li>
             <strong>Seguimiento.</strong> Vista Calendario (cada pieza con el color y el símbolo de su estado; la leyenda
-            está debajo) o Lista. Las piezas sin fecha salen aparte.
+            está debajo) o Lista, que se puede filtrar por canal y por estado. En el móvil, el calendario se ve como una
+            agenda día a día. El <em>+</em> de cada día abre «Nueva pieza» con esa fecha puesta. Las piezas sin fecha
+            salen aparte.
           </li>
           <li>
-            <strong>Cerrar.</strong> Con el informe aprobado, escribe los aprendizajes y pulsa «Cerrar ciclo»: el mes
-            queda en solo lectura. La responsable puede reabrirlo indicando el motivo.
+            <strong>Programar.</strong> Con piezas de redes aprobadas, <em>Programar el mes en Metricool</em> las lleva
+            todas a la vez con Claude.
+          </li>
+          <li>
+            <strong>Cerrar.</strong> En <em>Gestionar el mes</em> (al final del Plan; también «Gestionar» junto a cada
+            mes en el Resumen), con el informe aprobado, escribe los aprendizajes y pulsa «Cerrar ciclo»: el mes queda en
+            solo lectura. La responsable puede reabrirlo ahí mismo indicando el motivo.
           </li>
         </ol>
+        <p>
+          En <em>Gestionar el mes</em> también está la <strong>Fase del mes</strong> (planificación, producción…), para que el equipo
+          sepa en qué punto está.
+        </p>
         <p>
           <strong>Eliminar este ciclo</strong> (al final del Plan, solo la responsable) borra un mes de prueba o creado por
           error con todo lo que contiene. No se puede deshacer: hay que escribir el mes (AAAA-MM) para confirmar, y no se
@@ -227,6 +249,10 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           lo deduce de lo registrado. Idea → Borrador → En revisión interna → Pendiente del cliente (si el proyecto lo
           exige) → Aprobada → Programada → Publicada; también Cambios pedidos y Cancelada.
         </p>
+        <p>
+          Arriba de cada pieza, <strong>Qué toca ahora</strong> dice el siguiente paso según su estado y lleva al apartado
+          donde se hace. <em>‹ Anterior</em> y <em>Siguiente ›</em> recorren las piezas del mes por fecha.
+        </p>
         <ol>
           <li>
             <strong>Escribir</strong> en Contenido y «Guardar como nueva versión». El historial guarda y compara todas.
@@ -240,10 +266,10 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
             registras la respuesta del cliente con quién respondió y la evidencia.
           </li>
           <li>
-            <strong>Programar</strong>: en una pieza de redes aprobada, «Copiar para Metricool» y pégalo en un chat de Claude
-            con el conector de Metricool; la deja como pendiente de revisión y tú la programas allí. En el Plan,{" "}
-            <em>Llevar el mes a Metricool con Claude</em> hace lo mismo con todas las aprobadas a la vez. Los emails se
-            montan y envían en MailerLite.
+            <strong>Programar</strong>: en una pieza de redes aprobada, <em>Programar en Metricool</em> → «Copiar para
+            Metricool» y pégalo en un chat de Claude con el conector de Metricool; la deja como pendiente de revisión y tú la
+            programas allí. En un email aprobado, <em>Preparar en MailerLite</em> → «Copiar para MailerLite»: Claude crea la
+            campaña como borrador, sin destinatarios ni envío; tú eliges la lista y la envías o programas en MailerLite.
           </li>
           <li>
             <strong>Registrar</strong>: «La he programado» o «Ya está publicada», y «Confirmar publicación» cuando salga.
@@ -252,6 +278,10 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <p>
           Cambiar el texto de una pieza aprobada crea una versión nueva que hay que volver a aprobar. Una pieza programada
           o publicada ya no se puede editar.
+        </p>
+        <p>
+          <strong>Duplicar pieza</strong> (al final de la pieza) crea una copia en borrador con el mismo canal, formato,
+          texto y archivos, en este mes o en otro abierto. La copia empieza en v1 y hay que aprobarla de nuevo.
         </p>
         <p>
           <strong>Trabajo en solitario</strong> (Ajustes › General): la pieza se aprueba en un paso con «Aprobar vN», sin
@@ -268,12 +298,12 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <p>El Hub usa tu suscripción de Claude. Claude solo propone; una persona decide qué se usa.</p>
         <ul>
           <li>
-            <strong>Copiar y pegar</strong>: los bloques «Copiar texto para Claude» (calendario, borradores, lectura del
-            informe) y «Copiar petición para Claude» (métricas) dan un texto con los datos del proyecto; pegas la respuesta
-            donde se indica y la revisas antes de usarla.
+            <strong>Copiar y pegar</strong>: todos los bloques para Claude siguen los mismos pasos (1. copia el texto, 2.
+            pégalo en un chat de Claude con el conector que se indica, 3. revisa lo que vuelve). «Ver el texto» enseña lo
+            que vas a copiar. Si el navegador no deja copiar, selecciona el texto y cópialo a mano.
           </li>
           <li>
-            <strong>Conector del Hub</strong>: en Conexiones está la dirección para añadirlo en claude.ai (Ajustes ›
+            <strong>Conector del Hub</strong>: en Conexiones está la dirección («Copiar la dirección») para añadirlo en claude.ai (Ajustes ›
             Conectores › Añadir conector personalizado). Claude puede ver tus proyectos, preparar el calendario, redactar
             borradores, preparar la lectura del informe y subir CSV de métricas. Nada se aprueba, publica ni envía desde
             Claude.

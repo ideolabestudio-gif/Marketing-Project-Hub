@@ -12,12 +12,14 @@ import {
   addLinkAsset,
   compareVersions,
   createItem,
+  duplicateItem,
   getAssetFile,
   getItemDetail,
   getVersion,
   listItems,
   removeAsset,
   saveVersion,
+  searchItems,
   setItemCancelled,
   updateItem,
   uploadAsset,
@@ -280,5 +282,47 @@ describe("archivos", () => {
     await uploadAsset(ctx, { itemId: fx.contentA.item.id, filename: "../../etc/pa<ss>wd.png", bytes: TINY_PNG });
     const { currentAssets } = await getItemDetail(ctx, fx.contentA.item.id);
     expect(currentAssets.at(-1)?.filename).toBe("pa_ss_wd.png");
+  });
+});
+
+describe("duplicar y buscar piezas", () => {
+  it("duplica en el mismo mes con su texto y sus archivos, en borrador y sin aprobaciones", async () => {
+    const { item, current, currentAssets } = await getItemDetail(ctx, fx.contentA.item.id);
+    const copy = await duplicateItem(ctx, { itemId: item.id, cycleId: fx.contentA.cycle.id });
+    expect(copy.id).not.toBe(item.id);
+    expect(copy.title).toBe(`${item.title} (copia)`);
+    expect(copy.plannedAt).toEqual(item.plannedAt);
+    const detail = await getItemDetail(ctx, copy.id);
+    expect(detail.current?.versionNo).toBe(1);
+    expect(detail.current?.body).toBe(current?.body);
+    expect(detail.current?.note).toContain(`Copia de «${item.title}»`);
+    expect(detail.currentAssets.map((a) => a.id)).toEqual(currentAssets.map((a) => a.id));
+    const audit = await getDb().select().from(auditEvents).where(eq(auditEvents.entityId, copy.id));
+    expect(audit.map((a) => a.action)).toContain("content_item.duplicated");
+  });
+
+  it("en otro mes queda sin fecha; no se puede llevar a un mes de otro proyecto ni a uno cerrado", async () => {
+    const november = await openCycle(ctx, { period: "2026-11" });
+    const copy = await duplicateItem(ctx, { itemId: fx.contentA.item.id, cycleId: november.id });
+    expect(copy.cycleId).toBe(november.id);
+    expect(copy.plannedAt).toBeNull();
+    await expect(
+      duplicateItem(ctx, { itemId: fx.contentA.item.id, cycleId: fx.contentB.cycle.id }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    const edu = await requireProjectAccess(fx.actors.edu, fx.projectA.id);
+    await expect(duplicateItem(edu, { itemId: fx.contentA.item.id, cycleId: november.id })).resolves.toBeTruthy();
+    const viewer = await requireProjectAccess(fx.actors.mix, fx.projectA.id); // solo lectura en A
+    await expect(duplicateItem(viewer, { itemId: fx.contentA.item.id, cycleId: november.id })).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+  });
+
+  it("busca por título solo en el proyecto, sin distinguir mayúsculas", async () => {
+    const found = await searchItems(ctx, { query: "pieza alfa" });
+    expect(found.map((i) => i.id)).toContain(fx.contentA.item.id);
+    expect(JSON.stringify(found)).not.toContain("BETA-SECRET");
+    expect(await searchItems(ctx, { query: "BETA-SECRET" })).toEqual([]);
+    expect(await searchItems(ctx, { query: "a" })).toEqual([]);
+    expect(await searchItems(ctx, { query: "100%" })).toEqual([]);
   });
 });

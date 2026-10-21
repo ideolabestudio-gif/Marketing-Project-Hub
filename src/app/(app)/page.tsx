@@ -128,7 +128,7 @@ export default async function HomePage() {
                   {toSchedule.map((p) => (
                     <li key={p.itemId}>
                       <Link
-                        href={pieceHref(p, p.channelKind === "email" ? "revision" : "metricool")}
+                        href={pieceHref(p, "programar")}
                         className="group flex flex-col gap-1 rounded-lg border border-border bg-surface-muted px-3 py-2.5 transition hover:border-accent/40 hover:bg-accent-soft sm:flex-row sm:items-center sm:gap-3"
                       >
                         <div className="min-w-0 flex-1">

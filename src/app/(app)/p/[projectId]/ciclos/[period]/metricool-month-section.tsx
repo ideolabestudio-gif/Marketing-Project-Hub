@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CopyButton } from "@/components/copy-button";
+import { ClaudeHandoff } from "@/components/claude-handoff";
 import type { ProjectContext } from "@/modules/access/context";
 import { buildMetricoolBulkHandoff, type MetricoolBulkPost } from "@/modules/content/metricool-handoff";
 import { getItemDetail } from "@/modules/content/service";
@@ -47,16 +47,15 @@ export async function MetricoolMonthSection({
   const undated = posts.filter((p) => !p.plannedAt).length;
 
   return (
-    <section id="metricool" className="card flex scroll-mt-20 flex-col gap-3">
-      <div>
-        <h2 className="h2">Llevar el mes a Metricool con Claude</h2>
-        <p className="mt-1 text-sm">
-          {posts.length === 1 ? "Hay 1 pieza aprobada" : `Hay ${posts.length} piezas aprobadas`} sin programar. Copia
-          el mensaje y pégalo en un chat de Claude con el conector de Metricool: las dejará todas en Metricool como
-          pendientes de revisión. Revísalas allí, añade las imágenes o vídeos, prográmalas y registra aquí la
-          programación de cada pieza.
-        </p>
-      </div>
+    <ClaudeHandoff
+      id="metricool"
+      title="Programar el mes en Metricool"
+      intro={`${posts.length === 1 ? "Hay 1 pieza de redes aprobada" : `Hay ${posts.length} piezas de redes aprobadas`} sin programar. Claude las deja todas en Metricool como pendientes de revisión; nunca las publica.`}
+      connector="Metricool"
+      after="Revísalas en Metricool, añade las imágenes o vídeos, prográmalas allí y registra aquí la programación de cada pieza."
+      text={text}
+      copyLabel={posts.length === 1 ? "Copiar para Metricool" : `Copiar las ${posts.length} para Metricool`}
+    >
       {undated > 0 && (
         <p className="notice">
           {undated === 1 ? "Una pieza no tiene fecha" : `${undated} piezas no tienen fecha`}: Claude te la preguntará
@@ -73,11 +72,6 @@ export async function MetricoolMonthSection({
           </li>
         ))}
       </ul>
-      <details className="collapsible">
-        <summary className="link cursor-pointer self-start text-sm">Ver el mensaje</summary>
-        <pre className="tile mt-2 max-h-80 overflow-auto text-xs whitespace-pre-wrap">{text}</pre>
-      </details>
-      <CopyButton text={text} label={posts.length === 1 ? "Copiar para Metricool" : `Copiar las ${posts.length} para Metricool`} />
-    </section>
+    </ClaudeHandoff>
   );
 }

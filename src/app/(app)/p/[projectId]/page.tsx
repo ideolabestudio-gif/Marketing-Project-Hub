@@ -7,6 +7,7 @@ import { hasPermission } from "@/modules/access/context";
 import { ROLE_LABELS } from "@/modules/access/permissions";
 import { listProjectMembers } from "@/modules/access/service";
 import { getAiStatus } from "@/modules/ai/service";
+import { searchItems } from "@/modules/content/service";
 import { PLATFORMS } from "@/modules/projects/catalog";
 import { CYCLE_STATUS_LABELS, listCycles } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
@@ -21,15 +22,18 @@ export async function generateMetadata({ params }: PageProps<"/p/[projectId]">):
   return projectTitle(projectId);
 }
 
-export default async function ProjectPage({ params }: PageProps<"/p/[projectId]">) {
+export default async function ProjectPage({ params, searchParams }: PageProps<"/p/[projectId]">) {
   const { projectId } = await params;
+  const { buscar } = await searchParams;
+  const search = (Array.isArray(buscar) ? buscar[0] : buscar)?.trim() ?? "";
   const ctx = await projectContextForPage(projectId);
-  const [project, channels, members, cycles, ai] = await Promise.all([
+  const [project, channels, members, cycles, ai, found] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     listProjectMembers(ctx),
     listCycles(ctx),
     getAiStatus(ctx),
+    search ? searchItems(ctx, { query: search }) : Promise.resolve(null),
   ]);
   const next = nextPeriod(new Date(), project.timezone);
   const now = currentPeriod(new Date(), project.timezone);
@@ -77,6 +81,40 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
         </section>
       )}
 
+      <section id="buscar" className="card flex scroll-mt-20 flex-col gap-3" aria-labelledby="buscar-titulo">
+        <h2 id="buscar-titulo" className="h2">
+          Buscar piezas
+        </h2>
+        <form method="get" action={`/p/${projectId}#buscar`} role="search" className="flex flex-wrap items-end gap-3">
+          <label className="field grow">
+            Título de la pieza, en cualquier mes
+            <input type="search" name="buscar" defaultValue={search} className="input" minLength={2} placeholder="Navidad" />
+          </label>
+          <button type="submit" className="btn btn-secondary">
+            Buscar
+          </button>
+        </form>
+        {found &&
+          (found.length === 0 ? (
+            <p className="text-sm text-muted" role="status">
+              {search.length < 2 ? "Escribe al menos dos letras." : `Ninguna pieza contiene «${search}».`}
+            </p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-border text-sm" aria-label="Resultados">
+              {found.map((item) => (
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <Link href={`/p/${projectId}/ciclos/${item.cyclePeriod}/piezas/${item.id}`} className="link font-medium">
+                    {item.title}
+                  </Link>
+                  <span className="text-muted">
+                    {formatPeriod(item.cyclePeriod, project.locale)} · {item.channelName}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ))}
+      </section>
+
       <section className="card flex flex-col gap-3">
         <h2 className="h2">Ciclos mensuales</h2>
         {cycles.length === 0 ? (
@@ -88,9 +126,14 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
                 <Link href={`/p/${projectId}/ciclos/${c.period}`} className="link font-medium">
                   {formatPeriod(c.period, project.locale)}
                 </Link>
-                <span className="flex flex-wrap justify-end gap-2">
+                <span className="flex flex-wrap items-center justify-end gap-2">
                   {c.period === now && <span className="badge border-accent/40 text-foreground">Mes en curso</span>}
                   <span className="badge">{CYCLE_STATUS_LABELS[c.status]}</span>
+                  {hasPermission(ctx, "cycle.manage") && (
+                    <Link href={`/p/${projectId}/ciclos/${c.period}#gestionar`} className="link text-xs text-muted">
+                      Gestionar<span className="sr-only"> {formatPeriod(c.period, project.locale)}</span>
+                    </Link>
+                  )}
                 </span>
               </li>
             ))}
