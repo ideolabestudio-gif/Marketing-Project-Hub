@@ -4,6 +4,7 @@ import { previousPeriod } from "@/lib/time";
 import { isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
+import type { ChannelKind } from "@/modules/content/formats";
 import { assertCycleWritable, getCycle, listCycles } from "@/modules/cycles/service";
 import { assertAdmin, type Actor } from "@/modules/identity/actor";
 import { listChannels } from "@/modules/projects/service";
@@ -57,7 +58,7 @@ const createDefinitionSchema = z.object({
   key: z
     .string()
     .trim()
-    .regex(/^(social|email)\.[a-z0-9_]{2,40}$/, "Clave: social.xxx o email.xxx (minúsculas, números y _)"),
+    .regex(/^(social|email|shop)\.[a-z0-9_]{2,40}$/, "Clave: social.xxx, email.xxx o shop.xxx (minúsculas, números y _)"),
   unit: z.enum(["count", "percent", "currency", "seconds"], "Unidad no válida"),
   ...definitionFields,
 });
@@ -66,7 +67,7 @@ export async function adminCreateMetricDefinition(actor: Actor, input: z.input<t
   assertAdmin(actor);
   const data = parseInput(createDefinitionSchema, input);
   try {
-    await repo.insertDefinition({ ...data, kind: data.key.startsWith("email.") ? "email" : "social" });
+    await repo.insertDefinition({ ...data, kind: data.key.split(".")[0] as ChannelKind });
   } catch (err) {
     if (isUniqueViolation(err)) throw new ConflictError("Ya existe una métrica con esa clave");
     throw err;
@@ -120,7 +121,7 @@ async function loadWritableChannel(ctx: ProjectContext, cycleId: string, channel
   return { cycle, channel };
 }
 
-async function loadDefinitionFor(kind: "social" | "email", key: string) {
+async function loadDefinitionFor(kind: ChannelKind, key: string) {
   const def = await repo.findDefinition(key);
   if (!def || !def.isActive) throw new ValidationError("Métrica no válida");
   if (def.kind !== kind) throw new ValidationError(`«${def.label}» no aplica a este tipo de canal`);
@@ -242,6 +243,14 @@ const HINTS: Record<string, string[]> = {
   click_rate: ["click rate", "tasa de clics", "ctr"],
   unsubscribes: ["unsubscribes", "bajas"],
   bounces: ["bounces", "rebotes"],
+  // Tienda online (cabeceras del informe de Ingresos de WooCommerce, en español e inglés).
+  orders: ["pedidos", "cantidad de pedidos", "orders"],
+  items_sold: ["articulos vendidos", "numero de articulos vendidos", "items sold"],
+  gross_sales: ["ventas brutas", "cantidad de ventas bruto", "gross sales"],
+  net_sales: ["ventas netas", "cantidad de ventas netas", "net sales"],
+  coupons: ["cupones", "importe del cupon", "coupons"],
+  refunds: ["reembolsos", "cantidad reembolsada", "refunds", "returns"],
+  shipping: ["envios", "cantidad de envios", "shipping"],
   recipients: ["recipients", "sent", "destinatarios", "enviados"],
   campaigns_sent: ["campaigns", "campanas"],
 };

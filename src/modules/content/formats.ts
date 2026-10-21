@@ -13,9 +13,22 @@ export const FORMATS = {
     campaign: "Campaña",
     other: "Otro",
   },
+  // La tienda online no tiene piezas: solo aporta métricas al informe.
+  shop: {},
 } as const;
 
 export type ChannelKind = keyof typeof FORMATS;
+
+export const CHANNEL_KIND_LABELS: Record<ChannelKind, string> = {
+  social: "Redes",
+  email: "Email",
+  shop: "Tienda online",
+};
+
+/** ¿Se planifican piezas en este tipo de canal? (La tienda online solo tiene métricas.) */
+export function hasPieces(kind: ChannelKind): boolean {
+  return Object.keys(FORMATS[kind]).length > 0;
+}
 
 export function isValidFormat(kind: ChannelKind, format: string): boolean {
   return Object.hasOwn(FORMATS[kind], format);

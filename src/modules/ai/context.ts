@@ -4,7 +4,7 @@ import { formatInZone, formatPeriod, previousPeriod, utcToWallTime } from "@/lib
 import type { ProjectContext } from "@/modules/access/context";
 import { BRAND_FIELDS, getBrandProfile } from "@/modules/brand/service";
 import { getItemDetail, LIBRARY_CATEGORIES, listItems, listLibrary } from "@/modules/content/service";
-import { FORMATS, formatLabel } from "@/modules/content/formats";
+import { FORMATS, formatLabel, hasPieces } from "@/modules/content/formats";
 import { getCycle, getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { getMetricSummary } from "@/modules/metrics/service";
@@ -98,7 +98,8 @@ export async function copyDraftContext(ctx: ProjectContext, itemId: string): Pro
 export async function ideasContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
   const [project, cycle, channels] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId), listChannels(ctx)]);
   const [items, brand] = await Promise.all([listItems(ctx, cycle.id), brandContext(ctx)]);
-  const active = channels.filter((c) => c.isActive);
+  // Solo canales con piezas (la tienda online solo aporta métricas al informe).
+  const active = channels.filter((c) => c.isActive && hasPieces(c.kind));
   const data = block([
     `Cliente: ${project.clientName}`,
     `Proyecto: ${project.name}`,
@@ -135,7 +136,8 @@ export async function ideasContext(ctx: ProjectContext, cycleId: string): Promis
 export async function calendarPlanContext(ctx: ProjectContext, cycleId: string): Promise<BuiltContext> {
   const [project, cycle, channels] = await Promise.all([getProject(ctx), getCycle(ctx, cycleId), listChannels(ctx)]);
   const [items, brand] = await Promise.all([listItems(ctx, cycle.id), brandContext(ctx)]);
-  const active = channels.filter((c) => c.isActive);
+  // Solo canales con piezas (la tienda online solo aporta métricas al informe).
+  const active = channels.filter((c) => c.isActive && hasPieces(c.kind));
   const tz = project.timezone;
   const when = (d: Date | null) => (d ? utcToWallTime(d, tz) : "sin fecha");
 

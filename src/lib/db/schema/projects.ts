@@ -14,7 +14,7 @@ import {
 import { users } from "./identity";
 
 export const recordStatus = pgEnum("record_status", ["active", "archived"]);
-export const channelKind = pgEnum("channel_kind", ["social", "email"]);
+export const channelKind = pgEnum("channel_kind", ["social", "email", "shop"]);
 export const channelMode = pgEnum("channel_mode", ["manual", "integration"]);
 export const projectRole = pgEnum("project_role", ["manager", "editor", "reviewer", "viewer"]);
 

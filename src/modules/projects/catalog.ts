@@ -12,6 +12,8 @@ export const PLATFORMS = {
   pinterest: { label: "Pinterest", kind: "social" },
   threads: { label: "Threads", kind: "social" },
   newsletter: { label: "Newsletter (email)", kind: "email" },
+  // Tienda online: solo métricas (ventas, pedidos…); no tiene piezas en el calendario.
+  woocommerce: { label: "WooCommerce (tienda online)", kind: "shop" },
 } as const;
 
 export type Platform = keyof typeof PLATFORMS;

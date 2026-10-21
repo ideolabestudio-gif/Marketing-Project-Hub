@@ -134,6 +134,20 @@
       "when": 1792564962569,
       "tag": "0018_cycle_purge",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792567478893,
+      "tag": "0019_channel_kind_shop",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792567480501,
+      "tag": "0020_shop_metrics",
+      "breakpoints": true
     }
   ]
 }
