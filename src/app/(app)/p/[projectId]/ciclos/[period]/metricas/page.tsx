@@ -11,6 +11,7 @@ import { CHANNEL_KIND_LABELS } from "@/modules/content/formats";
 import { NUMBER_FORMAT_LABELS, NUMBER_FORMATS } from "@/modules/metrics/csv";
 import { buildMetricsRequest } from "@/modules/metrics/claude-request";
 import { getCycleMetrics } from "@/modules/metrics/service";
+import { listItems } from "@/modules/content/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject } from "@/modules/projects/service";
 import { recordValueAction, uploadCsvAction } from "./actions";
@@ -29,13 +30,15 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
   const { projectId, period } = await params;
   const ctx = await projectContextForPage(projectId);
   const cycle = await orNotFound(getCycleByPeriod(ctx, period));
-  const [project, data] = await Promise.all([getProject(ctx), getCycleMetrics(ctx, cycle.id)]);
+  const [project, data, items] = await Promise.all([getProject(ctx), getCycleMetrics(ctx, cycle.id), listItems(ctx, cycle.id)]);
   const tz = project.timezone;
   const canWrite = hasPermission(ctx, "metrics.write") && cycle.status !== "closed";
   const base = `/p/${projectId}/ciclos/${period}`;
   const channels = data.channels.filter((c) => c.isActive || data.values.some((v) => v.channelId === c.id));
   const monthLabel = formatPeriod(cycle.period, project.locale);
   const pendingImports = data.imports.filter((i) => i.status === "pending");
+  const itemValues = data.values.filter((v) => v.contentItemId && v.isCurrent);
+  const itemsWithValues = items.filter((i) => itemValues.some((v) => v.contentItemId === i.id));
   const socialChannels = channels.filter((c) => c.isActive && c.kind === "social");
   const request =
     socialChannels.length > 0
@@ -343,6 +346,35 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
         );
       })}
 
+      <section className="card flex flex-col gap-3" aria-labelledby="por-publicacion">
+        <h2 id="por-publicacion" className="h2">
+          Por publicación
+        </h2>
+        {itemsWithValues.length === 0 ? (
+          <p className="text-sm text-muted">
+            Aún no hay cifras de publicaciones concretas. Se apuntan en cada pieza, en «Métricas de la publicación».
+          </p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border text-sm">
+            {itemsWithValues.map((item) => (
+              <li key={item.id} className="flex flex-col gap-1 py-2">
+                <Link href={`${base}/piezas/${item.id}#metricas-pieza`} className="link font-medium">
+                  {item.title}
+                </Link>
+                <span className="text-muted">
+                  {itemValues
+                    .filter((v) => v.contentItemId === item.id)
+                    .map((v) => {
+                      const d = data.definitions.find((x) => x.key === v.metricKey);
+                      return `${d?.label ?? v.metricKey}: ${d ? formatMetric(v.value, d.unit) : v.value}`;
+                    })
+                    .join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
+import { FileInput } from "@/components/file-input";
 import { formatInZone, utcToWallTime } from "@/lib/time";
 import { hasPermission, type ProjectContext } from "@/modules/access/context";
 import { can, type Permission, ROLE_LABELS, ROLES } from "@/modules/access/permissions";
@@ -222,6 +223,10 @@ export function ReviewSection({
             />
           </label>
           <label className="field">
+            Captura o PDF del email (opcional)
+            <FileInput name="evidenceFile" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" />
+          </label>
+          <label className="field">
             Comentario (opcional)
             <input name="comment" className="input" />
           </label>
@@ -340,6 +345,11 @@ export function ReviewSection({
                     </td>
                     <td className="whitespace-pre-wrap">
                       {e.evidence && <span className="block">Evidencia: {e.evidence}</span>}
+                      {e.evidenceAssetId && (
+                        <a href={`/p/${projectId}/archivos/${e.evidenceAssetId}`} className="link block" target="_blank" rel="noreferrer">
+                          Ver evidencia: {e.evidenceFilename}
+                        </a>
+                      )}
                       {e.comment}
                     </td>
                   </tr>

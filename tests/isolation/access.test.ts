@@ -23,6 +23,8 @@ const DOCUMENTED_MATRIX: Record<Permission, Role[]> = {
   "report.approve": ["manager", "reviewer"],
   "integration.manage": ["manager"],
   "comment.write": ["manager", "editor", "reviewer"],
+  "project.activity": ["manager"],
+  "project.export": ["manager"],
 };
 
 async function deniedEvents(actorId: string) {

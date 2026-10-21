@@ -55,6 +55,7 @@ export default async function ProjectLayout({ params, children }: LayoutProps<"/
           base={base}
           month={month ? { period: month.period, label: formatPeriod(month.period, project.locale) } : null}
           canSettings={hasPermission(ctx, "project.settings")}
+          canActivity={hasPermission(ctx, "project.activity")}
         />
       </div>
       {children}

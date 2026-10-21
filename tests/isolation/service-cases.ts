@@ -1,10 +1,12 @@
 import { NotFoundError } from "@/lib/errors";
 import type { ProjectContext } from "@/modules/access/context";
 import * as access from "@/modules/access/service";
+import * as activity from "@/modules/activity/service";
 import * as ai from "@/modules/ai/service";
 import * as brand from "@/modules/brand/service";
 import * as content from "@/modules/content/service";
 import * as cycles from "@/modules/cycles/service";
+import * as exporter from "@/modules/export/service";
 import type { Actor } from "@/modules/identity/actor";
 import * as identity from "@/modules/identity/service";
 import * as metrics from "@/modules/metrics/service";
@@ -55,6 +57,21 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
   "access.adminRemoveMembership": {
     kind: "admin",
     call: (a, fx) => access.adminRemoveMembership(a, { projectId: fx.projectA.id, userId: fx.users.edu.id }),
+  },
+
+  // --- activity ---
+  "activity.listProjectActivity": {
+    kind: "project",
+    own: (ctx) => activity.listProjectActivity(ctx, {}),
+    foreign: { none: "No recibe IDs de recursos: lee solo la auditoría del proyecto del contexto" },
+  },
+
+  // --- export ---
+  "export.exportProject": {
+    kind: "project",
+    // El ZIP va comprimido: se comprueba sin comprimir en tests/integration/export.test.ts.
+    own: (ctx) => exporter.exportProject(ctx).then((z) => z.filename),
+    foreign: { none: "No recibe IDs: exporta solo el proyecto del contexto" },
   },
 
   // --- identity ---
@@ -577,6 +594,18 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     kind: "project",
     own: (ctx, fx) => metrics.getCycleMetrics(ctx, fx.contentA.cycle.id),
     foreign: (ctx, fx) => metrics.getCycleMetrics(ctx, fx.contentB.cycle.id),
+  },
+  "metrics.getItemMetrics": {
+    kind: "project",
+    own: (ctx, fx) => metrics.getItemMetrics(ctx, fx.reviewA.scheduled.item.id),
+    foreign: (ctx, fx) => metrics.getItemMetrics(ctx, fx.reviewB.scheduled.item.id),
+  },
+  "metrics.recordItemMetricValue": {
+    kind: "project",
+    own: (ctx, fx) =>
+      metrics.recordItemMetricValue(ctx, { itemId: fx.reviewA.scheduled.item.id, metricKey: "social.interactions", value: "12" }),
+    foreign: (ctx, fx) =>
+      metrics.recordItemMetricValue(ctx, { itemId: fx.reviewB.scheduled.item.id, metricKey: "social.interactions", value: "12" }),
   },
   "metrics.recordMetricValue": {
     kind: "project",

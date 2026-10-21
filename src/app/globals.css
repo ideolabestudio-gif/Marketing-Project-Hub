@@ -220,6 +220,7 @@ input[type="radio"] {
   .help-body dd { @apply text-muted; }
   .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink focus-visible:ring-3 focus-visible:ring-(--ring) focus-visible:outline-none; }
   .nav-link[aria-current="page"] { @apply bg-accent-soft font-medium text-accent-ink; }
+  .btn[aria-current="page"] { @apply border-accent bg-accent text-on-accent; }
 }
 
 @keyframes target-flash {

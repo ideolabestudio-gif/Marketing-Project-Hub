@@ -91,3 +91,24 @@ test("saltar al contenido y buscar piezas solo dentro del proyecto", async ({ pa
   await page.goto(`/p/${s.projectA}?buscar=${encodeURIComponent(MARKER_B)}`);
   await expect(page.getByRole("status").filter({ hasText: "Ninguna pieza contiene" })).toBeVisible();
 });
+
+/** Actividad y descarga del proyecto: solo la responsable y solo su proyecto. */
+test("la responsable ve la actividad y descarga el ZIP; nadie más ni de otro proyecto", async ({ page, context, baseURL, request }) => {
+  const s = readState();
+  await context.addCookies([{ name: "mph_session", value: s.tokens.ana, url: baseURL! }]);
+  await page.goto(`/p/${s.projectA}`);
+  await page.getByRole("navigation", { name: "Proyecto" }).getByRole("link", { name: "Actividad" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Actividad del proyecto");
+  await page.getByRole("link", { name: "Revisión y cliente" }).click();
+  await expect(page.getByText("Registró la aprobación del cliente").first()).toBeVisible();
+  expect(await page.content()).not.toContain(MARKER_B);
+
+  const asAna = { headers: { cookie: `mph_session=${s.tokens.ana}` } };
+  const zip = await request.get(`/p/${s.projectA}/exportar`, asAna);
+  expect(zip.status()).toBe(200);
+  expect(zip.headers()["content-type"]).toBe("application/zip");
+  expect((await zip.body()).subarray(0, 2).toString()).toBe("PK");
+  expect((await request.get(`/p/${s.projectB}/exportar`, asAna)).status()).toBe(404);
+  expect((await request.get(`/p/${s.projectA}/exportar`, { headers: { cookie: `mph_session=${s.tokens.edu}` } })).status()).toBe(404);
+  expect((await request.get(`/p/${s.projectA}/exportar`, { headers: { cookie: "" } })).status()).toBe(401);
+});

@@ -25,7 +25,7 @@ import {
   generateIdeas,
   generateReportInterpretation,
 } from "@/modules/ai/service";
-import { recordMetricValue, uploadMetricCsv } from "@/modules/metrics/service";
+import { recordItemMetricValue, recordMetricValue, uploadMetricCsv } from "@/modules/metrics/service";
 import { updateAiSettings } from "@/modules/projects/service";
 import { createReport, getReport, updateReportSection } from "@/modules/reports/service";
 import {
@@ -131,8 +131,8 @@ export async function seedTwoProjects() {
     MARKER_B,
   );
 
-  const metricsA = await seedMetrics(actors.ana, projectA.id, contentA.cycle.id, channelA.id, MARKER_A);
-  const metricsB = await seedMetrics(actors.bea, projectB.id, contentB.cycle.id, channelB.id, MARKER_B);
+  const metricsA = await seedMetrics(actors.ana, projectA.id, contentA.cycle.id, channelA.id, reviewA.scheduled.item.id, MARKER_A);
+  const metricsB = await seedMetrics(actors.bea, projectB.id, contentB.cycle.id, channelB.id, reviewB.scheduled.item.id, MARKER_B);
   // Antes que la IA: así sus contextos incluyen la ficha y la biblioteca de cada proyecto.
   const brandA = await seedBrand(actors.ana, projectA.id, MARKER_A);
   const brandB = await seedBrand(actors.bea, projectB.id, MARKER_B);
@@ -228,6 +228,7 @@ async function seedReview(
     decision: "approved",
     approverName: `Cliente ${marker}`,
     evidence: `Email del cliente ${marker}: OK`,
+    evidenceFile: { filename: `evidencia-${marker}.png`, bytes: TINY_PNG },
   });
   const publication = await recordPublication(asManager, {
     itemId: scheduled.id,
@@ -243,10 +244,17 @@ async function seedReview(
 }
 
 /**
- * Métricas e informe de un proyecto: un valor manual corregido (con historial), una
- * importación CSV pendiente y un informe en borrador con análisis escrito.
+ * Métricas e informe de un proyecto: un valor manual corregido (con historial), el alcance
+ * de una publicación, una importación CSV pendiente y un informe en borrador con análisis escrito.
  */
-async function seedMetrics(manager: Actor, projectId: string, cycleId: string, channelId: string, marker: string) {
+async function seedMetrics(
+  manager: Actor,
+  projectId: string,
+  cycleId: string,
+  channelId: string,
+  publishedItemId: string,
+  marker: string,
+) {
   const ctx = await requireProjectAccess(manager, projectId);
   const first = await recordMetricValue(ctx, { cycleId, channelId, metricKey: "social.followers", value: "1.200" });
   const followers = await recordMetricValue(ctx, {
@@ -255,6 +263,13 @@ async function seedMetrics(manager: Actor, projectId: string, cycleId: string, c
     metricKey: "social.followers",
     value: "1.250",
     note: `Corrección ${marker}`,
+  });
+  const itemReach = await recordItemMetricValue(ctx, { itemId: publishedItemId, metricKey: "social.reach", value: "345" });
+  await recordItemMetricValue(ctx, {
+    itemId: publishedItemId,
+    metricKey: "social.reach",
+    value: "350",
+    note: `Corrección publicación ${marker}`,
   });
   const csvImport = await uploadMetricCsv(ctx, {
     cycleId,
@@ -269,6 +284,7 @@ async function seedMetrics(manager: Actor, projectId: string, cycleId: string, c
   return {
     firstValueId: first.id,
     followersValueId: followers.id,
+    itemReachValueId: itemReach.id,
     csvImport,
     report: report.report,
     sections: report.sections,

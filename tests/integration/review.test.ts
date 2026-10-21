@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db/client";
 import { approvals, auditEvents, projects, publications } from "@/lib/db/schema";
 import { ConflictError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { requireProjectAccess, type ProjectContext } from "@/modules/access/context";
-import { createItem, saveVersion } from "@/modules/content/service";
+import { createItem, getAssetFile, saveVersion } from "@/modules/content/service";
 import { updateProjectSettings } from "@/modules/projects/service";
 import {
   approveDirectly,
@@ -19,7 +19,7 @@ import {
   recordPublication,
   submitForReview,
 } from "@/modules/review/service";
-import { seedTwoProjects, type Fixture } from "../fixtures/two-projects";
+import { seedTwoProjects, TINY_PNG, type Fixture } from "../fixtures/two-projects";
 
 let fx: Fixture;
 let ana: ProjectContext; // responsable de A
@@ -439,5 +439,63 @@ describe("mes en curso de cada proyecto (inicio)", () => {
 
     const rob = await listMyMonths(fx.actors.rob, new Date("2026-10-15T09:00:00Z"));
     expect(rob.map((m) => m.projectId)).toEqual([fx.projectB.id]);
+  });
+});
+
+describe("evidencia del cliente como archivo", () => {
+  async function awaitingClient() {
+    const ids = await draftByEdu();
+    await submitForReview(edu, ids);
+    await decideInternal(rev, { ...ids, decision: "approved" });
+    return ids;
+  }
+
+  it("guarda la captura con la decisión y se puede descargar dentro del proyecto", async () => {
+    const ids = await awaitingClient();
+    await recordClientDecision(ana, {
+      ...ids,
+      decision: "approved",
+      ...client,
+      evidenceFile: { filename: "respuesta marta.png", bytes: TINY_PNG },
+    });
+    const event = (await getItemReview(ana, ids.itemId)).events.find((e) => e.stage === "client");
+    expect(event?.evidenceFilename).toBe("respuesta marta.png");
+    const file = await getAssetFile(ana, event!.evidenceAssetId!);
+    expect(file.mimeType).toBe("image/png");
+    // Desde el proyecto B no existe.
+    const bea = await requireProjectAccess(fx.actors.bea, fx.projectB.id);
+    await expect(getAssetFile(bea, event!.evidenceAssetId!)).rejects.toThrow();
+  });
+
+  it("rechaza un archivo que no es imagen ni PDF y no deja nada a medias", async () => {
+    const ids = await awaitingClient();
+    await expect(
+      recordClientDecision(ana, {
+        ...ids,
+        decision: "approved",
+        ...client,
+        evidenceFile: { filename: "x.html", bytes: new TextEncoder().encode("<script>") },
+      }),
+    ).rejects.toThrow(ValidationError);
+    expect(await status(ids.itemId)).toBe("awaiting_client");
+  });
+
+  it("la BD no admite evidencia en archivo fuera de la respuesta del cliente", async () => {
+    const { itemId, versionId } = await draftByEdu();
+    const [asset] = await getDb().execute<{ id: string }>(
+      sql`SELECT a.id FROM assets a WHERE a.project_id = ${fx.projectA.id} LIMIT 1`,
+    );
+    const code = await pgCode(
+      getDb().insert(approvals).values({
+        projectId: fx.projectA.id,
+        contentItemId: itemId,
+        contentVersionId: versionId,
+        stage: "submission",
+        decision: "submitted",
+        decidedBy: fx.actors.edu.userId,
+        evidenceAssetId: asset.id,
+      }),
+    );
+    expect(code).toBe("23514");
   });
 });

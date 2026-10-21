@@ -1,0 +1,3 @@
+ALTER TABLE "approvals" ADD COLUMN "evidence_asset_id" uuid;--> statement-breakpoint
+ALTER TABLE "approvals" ADD CONSTRAINT "approvals_evidence_asset_fk" FOREIGN KEY ("project_id","evidence_asset_id") REFERENCES "public"."assets"("project_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "approvals" ADD CONSTRAINT "approvals_evidence_asset_ck" CHECK ("approvals"."evidence_asset_id" IS NULL OR "approvals"."stage" = 'client');

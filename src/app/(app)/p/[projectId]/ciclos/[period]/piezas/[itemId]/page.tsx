@@ -17,6 +17,7 @@ import { buildMailerLiteHandoff } from "@/modules/content/mailerlite-handoff";
 import { buildMetricoolHandoff } from "@/modules/content/metricool-handoff";
 import { getItemDetail, LIBRARY_CATEGORIES, listItems, listLibrary } from "@/modules/content/service";
 import { listCycles } from "@/modules/cycles/service";
+import { getItemMetrics } from "@/modules/metrics/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { getItemReview, isLocked } from "@/modules/review/service";
 import {
@@ -31,6 +32,7 @@ import {
   uploadAssetAction,
 } from "./actions";
 import { AiSection } from "./ai-section";
+import { ItemMetricsSection } from "./item-metrics-section";
 import { NEXT_STEP, ReviewSection, SOLO_DRAFT_STEP } from "./review-section";
 
 import type { Metadata } from "next";
@@ -46,13 +48,14 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
   const ctx = await projectContextForPage(projectId);
   const { item, current, currentAssets, versions, comments } = await orNotFound(getItemDetail(ctx, itemId));
   if (item.cyclePeriod !== period) notFound();
-  const [project, channels, review, library, siblings, cycles] = await Promise.all([
+  const [project, channels, review, library, siblings, cycles, itemMetrics] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     getItemReview(ctx, item.id),
     listLibrary(ctx),
     listItems(ctx, item.cycleId),
     listCycles(ctx),
+    getItemMetrics(ctx, item.id),
   ]);
 
   const tz = project.timezone;
@@ -183,6 +186,17 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
         plannedAt={item.plannedAt}
         cycleClosed={item.cycleStatus === "closed"}
       />
+
+      {(["scheduled", "published"].includes(review.status) || itemMetrics.values.length > 0) && (
+        <ItemMetricsSection
+          projectId={projectId}
+          itemId={item.id}
+          data={itemMetrics}
+          tz={tz}
+          canWrite={hasPermission(ctx, "metrics.write") && item.cycleStatus !== "closed"}
+          published={review.status === "published"}
+        />
+      )}
 
       {metricoolText && (
         <ClaudeHandoff
