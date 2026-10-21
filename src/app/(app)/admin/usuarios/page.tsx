@@ -3,6 +3,10 @@ import { requireAdminActor } from "@/modules/identity/next";
 import { adminListUsers } from "@/modules/identity/service";
 import { inviteUserAction, setUserActiveAction } from "../actions";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Usuarios · Administración" };
+
 export default async function UsersPage() {
   const actor = await requireAdminActor();
   const users = await adminListUsers(actor);

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Breadcrumbs, cycleCrumbs } from "@/components/breadcrumbs";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { AssetList } from "@/components/asset-list";
@@ -8,7 +9,7 @@ import { CollapsibleCard } from "@/components/collapsible-card";
 import { CopyButton } from "@/components/copy-button";
 import { StatusPill } from "@/components/status-pill";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
-import { formatInZone, utcToWallTime } from "@/lib/time";
+import { formatInZone, formatPeriod, utcToWallTime } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ALLOWED_DESCRIPTION } from "@/modules/content/files";
 import { formatLabel } from "@/modules/content/formats";
@@ -28,6 +29,14 @@ import {
 } from "./actions";
 import { AiSection } from "./ai-section";
 import { ReviewSection } from "./review-section";
+
+import type { Metadata } from "next";
+import { itemTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ciclos/[period]/piezas/[itemId]">): Promise<Metadata> {
+  const { projectId, period, itemId } = await params;
+  return itemTitle(projectId, period, itemId);
+}
 
 export default async function ItemPage({ params }: PageProps<"/p/[projectId]/ciclos/[period]/piezas/[itemId]">) {
   const { projectId, period, itemId } = await params;
@@ -69,9 +78,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
     <div className="flex flex-col gap-6">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Link href={cycleUrl} className="link text-sm">
-            ← Plan del mes
-          </Link>
+          <Breadcrumbs help="piezas" items={cycleCrumbs(projectId, project.name, period, formatPeriod(period, project.locale))} />
           {project.designUrl && !isEmail && (
             <a href={project.designUrl} className="btn btn-primary" target="_blank" rel="noopener noreferrer">
               Crear diseño <span aria-hidden="true">↗</span>

@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
+import { HelpLink } from "@/components/breadcrumbs";
 import { projectContextForPage } from "@/lib/project-page";
-import { formatPeriod, nextPeriod } from "@/lib/time";
+import { currentPeriod, formatPeriod, nextPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ROLE_LABELS } from "@/modules/access/permissions";
 import { listProjectMembers } from "@/modules/access/service";
 import { getAiStatus } from "@/modules/ai/service";
 import { PLATFORMS } from "@/modules/projects/catalog";
 import { CYCLE_STATUS_LABELS, listCycles } from "@/modules/cycles/service";
-import { getProject, listChannels, METRICOOL_HOME_URL } from "@/modules/projects/service";
+import { getProject, listChannels } from "@/modules/projects/service";
 import { openCycleAction } from "./actions";
 import { prepareNextMonthCalendarAction } from "./ai-actions";
+
+import type { Metadata } from "next";
+import { projectTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]">): Promise<Metadata> {
+  const { projectId } = await params;
+  return projectTitle(projectId);
+}
 
 export default async function ProjectPage({ params }: PageProps<"/p/[projectId]">) {
   const { projectId } = await params;
@@ -23,6 +32,7 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
     getAiStatus(ctx),
   ]);
   const next = nextPeriod(new Date(), project.timezone);
+  const now = currentPeriod(new Date(), project.timezone);
   const nextCycle = cycles.find((c) => c.period === next);
   const useApi = ai.enabled && ai.configured;
   const canPrepare =
@@ -34,32 +44,13 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-sm text-muted">{project.clientName}</div>
           <h1 className="h1">{project.name}</h1>
           <div className="mt-2 flex gap-2">
             <span className="badge">Tu rol: {ROLE_LABELS[ctx.role]}</span>
             <span className="badge">Zona horaria: {project.timezone}</span>
-            {project.status === "archived" && <span className="badge">Archivado · solo lectura</span>}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <a
-            href={project.metricoolUrl ?? METRICOOL_HOME_URL}
-            className="btn btn-secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Abrir Metricool <span aria-hidden="true">↗</span>
-          </a>
-          <Link href={`/p/${projectId}/ficha`} className="btn btn-secondary">
-            Ficha del cliente
-          </Link>
-          {hasPermission(ctx, "project.settings") && (
-            <Link href={`/p/${projectId}/ajustes`} className="btn btn-secondary">
-              Ajustes
-            </Link>
-          )}
-        </div>
+        <HelpLink section="proyecto" />
       </div>
 
       {canPrepare && (
@@ -93,11 +84,14 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
         ) : (
           <ul className="flex flex-col divide-y divide-border">
             {cycles.map((c) => (
-              <li key={c.id} className="flex items-center justify-between py-2">
+              <li key={c.id} className="flex items-center justify-between gap-3 py-2">
                 <Link href={`/p/${projectId}/ciclos/${c.period}`} className="link font-medium">
                   {formatPeriod(c.period, project.locale)}
                 </Link>
-                <span className="badge">{CYCLE_STATUS_LABELS[c.status]}</span>
+                <span className="flex flex-wrap justify-end gap-2">
+                  {c.period === now && <span className="badge border-accent/40 text-foreground">Mes en curso</span>}
+                  <span className="badge">{CYCLE_STATUS_LABELS[c.status]}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -119,7 +113,14 @@ export default async function ProjectPage({ params }: PageProps<"/p/[projectId]"
       </section>
 
       <section className="card">
-        <h2 className="h2">Canales</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="h2">Canales</h2>
+          {hasPermission(ctx, "project.settings") && (
+            <Link href={`/p/${projectId}/ajustes#canales`} className="btn btn-secondary">
+              Gestionar canales
+            </Link>
+          )}
+        </div>
         {channels.length === 0 ? (
           <p className="mt-2 text-sm text-muted">Sin canales configurados.</p>
         ) : (

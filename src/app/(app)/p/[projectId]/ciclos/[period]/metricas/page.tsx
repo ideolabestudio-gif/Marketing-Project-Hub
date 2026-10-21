@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Breadcrumbs, cycleCrumbs } from "@/components/breadcrumbs";
 import { ActionForm } from "@/components/action-form";
+import { CopyButton } from "@/components/copy-button";
 import { FileInput } from "@/components/file-input";
 import { formatMetric, SOURCE_LABELS } from "@/lib/format";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
@@ -7,10 +9,19 @@ import { formatInZone, formatPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { CHANNEL_KIND_LABELS } from "@/modules/content/formats";
 import { NUMBER_FORMAT_LABELS, NUMBER_FORMATS } from "@/modules/metrics/csv";
+import { buildMetricsRequest } from "@/modules/metrics/claude-request";
 import { getCycleMetrics } from "@/modules/metrics/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject } from "@/modules/projects/service";
 import { recordValueAction, uploadCsvAction } from "./actions";
+
+import type { Metadata } from "next";
+import { cycleTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ciclos/[period]/metricas">): Promise<Metadata> {
+  const { projectId, period } = await params;
+  return cycleTitle(projectId, period, "Métricas");
+}
 
 const IMPORT_STATUS_LABELS = { pending: "Pendiente de asignar columnas", applied: "Aplicada", discarded: "Descartada" };
 
@@ -23,13 +34,25 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
   const canWrite = hasPermission(ctx, "metrics.write") && cycle.status !== "closed";
   const base = `/p/${projectId}/ciclos/${period}`;
   const channels = data.channels.filter((c) => c.isActive || data.values.some((v) => v.channelId === c.id));
+  const monthLabel = formatPeriod(cycle.period, project.locale);
+  const pendingImports = data.imports.filter((i) => i.status === "pending");
+  const socialChannels = channels.filter((c) => c.isActive && c.kind === "social");
+  const request =
+    socialChannels.length > 0
+      ? buildMetricsRequest({
+          brand: project.clientName,
+          projectId,
+          period: cycle.period,
+          monthLabel,
+          channels: socialChannels,
+          metricLabels: data.definitions.filter((d) => d.kind === "social" && d.isActive).map((d) => d.label),
+        })
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={base} className="link text-sm">
-          ← {formatPeriod(cycle.period, project.locale)}
-        </Link>
+        <Breadcrumbs help="metricas" items={cycleCrumbs(projectId, project.name, period, monthLabel)} />
         <h1 className="h1 mt-1">Métricas del mes</h1>
         <p className="mt-1 text-sm text-muted">
           Solo se guardan datos registrados por una persona o importados de un archivo, siempre con su fuente. Si falta
@@ -37,6 +60,126 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
         </p>
         {cycle.status === "closed" && <p className="mt-2 badge">Ciclo cerrado · solo lectura</p>}
       </div>
+
+      {pendingImports.length > 0 && (
+        <p className="notice">
+          {pendingImports.length === 1
+            ? "Hay 1 importación esperando a que asignes sus columnas: hasta entonces no cuenta."
+            : `Hay ${pendingImports.length} importaciones esperando a que asignes sus columnas: hasta entonces no cuentan.`}{" "}
+          {pendingImports.map((imp, i) => (
+            <span key={imp.id}>
+              {i > 0 && " · "}
+              <Link href={`${base}/metricas/importar/${imp.id}`} className="link">
+                {imp.filename}
+              </Link>
+            </span>
+          ))}
+        </p>
+      )}
+
+      {canWrite && channels.some((c) => c.isActive) && (
+        <section id="traer" className="card flex flex-col gap-4" aria-labelledby="traer-titulo">
+          <div>
+            <h2 id="traer-titulo" className="h2">
+              Traer las métricas de {monthLabel.toLocaleLowerCase(project.locale)}
+            </h2>
+            <p className="mt-1 text-sm text-muted">Tres caminos; usa el que te venga mejor para cada canal.</p>
+          </div>
+          <ol className="flex flex-col gap-4">
+            {request && (
+              <li className="tile flex flex-col gap-3">
+                <h3 className="font-medium">1. Pedírselas a Claude (redes, desde Metricool)</h3>
+                <p className="text-sm">
+                  Copia esta petición y pégala en un chat de Claude con el conector de Metricool. Si también tiene el
+                  conector del Hub, Claude subirá un CSV por red y aparecerá aquí abajo en «Importaciones»; si no, te dará
+                  los CSV para subirlos en el paso 2. Después solo tienes que revisar las columnas y aplicar.
+                </p>
+                <details className="text-sm">
+                  <summary>Ver la petición</summary>
+                  <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-surface p-3 text-xs whitespace-pre-wrap">
+                    {request}
+                  </pre>
+                </details>
+                <CopyButton text={request} label="Copiar petición para Claude" />
+              </li>
+            )}
+            <li className="tile flex flex-col gap-3">
+              <h3 className="font-medium">{request ? "2." : "1."} Subir un CSV</h3>
+              <p className="text-sm text-muted">
+                La exportación de Metricool o MailerLite, el informe de Ingresos de WooCommerce o una hoja de cálculo. En el
+                paso siguiente eliges qué columna corresponde a cada métrica y cómo se resumen las filas. El archivo
+                original se conserva.
+              </p>
+              <ActionForm
+                action={uploadCsvAction.bind(null, projectId, cycle.id, period)}
+                submitLabel="Subir CSV"
+                className="flex flex-wrap items-end gap-3"
+              >
+                <label className="field">
+                  Canal
+                  <select name="channelId" className="input" required>
+                    {channels
+                      .filter((c) => c.isActive)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.displayName}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label className="field min-w-0 grow basis-64">
+                  Archivo
+                  <FileInput name="file" accept=".csv,text/csv,text/plain" required />
+                </label>
+              </ActionForm>
+            </li>
+            <li className="tile flex flex-col gap-1">
+              <h3 className="font-medium">{request ? "3." : "2."} A mano</h3>
+              <p className="text-sm text-muted">
+                En la tarjeta de cada canal, más abajo, abre «Registrar o corregir un valor a mano».
+              </p>
+            </li>
+          </ol>
+        </section>
+      )}
+
+      <section className="card flex flex-col gap-3">
+        <h2 className="h2">Importaciones de este mes</h2>
+        {data.imports.length === 0 ? (
+          <p className="text-sm text-muted">No hay importaciones en este ciclo.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table min-w-[560px]">
+              <thead>
+                <tr>
+                  <th>Archivo</th>
+                  <th>Canal</th>
+                  <th>Filas</th>
+                  <th>Estado</th>
+                  <th>Subido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.imports.map((imp) => (
+                  <tr key={imp.id}>
+                    <td>
+                      <Link href={`${base}/metricas/importar/${imp.id}`} className="link">
+                        {imp.filename}
+                      </Link>
+                    </td>
+                    <td>{data.channels.find((c) => c.id === imp.channelId)?.displayName}</td>
+                    <td>{imp.rowCount}</td>
+                    <td>
+                      <span className="badge">{IMPORT_STATUS_LABELS[imp.status]}</span>
+                    </td>
+                    <td className="whitespace-nowrap">{formatInZone(imp.createdAt, tz)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {channels.length === 0 && <p className="text-sm text-muted">Este proyecto no tiene canales configurados.</p>}
 
@@ -131,116 +274,51 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
             )}
 
             {canWrite && defs.some((d) => d.isActive) && (
-              <ActionForm
-                action={recordValueAction.bind(null, projectId, cycle.id, channel.id)}
-                submitLabel="Registrar valor"
-                variant="secondary"
-                className="tile flex flex-wrap items-end gap-3"
-              >
-                <h3 className="eyebrow w-full">Registrar o corregir un valor</h3>
-                <label className="field">
-                  Métrica
-                  <select name="metricKey" className="input" required>
-                    {defs
-                      .filter((d) => d.isActive)
-                      .map((d) => (
-                        <option key={d.key} value={d.key}>
-                          {d.label}
+              <details className="text-sm">
+                <summary>Registrar o corregir un valor a mano</summary>
+                <ActionForm
+                  action={recordValueAction.bind(null, projectId, cycle.id, channel.id)}
+                  submitLabel="Registrar valor"
+                  variant="secondary"
+                  className="tile mt-2 flex flex-wrap items-end gap-3"
+                >
+                  <label className="field">
+                    Métrica
+                    <select name="metricKey" className="input" required>
+                      {defs
+                        .filter((d) => d.isActive)
+                        .map((d) => (
+                          <option key={d.key} value={d.key}>
+                            {d.label}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    Valor
+                    <input name="value" className="input w-32" inputMode="decimal" required />
+                  </label>
+                  <label className="field">
+                    Formato
+                    <select name="numberFormat" className="input" defaultValue="es">
+                      {NUMBER_FORMATS.map((f) => (
+                        <option key={f} value={f}>
+                          {NUMBER_FORMAT_LABELS[f]}
                         </option>
                       ))}
-                  </select>
-                </label>
-                <label className="field">
-                  Valor
-                  <input name="value" className="input w-32" inputMode="decimal" required />
-                </label>
-                <label className="field">
-                  Formato
-                  <select name="numberFormat" className="input" defaultValue="es">
-                    {NUMBER_FORMATS.map((f) => (
-                      <option key={f} value={f}>
-                        {NUMBER_FORMAT_LABELS[f]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field min-w-0 grow basis-56">
-                  Motivo (obligatorio si corriges un valor)
-                  <input name="note" className="input" />
-                </label>
-              </ActionForm>
+                    </select>
+                  </label>
+                  <label className="field min-w-0 grow basis-56">
+                    Motivo (obligatorio si corriges un valor)
+                    <input name="note" className="input" />
+                  </label>
+                </ActionForm>
+              </details>
             )}
           </section>
         );
       })}
 
-      <section className="card flex flex-col gap-3">
-        <h2 className="h2">Importar desde CSV</h2>
-        {canWrite && channels.some((c) => c.isActive) && (
-          <>
-            <p className="text-sm text-muted">
-              Sube la exportación (Metricool, MailerLite, el informe de Ingresos de WooCommerce, una hoja de cálculo…). En el paso siguiente eliges qué columna
-              corresponde a cada métrica y cómo se resumen las filas. El archivo original se conserva.
-            </p>
-            <ActionForm
-              action={uploadCsvAction.bind(null, projectId, cycle.id, period)}
-              submitLabel="Subir CSV"
-              className="tile flex flex-wrap items-end gap-3"
-            >
-              <label className="field">
-                Canal
-                <select name="channelId" className="input" required>
-                  {channels
-                    .filter((c) => c.isActive)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.displayName}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label className="field min-w-0 grow basis-64">
-                Archivo
-                <FileInput name="file" accept=".csv,text/csv,text/plain" required />
-              </label>
-            </ActionForm>
-          </>
-        )}
-        {data.imports.length === 0 ? (
-          <p className="text-sm text-muted">No hay importaciones en este ciclo.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="table min-w-[560px]">
-              <thead>
-                <tr>
-                  <th>Archivo</th>
-                  <th>Canal</th>
-                  <th>Filas</th>
-                  <th>Estado</th>
-                  <th>Subido</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.imports.map((imp) => (
-                  <tr key={imp.id}>
-                    <td>
-                      <Link href={`${base}/metricas/importar/${imp.id}`} className="link">
-                        {imp.filename}
-                      </Link>
-                    </td>
-                    <td>{data.channels.find((c) => c.id === imp.channelId)?.displayName}</td>
-                    <td>{imp.rowCount}</td>
-                    <td>
-                      <span className="badge">{IMPORT_STATUS_LABELS[imp.status]}</span>
-                    </td>
-                    <td className="whitespace-nowrap">{formatInZone(imp.createdAt, tz)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

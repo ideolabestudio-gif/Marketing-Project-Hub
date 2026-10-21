@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Breadcrumbs, projectCrumbs } from "@/components/breadcrumbs";
 import { ActionForm } from "@/components/action-form";
 import { FileInput } from "@/components/file-input";
 import { AssetList } from "@/components/asset-list";
@@ -15,6 +15,14 @@ import {
   removeLibraryItemAction,
   saveBrandProfileAction,
 } from "./actions";
+
+import type { Metadata } from "next";
+import { projectTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ficha">): Promise<Metadata> {
+  const { projectId } = await params;
+  return projectTitle(projectId, "Ficha del cliente");
+}
 
 const CATEGORY_KEYS = Object.keys(LIBRARY_CATEGORIES) as (keyof typeof LIBRARY_CATEGORIES)[];
 
@@ -58,9 +66,7 @@ export default async function BrandPage({ params }: PageProps<"/p/[projectId]/fi
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={`/p/${projectId}`} className="link text-sm">
-          ← {project.name}
-        </Link>
+        <Breadcrumbs help="ficha" items={projectCrumbs(projectId, project.name)} />
         <h1 className="h1 mt-1">Ficha del cliente</h1>
         <p className="mt-1 text-sm text-muted">
           Lo que no cambia cada mes. La IA lo recibe siempre junto al brief del mes, y también Claude cuando lo

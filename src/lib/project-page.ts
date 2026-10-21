@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { requireProjectAccess, type ProjectContext } from "@/modules/access/context";
 import type { Permission } from "@/modules/access/permissions";
@@ -7,19 +8,20 @@ import { requireActor } from "@/modules/identity/next";
 /**
  * Punto de entrada obligatorio de toda página bajo /p/[projectId]: exige sesión y
  * membresía. Sin acceso responde 404 (no se revela si el proyecto existe).
+ * Se memoriza durante la petición: el menú del proyecto, el del mes, el título de la
+ * pestaña y la página piden el mismo contexto.
  */
-export async function projectContextForPage(
-  projectId: string,
-  permission: Permission = "project.read",
-): Promise<ProjectContext> {
-  const actor = await requireActor();
-  try {
-    return await requireProjectAccess(actor, projectId, permission);
-  } catch (err) {
-    if (err instanceof NotFoundError || err instanceof ForbiddenError) notFound();
-    throw err;
-  }
-}
+export const projectContextForPage = cache(
+  async (projectId: string, permission: Permission = "project.read"): Promise<ProjectContext> => {
+    const actor = await requireActor();
+    try {
+      return await requireProjectAccess(actor, projectId, permission);
+    } catch (err) {
+      if (err instanceof NotFoundError || err instanceof ForbiddenError) notFound();
+      throw err;
+    }
+  },
+);
 
 /** Igual que la anterior, para acciones de servidor (devuelven errores en vez de 404). */
 export async function projectContextForAction(

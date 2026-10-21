@@ -1,8 +1,8 @@
-import Link from "next/link";
+import { Breadcrumbs, cycleCrumbs } from "@/components/breadcrumbs";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
-import { formatInZone } from "@/lib/time";
+import { formatInZone, formatPeriod } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { CHANNEL_KIND_LABELS } from "@/modules/content/formats";
 import { AGGREGATIONS, NUMBER_FORMAT_LABELS, NUMBER_FORMATS } from "@/modules/metrics/csv";
@@ -10,6 +10,14 @@ import { getMetricImport } from "@/modules/metrics/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
 import { getProject } from "@/modules/projects/service";
 import { applyImportAction, discardImportAction } from "../../actions";
+
+import type { Metadata } from "next";
+import { cycleTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ciclos/[period]/metricas/importar/[importId]">): Promise<Metadata> {
+  const { projectId, period } = await params;
+  return cycleTitle(projectId, period, "Importación de métricas");
+}
 
 export default async function ImportPage({
   params,
@@ -28,9 +36,12 @@ export default async function ImportPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={back} className="link text-sm">
-          ← Métricas del mes
-        </Link>
+        <Breadcrumbs help="metricas"
+          items={[
+            ...cycleCrumbs(projectId, project.name, period, formatPeriod(cycle.period, project.locale)),
+            { label: "Métricas", href: back },
+          ]}
+        />
         <h1 className="h1 mt-1">Importación: {imp.filename}</h1>
         <div className="mt-2 flex flex-wrap gap-2">
           <span className="badge">{data.channel.displayName}</span>

@@ -205,6 +205,19 @@ input[type="radio"] {
   .segmented > a[aria-current="page"] { @apply bg-surface font-medium text-foreground shadow-(--shadow); }
   /* Al llegar desde un contador del inicio o un enlace con ancla: resalta la sección destino. */
   .card:target { animation: target-flash 2s ease-out; }
+  /* Pestañas del proyecto y del mes: la de la página actual lleva aria-current. */
+  .tabs { @apply -mb-px flex max-w-full gap-1 overflow-x-auto text-sm; }
+  .tabs > a { @apply rounded-t-md border-b-2 border-transparent px-3 py-2 whitespace-nowrap text-muted transition-colors hover:border-border-strong hover:text-foreground focus-visible:ring-3 focus-visible:ring-(--ring) focus-visible:outline-none; }
+  .tabs > a[aria-current="page"] { @apply border-accent font-medium text-foreground; }
+  /* Texto de la ayuda (/ayuda). */
+  .help-body { @apply flex flex-col gap-3 text-sm leading-relaxed; }
+  .help-body ul { @apply flex list-disc flex-col gap-1.5 pl-5; }
+  .help-body ol { @apply flex list-decimal flex-col gap-1.5 pl-5; }
+  .help-body table { @apply w-full text-left; }
+  .help-body th { @apply border-b border-border py-2 pr-4 text-xs font-medium tracking-wide text-muted uppercase; }
+  .help-body td { @apply border-b border-border py-2 pr-4 align-top; }
+  .help-body dt { @apply mt-2 font-medium first:mt-0; }
+  .help-body dd { @apply text-muted; }
   .nav-link { @apply rounded-md px-3 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-accent-ink; }
 }
 
@@ -243,7 +256,8 @@ input[type="radio"] {
     padding: 0 !important;
     max-width: none !important;
   }
-  .report-section {
+  .report-section,
+  .help-section {
     break-inside: avoid-page;
   }
   .report table {

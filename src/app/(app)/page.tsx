@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { HelpLink } from "@/components/breadcrumbs";
 import { StatusPill } from "@/components/status-pill";
 import { ROLE_LABELS } from "@/modules/access/permissions";
 import { listMyProjects } from "@/modules/access/service";
 import { formatLabel } from "@/modules/content/formats";
 import { requireActor } from "@/modules/identity/next";
 import { formatDay, formatInZone, formatPeriod, formatTimeInZone, weekOf, zonedDay } from "@/lib/time";
-import { listMyPendingWork, listMyWeek, PENDING_ACTION_LABELS, type PendingAction } from "@/modules/review/service";
+import { listMyMonths, listMyPendingWork, listMyWeek, PENDING_ACTION_LABELS, type PendingAction } from "@/modules/review/service";
+
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Inicio" };
 
 /** Zona para la cabecera cuando el usuario aún no tiene piezas (la de cada pieza manda en su fila). */
 const DEFAULT_TIMEZONE = "Europe/Madrid";
@@ -25,10 +30,11 @@ const ACTION_BUTTONS: Record<PendingAction, string> = {
 export default async function HomePage() {
   const actor = await requireActor();
   const now = new Date();
-  const [projects, pending, week] = await Promise.all([
+  const [projects, pending, week, months] = await Promise.all([
     listMyProjects(actor),
     listMyPendingWork(actor, now),
     listMyWeek(actor, now),
+    listMyMonths(actor, now),
   ]);
 
   const timezone = week[0]?.timezone ?? pending[0]?.timezone ?? DEFAULT_TIMEZONE;
@@ -48,9 +54,12 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="text-sm text-muted first-letter:uppercase">{formatDay(today)}</p>
-        <h1 className="h1 mt-1">Inicio</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted first-letter:uppercase">{formatDay(today)}</p>
+          <h1 className="h1 mt-1">Inicio</h1>
+        </div>
+        <HelpLink section="inicio" />
       </div>
 
       {projects.length > 0 && (
@@ -199,21 +208,46 @@ export default async function HomePage() {
           </div>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((p) => (
-              <li key={p.projectId}>
-                <Link
-                  href={`/p/${p.projectId}`}
-                  className="card block h-full transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-(--shadow-hover)"
+            {projects.map((p) => {
+              const month = months.find((m) => m.projectId === p.projectId);
+              const monthName = month ? formatPeriod(month.period) : "";
+              return (
+                <li
+                  key={p.projectId}
+                  className="card flex h-full flex-col gap-3 transition hover:border-accent/40 hover:shadow-(--shadow-hover)"
                 >
-                  <div className="text-xs text-muted">{p.clientName}</div>
-                  <div className="mt-1 text-base font-semibold tracking-tight">{p.projectName}</div>
-                  <div className="mt-3 flex gap-2">
+                  <Link href={`/p/${p.projectId}`} className="block rounded-sm focus-visible:ring-3 focus-visible:ring-(--ring) focus-visible:outline-none">
+                    <div className="text-xs text-muted">{p.clientName}</div>
+                    <div className="mt-1 text-base font-semibold tracking-tight">{p.projectName}</div>
+                  </Link>
+                  <div className="flex flex-wrap gap-2">
                     <span className="badge">{ROLE_LABELS[p.role]}</span>
                     {p.projectStatus === "archived" && <span className="badge">Archivado</span>}
                   </div>
-                </Link>
-              </li>
-            ))}
+                  {month && (
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm">
+                      {month.cycleOpen ? (
+                        <>
+                          <span className="text-muted">
+                            {month.cycleClosed
+                              ? "Mes cerrado"
+                              : month.total === 0
+                                ? "Sin piezas todavía"
+                                : `${month.total} ${month.total === 1 ? "pieza" : "piezas"} · ${month.approved} aprobadas · ${month.out} programadas`}
+                          </span>
+                          <Link href={`/p/${p.projectId}/ciclos/${month.period}`} className="btn btn-secondary py-1">
+                            {monthName}
+                            <span className="sr-only"> de {p.projectName}</span> <span aria-hidden="true">→</span>
+                          </Link>
+                        </>
+                      ) : (
+                        <span className="text-muted">{monthName}: ciclo sin abrir</span>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

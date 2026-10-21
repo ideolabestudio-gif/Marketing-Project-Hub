@@ -1,10 +1,18 @@
-import Link from "next/link";
+import { Breadcrumbs, projectCrumbs } from "@/components/breadcrumbs";
 import { ActionForm } from "@/components/action-form";
 import { projectContextForPage } from "@/lib/project-page";
 import { PLATFORMS, PLATFORM_KEYS } from "@/modules/projects/catalog";
 import { getAiStatus } from "@/modules/ai/service";
 import { getProject, listChannels, METRICOOL_HOME_URL } from "@/modules/projects/service";
 import { createChannelAction, setChannelActiveAction, updateAiSettingsAction, updateLinksAction, updateSettingsAction } from "./actions";
+
+import type { Metadata } from "next";
+import { projectTitle } from "@/lib/page-title";
+
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/ajustes">): Promise<Metadata> {
+  const { projectId } = await params;
+  return projectTitle(projectId, "Ajustes");
+}
 
 export default async function ProjectSettingsPage({ params }: PageProps<"/p/[projectId]/ajustes">) {
   const { projectId } = await params;
@@ -14,13 +22,17 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={`/p/${projectId}`} className="link text-sm">
-          ← {project.name}
-        </Link>
+        <Breadcrumbs help="ajustes" items={projectCrumbs(projectId, project.name)} />
         <h1 className="h1 mt-1">Ajustes del proyecto</h1>
+        <nav aria-label="Apartados de los ajustes" className="mt-3 flex flex-wrap gap-2 text-sm">
+          <a href="#general" className="btn btn-secondary py-1">General</a>
+          <a href="#enlaces" className="btn btn-secondary py-1">Enlaces</a>
+          <a href="#ia" className="btn btn-secondary py-1">Borradores con IA</a>
+          <a href="#canales" className="btn btn-secondary py-1">Canales</a>
+        </nav>
       </div>
 
-      <section className="card flex flex-col gap-3">
+      <section id="general" className="card flex scroll-mt-20 flex-col gap-3">
         <h2 className="h2">General</h2>
         <ActionForm action={updateSettingsAction.bind(null, projectId)} submitLabel="Guardar" className="grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -76,7 +88,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
         </ActionForm>
       </section>
 
-      <section className="card flex flex-col gap-3">
+      <section id="enlaces" className="card flex scroll-mt-20 flex-col gap-3">
         <h2 className="h2">Enlaces del proyecto</h2>
         <p className="text-sm text-muted">
           «Crear diseño» aparece en cada post del calendario y «Abrir Metricool» en la página del proyecto; los dos se
@@ -111,7 +123,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
         </ActionForm>
       </section>
 
-      <section className="card flex flex-col gap-3">
+      <section id="ia" className="card flex scroll-mt-20 flex-col gap-3">
         <h2 className="h2">Borradores con IA</h2>
         <p className="text-sm text-muted">
           Si se activa, el equipo puede pedir borradores de textos, ideas para el mes y una primera lectura de las
@@ -149,7 +161,7 @@ export default async function ProjectSettingsPage({ params }: PageProps<"/p/[pro
         </ActionForm>
       </section>
 
-      <section className="card flex flex-col gap-3">
+      <section id="canales" className="card flex scroll-mt-20 flex-col gap-3">
         <h2 className="h2">Canales</h2>
         <p className="text-sm text-muted">
           Todos los canales funcionan en modo manual. Las integraciones (Metricool, MailerLite) se activarán solo tras

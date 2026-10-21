@@ -4,6 +4,10 @@ import { oauthUrls } from "@/modules/oauth/config";
 import { listMyConnections } from "@/modules/oauth/service";
 import { revokeConnectionAction } from "./actions";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Conexiones con Claude" };
+
 const TZ = "Europe/Madrid";
 
 /** Conexiones de Claude con la cuenta de la persona, para verlas y desconectarlas. */

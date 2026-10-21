@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { IdeolabLogo } from "@/components/ideolab-logo";
 import { getCurrentActor, safeNextPath } from "@/modules/identity/next";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Entrar" };
+
 const ERRORS: Record<string, string> = {
   not_allowed: "Tu email no está dado de alta. Pide acceso a un administrador.",
   inactive: "Tu usuario está desactivado.",
