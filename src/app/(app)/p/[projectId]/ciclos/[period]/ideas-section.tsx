@@ -67,6 +67,7 @@ export async function IdeasSection({
               <ActionForm
                 action={resolveGenerationAction.bind(null, projectId, g.id, "discarded")}
                 submitLabel="Descartar"
+                confirm="¿Descartar estas ideas?"
                 variant="secondary"
               >
                 {null}

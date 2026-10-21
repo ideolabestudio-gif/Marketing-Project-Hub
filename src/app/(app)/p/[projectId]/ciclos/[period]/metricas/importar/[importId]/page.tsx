@@ -164,7 +164,7 @@ export default async function ImportPage({
               </tbody>
             </table>
           </ActionForm>
-          <ActionForm action={discardImportAction.bind(null, projectId, imp.id, period)} submitLabel="Descartar importación" variant="danger">
+          <ActionForm action={discardImportAction.bind(null, projectId, imp.id, period)} submitLabel="Descartar importación" confirm="¿Descartar este archivo? No se aplicará nada." variant="danger">
             <span className="text-sm text-muted">Si el archivo no era el correcto:</span>
           </ActionForm>
         </section>

@@ -6,20 +6,23 @@ import { AssetList } from "@/components/asset-list";
 import { ChannelFormatSelect } from "@/components/channel-format-select";
 import { FileInput } from "@/components/file-input";
 import { CollapsibleCard } from "@/components/collapsible-card";
-import { CopyButton } from "@/components/copy-button";
+import { ClaudeHandoff } from "@/components/claude-handoff";
 import { StatusPill } from "@/components/status-pill";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone, formatPeriod, utcToWallTime } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
 import { ALLOWED_DESCRIPTION } from "@/modules/content/files";
 import { formatLabel } from "@/modules/content/formats";
+import { buildMailerLiteHandoff } from "@/modules/content/mailerlite-handoff";
 import { buildMetricoolHandoff } from "@/modules/content/metricool-handoff";
-import { getItemDetail, LIBRARY_CATEGORIES, listLibrary } from "@/modules/content/service";
+import { getItemDetail, LIBRARY_CATEGORIES, listItems, listLibrary } from "@/modules/content/service";
+import { listCycles } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { getItemReview, isLocked } from "@/modules/review/service";
 import {
   addCommentAction,
   addLinkAction,
+  duplicateItemAction,
   attachLibraryItemAction,
   removeAssetAction,
   saveVersionAction,
@@ -28,7 +31,7 @@ import {
   uploadAssetAction,
 } from "./actions";
 import { AiSection } from "./ai-section";
-import { ReviewSection } from "./review-section";
+import { NEXT_STEP, ReviewSection, SOLO_DRAFT_STEP } from "./review-section";
 
 import type { Metadata } from "next";
 import { itemTitle } from "@/lib/page-title";
@@ -43,11 +46,13 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
   const ctx = await projectContextForPage(projectId);
   const { item, current, currentAssets, versions, comments } = await orNotFound(getItemDetail(ctx, itemId));
   if (item.cyclePeriod !== period) notFound();
-  const [project, channels, review, library] = await Promise.all([
+  const [project, channels, review, library, siblings, cycles] = await Promise.all([
     getProject(ctx),
     listChannels(ctx),
     getItemReview(ctx, item.id),
     listLibrary(ctx),
+    listItems(ctx, item.cycleId),
+    listCycles(ctx),
   ]);
 
   const tz = project.timezone;
@@ -59,6 +64,45 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
   const editVoidsApproval = ["in_review", "awaiting_client", "approved"].includes(review.status);
   const canComment = hasPermission(ctx, "comment.write") && item.cycleStatus !== "closed";
   const isEmail = item.channelKind === "email";
+  const at = siblings.findIndex((s) => s.id === item.id);
+  const prev = siblings[at - 1];
+  const next = siblings[at + 1];
+  const openCycles = cycles.filter((c) => c.status !== "closed");
+  const canDuplicate = hasPermission(ctx, "content.write") && !ctx.projectArchived && openCycles.length > 0;
+  const channel = channels.find((c) => c.id === item.channelId);
+  const mailerLiteText =
+    review.status === "approved" && isEmail && current
+      ? buildMailerLiteHandoff({
+          brand: project.clientName,
+          channelName: item.channelName,
+          handle: channel?.handle ?? null,
+          title: item.title,
+          plannedAt: item.plannedAt,
+          timeZone: tz,
+          versionNo: current.versionNo,
+          subject: current.emailSubject,
+          preheader: current.emailPreheader,
+          body: current.body,
+          linkUrl: current.linkUrl,
+        })
+      : null;
+  // «Qué toca ahora»: el paso siguiente y dónde se da.
+  const nowStep =
+    cancelled || review.status === "published"
+      ? null
+      : {
+          text: review.soloMode && review.status === "draft" ? SOLO_DRAFT_STEP : NEXT_STEP[review.status],
+          href: ["idea", "changes_requested"].includes(review.status)
+            ? "#contenido-pieza"
+            : review.status === "approved"
+              ? "#programar"
+              : "#revision",
+          label: ["idea", "changes_requested"].includes(review.status)
+            ? "Ir al contenido"
+            : review.status === "approved"
+              ? "Ir a programar"
+              : "Ir a revisión y publicación",
+        };
   const metricoolText =
     review.status === "approved" && !isEmail && current
       ? buildMetricoolHandoff({
@@ -95,7 +139,40 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
           <span className="badge">{current ? `Versión ${current.versionNo}` : "Sin versiones"}</span>
           {item.aiGenerationId && <span className="badge-ai">Propuesta por IA en el calendario</span>}
         </div>
+        {(prev || next) && (
+          <nav aria-label="Otras piezas del mes" className="mt-3 flex flex-wrap justify-between gap-2 text-sm">
+            {prev ? (
+              <Link href={`${cycleUrl}/piezas/${prev.id}`} className="link min-w-0 truncate text-muted">
+                <span aria-hidden="true">‹</span> Anterior: {prev.title}
+              </Link>
+            ) : (
+              <span />
+            )}
+            {next && (
+              <Link href={`${cycleUrl}/piezas/${next.id}`} className="link min-w-0 truncate text-muted">
+                Siguiente: {next.title} <span aria-hidden="true">›</span>
+              </Link>
+            )}
+          </nav>
+        )}
       </div>
+
+      {nowStep && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent-ink">
+          <p>
+            <strong>Qué toca ahora:</strong> {nowStep.text}
+            {!["approved", "scheduled"].includes(review.status) && (
+              <span className="block opacity-80">
+                Cuando esté aprobada, aquí mismo tendrás el texto para llevarla a {isEmail ? "MailerLite" : "Metricool"}{" "}
+                con Claude.
+              </span>
+            )}
+          </p>
+          <a href={nowStep.href} className="btn btn-secondary">
+            {nowStep.label}
+          </a>
+        </div>
+      )}
 
       <ReviewSection
         ctx={ctx}
@@ -108,19 +185,29 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
       />
 
       {metricoolText && (
-        <section id="metricool" className="card flex scroll-mt-20 flex-col gap-3">
-          <h2 className="h2">Llevar a Metricool con Claude</h2>
-          <p className="text-sm">
-            Copia este mensaje y pégalo en un chat de Claude que tenga activado el conector de Metricool. Claude dejará
-            la publicación en Metricool como pendiente de revisión. Revísala, añade las imágenes o vídeos, prográmala tú
-            allí y después registra aquí la programación.
-          </p>
-          <pre className="tile max-h-64 overflow-auto text-xs whitespace-pre-wrap">{metricoolText}</pre>
-          <CopyButton text={metricoolText} label="Copiar para Metricool" />
-        </section>
+        <ClaudeHandoff
+          id="programar"
+          title="Programar en Metricool"
+          intro="Claude deja la publicación en Metricool como pendiente de revisión; nunca la publica."
+          connector="Metricool"
+          after="Revísala en Metricool, añade las imágenes o vídeos, prográmala allí y registra aquí la programación."
+          text={metricoolText}
+          copyLabel="Copiar para Metricool"
+        />
+      )}
+      {mailerLiteText && (
+        <ClaudeHandoff
+          id="programar"
+          title="Preparar en MailerLite"
+          intro="Claude deja la campaña como borrador en MailerLite; nunca la programa ni la envía."
+          connector="MailerLite"
+          after="Revisa el borrador en MailerLite, elige los destinatarios, prográmalo o envíalo allí y registra aquí lo que hayas hecho."
+          text={mailerLiteText}
+          copyLabel="Copiar para MailerLite"
+        />
       )}
 
-      <section className="card flex flex-col gap-3">
+      <section id="contenido-pieza" className="card flex scroll-mt-20 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="h2">Contenido {current && <span className="text-muted">· v{current.versionNo}</span>}</h2>
           {versions.length > 0 && (
@@ -210,6 +297,7 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
                   <ActionForm
                     action={removeAssetAction.bind(null, projectId, item.id, a.id)}
                     submitLabel="Quitar"
+                    confirm="¿Quitarlo de la pieza? Se guarda una versión nueva sin él."
                     variant="danger"
                   >
                     {null}
@@ -353,6 +441,26 @@ export default async function ItemPage({ params }: PageProps<"/p/[projectId]/cic
             variant={cancelled ? "secondary" : "danger"}
           >
             {null}
+          </ActionForm>
+        </CollapsibleCard>
+      )}
+
+      {canDuplicate && (
+        <CollapsibleCard title="Duplicar pieza" hint="Una copia con el mismo canal, formato, texto y archivos, en borrador.">
+          <p className="text-sm text-muted">
+            La copia nace sin aprobaciones: hay que revisarla como cualquier otra. En otro mes queda sin fecha.
+          </p>
+          <ActionForm action={duplicateItemAction.bind(null, projectId, item.id)} submitLabel="Duplicar">
+            <label className="field">
+              Mes de la copia
+              <select name="cycle" className="input" defaultValue={`${item.cycleId}|${period}`}>
+                {openCycles.map((c) => (
+                  <option key={c.id} value={`${c.id}|${c.period}`}>
+                    {formatPeriod(c.period, project.locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </ActionForm>
         </CollapsibleCard>
       )}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, max, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
   assetFiles,
@@ -61,6 +61,19 @@ export async function listItemsForCycle(ctx: ProjectContext, cycleId: string) {
     .leftJoin(latest, eq(latest.itemId, contentItems.id))
     .where(and(eq(contentItems.projectId, ctx.projectId), eq(contentItems.cycleId, cycleId)))
     .orderBy(sql`${contentItems.plannedAt} ASC NULLS LAST`, asc(contentItems.createdAt));
+}
+
+/** Piezas del proyecto cuyo título contiene el texto (sin distinguir mayúsculas), las más recientes primero. */
+export async function searchItems(ctx: ProjectContext, text: string, limit: number) {
+  const pattern = `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  return getDb()
+    .select(itemColumns)
+    .from(contentItems)
+    .innerJoin(channels, and(eq(channels.projectId, contentItems.projectId), eq(channels.id, contentItems.channelId)))
+    .innerJoin(cycles, and(eq(cycles.projectId, contentItems.projectId), eq(cycles.id, contentItems.cycleId)))
+    .where(and(eq(contentItems.projectId, ctx.projectId), ilike(contentItems.title, pattern)))
+    .orderBy(desc(cycles.period), sql`${contentItems.plannedAt} ASC NULLS LAST`)
+    .limit(limit);
 }
 
 export async function findItem(ctx: ProjectContext, itemId: string) {

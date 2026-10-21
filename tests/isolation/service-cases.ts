@@ -271,6 +271,16 @@ export const SERVICE_CASES: Record<string, ServiceCase> = {
     foreign: (ctx, fx) =>
       content.updateItem(ctx, { itemId: fx.contentB.item.id, channelId: fx.channelA.id, format: "post", title: "X" }),
   },
+  "content.duplicateItem": {
+    kind: "project",
+    own: (ctx, fx) => content.duplicateItem(ctx, { itemId: fx.contentA.item.id, cycleId: fx.contentA.cycle.id }),
+    foreign: (ctx, fx) => content.duplicateItem(ctx, { itemId: fx.contentB.item.id, cycleId: fx.contentA.cycle.id }),
+  },
+  "content.searchItems": {
+    kind: "project",
+    own: (ctx) => content.searchItems(ctx, { query: "pieza" }),
+    foreign: { none: "No recibe IDs: busca solo en el proyecto del contexto" },
+  },
   "content.setItemCancelled": {
     kind: "project",
     own: (ctx, fx) => content.setItemCancelled(ctx, { itemId: fx.contentA.item.id, cancelled: true }),

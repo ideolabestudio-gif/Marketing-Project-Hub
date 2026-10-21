@@ -77,7 +77,7 @@ export async function ReportAiSection({
             Escríbele esto en un chat (puedes añadir indicaciones). El borrador aparecerá aquí al recargar la página.
           </p>
           <p className="rounded-md bg-surface-muted px-3 py-2">{request}</p>
-          <CopyButton text={request} label="Copiar petición" />
+          <CopyButton text={request} label="Copiar petición para Claude" />
         </div>
       )}
 
@@ -129,6 +129,7 @@ export async function ReportAiSection({
           <ActionForm
             action={resolveGenerationAction.bind(null, projectId, g.id, "discarded")}
             submitLabel="Descartar"
+            confirm="¿Descartar esta lectura?"
             variant="secondary"
           >
             {null}

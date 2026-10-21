@@ -207,7 +207,31 @@ export default async function MetricsPage({ params }: PageProps<"/p/[projectId]/
                 </span>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            {/* En el móvil, una ficha por métrica en vez de una tabla que obliga a desplazarse. */}
+            <ul className="flex flex-col divide-y divide-border sm:hidden">
+              {defs.map((d) => {
+                const v = current(d.key);
+                return (
+                  <li key={d.key} className="flex flex-col gap-0.5 py-2">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span>{d.label}</span>
+                      <span className={`tabular-nums ${v ? "font-medium" : "text-muted"}`}>
+                        {formatMetric(v ? v.value : null, d.unit)}
+                      </span>
+                    </div>
+                    {v && (
+                      <span className="text-xs text-muted">
+                        {SOURCE_LABELS[v.source]}
+                        {v.sourceDetail && ` · ${v.sourceDetail}`} · {v.capturedByName} ·{" "}
+                        {formatInZone(v.capturedAt, tz)}
+                        {v.note && ` · Motivo: ${v.note}`}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
               <table className="table min-w-[560px]">
                 <thead>
                   <tr>

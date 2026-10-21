@@ -1,3 +1,4 @@
+import { CopyButton } from "@/components/copy-button";
 import { formatInZone } from "@/lib/time";
 import { requireActor } from "@/modules/identity/next";
 import { oauthUrls } from "@/modules/oauth/config";
@@ -24,6 +25,7 @@ export default async function ConnectionsPage() {
           En claude.ai, abre Ajustes › Conectores › Añadir conector personalizado y pega esta dirección:
         </p>
         <code className="tile break-all p-2">{oauthUrls().resource}</code>
+        <CopyButton text={oauthUrls().resource} label="Copiar la dirección" />
         <p className="text-muted">
           Claude solo verá los proyectos de los que eres miembro y solo podrá dejar borradores: nada se aprueba,
           publica ni envía desde Claude.
