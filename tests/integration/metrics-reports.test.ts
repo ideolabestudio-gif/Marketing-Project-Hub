@@ -142,6 +142,7 @@ describe("importación CSV genérica", () => {
     expect(suggested["social.reach"]).toBe(1);
     expect(suggested["social.followers"]).toBe(2);
     expect(suggested["social.impressions"]).toBeNull();
+    expect(preview.looksLikeKind).toBeNull();
 
     await applyMetricImport(ctx, {
       importId: fx.metricsA.csvImport.id,
@@ -199,6 +200,13 @@ describe("importación CSV genérica", () => {
     });
     // Solo métricas de tienda: el promedio diario no tiene métrica (no se calcula ni se suma).
     expect(preview.suggestions.every((s) => s.definition.kind === "shop")).toBe(true);
+    expect(preview.looksLikeKind).toBeNull();
+
+    // El mismo archivo subido por error al canal de Instagram: se avisa de que parece de la tienda.
+    const wrong = await uploadMetricCsv(ctx, { cycleId: cycleA(), channelId: channelA(), filename: "report.csv", text });
+    const wrongPreview = await getMetricImport(ctx, wrong.id);
+    expect(wrongPreview.suggestions.every((s) => s.column === null)).toBe(true);
+    expect(wrongPreview.looksLikeKind).toBe("shop");
 
     await applyMetricImport(ctx, {
       importId: imp.id,

@@ -4,6 +4,7 @@ import { ActionForm } from "@/components/action-form";
 import { orNotFound, projectContextForPage } from "@/lib/project-page";
 import { formatInZone } from "@/lib/time";
 import { hasPermission } from "@/modules/access/context";
+import { CHANNEL_KIND_LABELS } from "@/modules/content/formats";
 import { AGGREGATIONS, NUMBER_FORMAT_LABELS, NUMBER_FORMATS } from "@/modules/metrics/csv";
 import { getMetricImport } from "@/modules/metrics/service";
 import { getCycleByPeriod } from "@/modules/cycles/service";
@@ -78,6 +79,13 @@ export default async function ImportPage({
             «última fila» para seguidores). Deja «—» en las métricas que el archivo no trae: quedarán «sin dato». Las
             propuestas se basan solo en el nombre de la columna; revísalas.
           </p>
+          {data.looksLikeKind && (
+            <p className="notice" role="alert">
+              Ninguna columna encaja con el canal «{data.channel.displayName}» ({CHANNEL_KIND_LABELS[data.channel.kind]
+                .toLowerCase()}), pero sí con un canal de tipo «{CHANNEL_KIND_LABELS[data.looksLikeKind]}». Si te equivocaste
+              de canal, descarta esta importación (abajo) y vuelve a subir el archivo eligiendo el canal correcto.
+            </p>
+          )}
           <ActionForm
             action={applyImportAction.bind(
               null,
