@@ -278,18 +278,32 @@ export async function getMetricImport(ctx: ProjectContext, importId: string) {
   const csv = parseCsv(imp.rawCsv);
   const channel = (await listChannels(ctx)).find((c) => c.id === imp.channelId);
   if (!channel) throw new NotFoundError();
-  const definitions = (await repo.listDefinitions({ activeOnly: true })).filter((d) => d.kind === channel.kind);
+  const catalog = await repo.listDefinitions({ activeOnly: true });
+  const definitions = catalog.filter((d) => d.kind === channel.kind);
+  const suggestions = definitions.map((d) => ({
+    definition: d,
+    column: suggestColumn(d, csv.headers),
+    aggregation: d.defaultAggregation,
+  }));
+  // Si ninguna columna encaja con este canal pero sí con otro tipo (p. ej. un CSV de la
+  // tienda subido a Instagram), se avisa: lo más probable es que se eligiera mal el canal.
+  let looksLikeKind: ChannelKind | null = null;
+  if (suggestions.every((s) => s.column === null)) {
+    let best = 0;
+    for (const kind of new Set(catalog.map((d) => d.kind))) {
+      if (kind === channel.kind) continue;
+      const matches = catalog.filter((d) => d.kind === kind && suggestColumn(d, csv.headers) !== null).length;
+      if (matches >= 2 && matches > best) [best, looksLikeKind] = [matches, kind];
+    }
+  }
   return {
     import: { ...imp, rawCsv: undefined },
     channel,
     headers: csv.headers,
     previewRows: csv.rows.slice(0, 8),
     suggestedFormat: guessNumberFormat(csv),
-    suggestions: definitions.map((d) => ({
-      definition: d,
-      column: suggestColumn(d, csv.headers),
-      aggregation: d.defaultAggregation,
-    })),
+    suggestions,
+    looksLikeKind,
     aggregationLabels: AGGREGATION_LABELS,
   };
 }
