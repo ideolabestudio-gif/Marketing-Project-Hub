@@ -6,6 +6,7 @@ import { authorize, hasPermission, requireProjectAccess, type ProjectContext } f
 import { listMyProjects } from "@/modules/access/service";
 import { recordAudit } from "@/modules/audit/service";
 import type { ChannelKind } from "@/modules/content/formats";
+import { prepareFileAsset } from "@/modules/content/file-asset";
 import { assertCycleWritable, getCycle, listCycles } from "@/modules/cycles/service";
 import type { Actor } from "@/modules/identity/actor";
 import {
@@ -235,10 +236,17 @@ const clientSchema = z.object({
   comment: commentSchema,
 });
 
-/** Registra la respuesta del cliente (que no entra en el Hub) con su evidencia. */
-export async function recordClientDecision(ctx: ProjectContext, input: z.input<typeof clientSchema>) {
+/**
+ * Registra la respuesta del cliente (que no entra en el Hub) con su evidencia. Opcionalmente
+ * con un archivo (captura o PDF del email), que se guarda inmutable junto a la decisión.
+ */
+export async function recordClientDecision(
+  ctx: ProjectContext,
+  input: z.input<typeof clientSchema> & { evidenceFile?: { filename: string; bytes: Uint8Array } | null },
+) {
   await authorize(ctx, "approval.client.record");
   const data = parseInput(clientSchema, input);
+  const evidenceAsset = input.evidenceFile ? prepareFileAsset(ctx.projectId, input.evidenceFile) : undefined;
   const state = await computeItemState(ctx, data.itemId);
   await assertWritableCycle(ctx, state.item.cycleId);
   const latest = assertLatest(state, data.versionId);
@@ -254,8 +262,12 @@ export async function recordClientDecision(ctx: ProjectContext, input: z.input<t
     clientApproverName: data.approverName,
     evidence: data.evidence,
     comment: data.comment,
+  }, evidenceAsset);
+  await audit(ctx, `review.client_${data.decision}`, row.id, {
+    itemId: state.item.id,
+    versionNo: latest.versionNo,
+    ...(evidenceAsset && { evidenceAssetId: evidenceAsset.id }),
   });
-  await audit(ctx, `review.client_${data.decision}`, row.id, { itemId: state.item.id, versionNo: latest.versionNo });
 }
 
 // ---------------------------------------------------------------------------

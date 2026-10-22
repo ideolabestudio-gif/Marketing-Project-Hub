@@ -5,6 +5,7 @@ import { isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
 import { recordAudit } from "@/modules/audit/service";
 import type { ChannelKind } from "@/modules/content/formats";
+import { getItemDetail } from "@/modules/content/service";
 import { assertCycleWritable, getCycle, listCycles } from "@/modules/cycles/service";
 import { assertAdmin, type Actor } from "@/modules/identity/actor";
 import { listChannels } from "@/modules/projects/service";
@@ -178,6 +179,71 @@ export async function recordMetricValue(ctx: ProjectContext, input: z.input<type
     entityType: "metric_value",
     entityId: row.id,
     data: { metricKey: def.key, channelId: channel.id, value },
+  });
+  return row;
+}
+
+// ---------------------------------------------------------------------------
+// Métricas de una publicación concreta (alcance de un post, aperturas de un email…)
+// ---------------------------------------------------------------------------
+
+/** Métricas registradas para una pieza: vigentes e historial, y las que se pueden registrar. */
+export async function getItemMetrics(ctx: ProjectContext, itemId: string) {
+  await authorize(ctx, "project.read");
+  const { item } = await getItemDetail(ctx, itemId);
+  const [values, definitions] = await Promise.all([repo.listValuesForCycle(ctx, item.cycleId), repo.listDefinitions()]);
+  const own = values
+    .filter((v) => v.value.contentItemId === item.id)
+    .map((v) => ({ ...v.value, isCurrent: v.isCurrent, capturedByName: v.capturedByName ?? v.capturedByEmail }));
+  return {
+    definitions: definitions.filter(
+      (d) => d.kind === item.channelKind && (d.isActive || own.some((v) => v.metricKey === d.key)),
+    ),
+    values: own,
+  };
+}
+
+const itemValueSchema = manualSchema.omit({ cycleId: true, channelId: true }).extend({ itemId: z.string() });
+
+/**
+ * Registra a mano una métrica de la publicación (la cifra que da Metricool o MailerLite
+ * para ese post o email). Corregir exige motivo y deja el valor anterior en el historial.
+ */
+export async function recordItemMetricValue(ctx: ProjectContext, input: z.input<typeof itemValueSchema>) {
+  await authorize(ctx, "metrics.write");
+  const data = parseInput(itemValueSchema, input);
+  const { item } = await getItemDetail(ctx, data.itemId);
+  const { cycle, channel } = await loadWritableChannel(ctx, item.cycleId, item.channelId);
+  const def = await loadDefinitionFor(channel.kind, data.metricKey);
+  const value = parseNumber(data.value, data.numberFormat);
+  if (value === null || Number.isNaN(value)) throw new ValidationError("El valor no es un número");
+  if (def.unit === "percent" && (value < 0 || value > 100)) throw new ValidationError("Un porcentaje va de 0 a 100");
+
+  const existing = (await repo.listValuesForCycle(ctx, cycle.id)).find(
+    (v) => v.isCurrent && v.value.contentItemId === item.id && v.value.metricKey === def.key,
+  );
+  if (existing && !data.note) throw new ValidationError("Ya hay un valor: indica el motivo de la corrección");
+
+  const [row] = await repo.insertValues(ctx, [
+    {
+      cycleId: cycle.id,
+      channelId: channel.id,
+      contentItemId: item.id,
+      metricKey: def.key,
+      value,
+      source: "manual",
+      importId: null,
+      sourceDetail: null,
+      note: data.note,
+    },
+  ]);
+  await recordAudit({
+    action: row.supersedesId ? "metric_value.corrected" : "metric_value.recorded",
+    actorId: ctx.actor.userId,
+    projectId: ctx.projectId,
+    entityType: "metric_value",
+    entityId: row.id,
+    data: { metricKey: def.key, channelId: channel.id, itemId: item.id, value },
   });
   return row;
 }

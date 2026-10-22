@@ -148,6 +148,13 @@
       "when": 1792567480501,
       "tag": "0020_shop_metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792574450927,
+      "tag": "0021_client_evidence_file",
+      "breakpoints": true
     }
   ]
 }

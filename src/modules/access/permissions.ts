@@ -19,6 +19,8 @@ export const PERMISSIONS = [
   "report.approve",
   "integration.manage",
   "comment.write",
+  "project.activity",
+  "project.export",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -38,7 +40,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
 };
 
 /** Permisos que siguen disponibles cuando el proyecto está archivado. */
-export const READ_ONLY_PERMISSIONS: readonly Permission[] = ["project.read"];
+export const READ_ONLY_PERMISSIONS: readonly Permission[] = ["project.read", "project.activity", "project.export"];
 
 export function can(role: Role, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role].includes(permission);

@@ -8,10 +8,11 @@ type Props = {
   /** Mes al que lleva la pestaña del mes (el en curso o, si no existe, el último abierto). */
   month: { period: string; label: string } | null;
   canSettings: boolean;
+  canActivity: boolean;
 };
 
 /** Pestañas del proyecto, iguales en todas sus páginas. */
-export function ProjectNav({ base, month, canSettings }: Props) {
+export function ProjectNav({ base, month, canSettings, canActivity }: Props) {
   const pathname = usePathname();
   const tabs = [
     { href: base, label: "Resumen", active: pathname === base },
@@ -19,6 +20,7 @@ export function ProjectNav({ base, month, canSettings }: Props) {
       ? [{ href: `${base}/ciclos/${month.period}`, label: month.label, active: pathname.startsWith(`${base}/ciclos/${month.period}`) }]
       : []),
     { href: `${base}/ficha`, label: "Ficha del cliente", active: pathname.startsWith(`${base}/ficha`) },
+    ...(canActivity ? [{ href: `${base}/actividad`, label: "Actividad", active: pathname.startsWith(`${base}/actividad`) }] : []),
     ...(canSettings ? [{ href: `${base}/ajustes`, label: "Ajustes", active: pathname.startsWith(`${base}/ajustes`) }] : []),
   ];
   return (

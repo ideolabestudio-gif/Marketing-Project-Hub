@@ -238,7 +238,7 @@ describe("importación CSV genérica", () => {
       }),
     ).rejects.toThrow(/no es un número/);
     const { values, imports } = await getCycleMetrics(ctx, cycleA());
-    expect(values.some((v) => v.metricKey === "social.reach")).toBe(false);
+    expect(values.some((v) => v.metricKey === "social.reach" && !v.contentItemId)).toBe(false);
     expect(imports.find((i) => i.id === fx.metricsA.csvImport.id)!.status).toBe("pending");
   });
 

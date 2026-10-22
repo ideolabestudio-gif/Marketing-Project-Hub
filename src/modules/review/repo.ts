@@ -1,10 +1,12 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { insertAsset, type NewAsset } from "@/lib/db/assets";
 import { getDb } from "@/lib/db/client";
-import { approvals, channels, contentItems, contentVersions, cycles, projects, publications, users } from "@/lib/db/schema";
+import { approvals, assets, channels, contentItems, contentVersions, cycles, projects, publications, users } from "@/lib/db/schema";
 import type { ProjectContext } from "@/modules/access/context";
 
 // Lee content_items/content_versions/cycles/projects con JOIN (solo lectura).
-// Solo escribe en approvals y publications, sus tablas.
+// Solo escribe en approvals y publications, sus tablas (y, con la evidencia del
+// cliente, en assets mediante lib/db/assets, en la misma transacción).
 
 export type ApprovalRow = typeof approvals.$inferSelect;
 export type PublicationRow = typeof publications.$inferSelect;
@@ -59,6 +61,8 @@ export async function listApprovalsForItem(ctx: ProjectContext, itemId: string) 
       decision: approvals.decision,
       clientApproverName: approvals.clientApproverName,
       evidence: approvals.evidence,
+      evidenceAssetId: approvals.evidenceAssetId,
+      evidenceFilename: assets.filename,
       comment: approvals.comment,
       createdAt: approvals.createdAt,
       actorEmail: users.email,
@@ -70,6 +74,7 @@ export async function listApprovalsForItem(ctx: ProjectContext, itemId: string) 
       and(eq(contentVersions.projectId, approvals.projectId), eq(contentVersions.id, approvals.contentVersionId)),
     )
     .innerJoin(users, eq(users.id, approvals.decidedBy))
+    .leftJoin(assets, and(eq(assets.projectId, approvals.projectId), eq(assets.id, approvals.evidenceAssetId)))
     .where(and(eq(approvals.projectId, ctx.projectId), eq(approvals.contentItemId, itemId)))
     .orderBy(asc(approvals.createdAt));
 }
@@ -116,18 +121,28 @@ export async function findPublication(ctx: ProjectContext, publicationId: string
   return row;
 }
 
+/** Inserta la aprobación y, si hay, el archivo de evidencia en la misma transacción. */
 export async function insertApproval(
   ctx: ProjectContext,
   values: Pick<
     ApprovalRow,
     "contentItemId" | "contentVersionId" | "stage" | "decision" | "clientApproverName" | "evidence" | "comment"
   >,
+  evidenceAsset?: NewAsset,
 ): Promise<ApprovalRow> {
-  const [row] = await getDb()
-    .insert(approvals)
-    .values({ ...values, projectId: ctx.projectId, decidedBy: ctx.actor.userId })
-    .returning();
-  return row;
+  return getDb().transaction(async (tx) => {
+    if (evidenceAsset) await insertAsset(tx, { projectId: ctx.projectId, userId: ctx.actor.userId }, evidenceAsset);
+    const [row] = await tx
+      .insert(approvals)
+      .values({
+        ...values,
+        evidenceAssetId: evidenceAsset?.id ?? null,
+        projectId: ctx.projectId,
+        decidedBy: ctx.actor.userId,
+      })
+      .returning();
+    return row;
+  });
 }
 
 export async function insertPublication(

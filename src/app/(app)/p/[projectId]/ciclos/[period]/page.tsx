@@ -67,7 +67,7 @@ export default async function CyclePage({ params, searchParams }: PageProps<"/p/
   const steps = cycleProgress({
     briefFilled: !briefEmpty,
     statuses: items.map((item) => statusOf(item.id)),
-    hasMetrics: metrics.values.some((v) => v.isCurrent),
+    hasMetrics: metrics.values.some((v) => v.isCurrent && !v.contentItemId),
     report: !report ? "none" : reportApproved ? "approved" : "draft",
     closed,
   });

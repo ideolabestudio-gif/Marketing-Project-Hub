@@ -215,6 +215,20 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         </table>
       </section>
 
+      {hasPermission(ctx, "project.export") && (
+        <section className="card flex flex-col gap-2" aria-labelledby="exportar-titulo">
+          <h2 id="exportar-titulo" className="h2">
+            Descargar el proyecto
+          </h2>
+          <p className="text-sm text-muted">
+            Una copia completa en un ZIP: textos de cada pieza y sus versiones, archivos, briefs, métricas, informes,
+            ficha del cliente y la actividad. Útil al terminar con un cliente (antes o después de archivarlo).
+          </p>
+          <a href={`/p/${projectId}/exportar`} className="btn btn-secondary self-start" download>
+            Descargar ZIP
+          </a>
+        </section>
+      )}
     </div>
   );
 }

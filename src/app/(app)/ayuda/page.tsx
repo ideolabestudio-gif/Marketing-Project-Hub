@@ -263,7 +263,8 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           </li>
           <li>
             <strong>Aprobar</strong>: «Enviar vN a revisión» y un revisor registra su decisión. Si el proyecto lo exige,
-            registras la respuesta del cliente con quién respondió y la evidencia.
+            registras la respuesta del cliente con quién respondió y la evidencia (un texto y, si quieres, la captura o
+            el PDF del email, que queda guardado con la decisión).
           </li>
           <li>
             <strong>Programar</strong>: en una pieza de redes aprobada, <em>Programar en Metricool</em> → «Copiar para
@@ -273,6 +274,11 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           </li>
           <li>
             <strong>Registrar</strong>: «La he programado» o «Ya está publicada», y «Confirmar publicación» cuando salga.
+          </li>
+          <li>
+            <strong>Medir</strong>: en una pieza programada o publicada, <em>Métricas de la publicación</em> guarda las
+            cifras de ese post o email (alcance, interacciones, aperturas…) que veas en Metricool o MailerLite. Se ven
+            también en Métricas del mes, en «Por publicación», y no cambian las cifras del canal.
           </li>
         </ol>
         <p>
@@ -369,6 +375,30 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
             <strong>Entregar.</strong> «Ver para imprimir / PDF» y guárdalo como PDF desde el navegador.
           </li>
         </ol>
+      </>
+    ),
+  },
+  {
+    id: "actividad",
+    title: "Actividad y copia del proyecto",
+    body: (
+      <>
+        <p>Solo la responsable de cuenta, también con el proyecto archivado:</p>
+        <ul>
+          <li>
+            <strong>Actividad</strong> (pestaña del proyecto): quién hizo qué y cuándo, de lo más reciente a lo más
+            antiguo. Se puede filtrar por piezas, revisión, publicación, meses, métricas, informes, Claude, proyecto y
+            accesos denegados (estos solo salen en su filtro); cada línea enlaza a su pieza o a su mes. Sale del registro
+            de auditoría, que no se puede
+            modificar.
+          </li>
+          <li>
+            <strong>Descargar el proyecto</strong> (al final del Resumen): un ZIP con el texto de cada versión de cada
+            pieza, sus archivos y evidencias, el brief y el informe de cada mes, las métricas en CSV (con sus
+            correcciones), los CSV originales importados, la ficha del cliente, la biblioteca, la actividad y todos los
+            datos en JSON. Pensado para cuando se termina con un cliente: descargar y después archivar.
+          </li>
+        </ul>
       </>
     ),
   },

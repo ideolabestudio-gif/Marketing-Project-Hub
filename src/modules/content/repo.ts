@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, ilike, max, sql } from "drizzle-orm";
+import { insertAsset, type NewAsset } from "@/lib/db/assets";
 import { getDb } from "@/lib/db/client";
 import {
   assetFiles,
@@ -169,17 +170,7 @@ export async function findAsset(ctx: ProjectContext, assetId: string): Promise<A
   return row;
 }
 
-export type NewAsset = Pick<AssetRow, "id" | "kind" | "storageKey" | "url" | "filename" | "mimeType" | "sizeBytes" | "sha256"> & {
-  /** Contenido del archivo (solo kind = file); se guarda en la misma transacción que el activo. */
-  bytes?: Uint8Array;
-};
-
-type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
-
-async function insertAsset(tx: Tx, ctx: ProjectContext, { bytes, ...asset }: NewAsset): Promise<void> {
-  await tx.insert(assets).values({ ...asset, projectId: ctx.projectId, uploadedBy: ctx.actor.userId });
-  if (bytes) await tx.insert(assetFiles).values({ projectId: ctx.projectId, assetId: asset.id, bytes });
-}
+export type { NewAsset };
 
 /** Contenido de un archivo guardado en la base de datos (undefined si es anterior a esa tabla). */
 export async function findAssetBytes(ctx: ProjectContext, assetId: string): Promise<Uint8Array | undefined> {
@@ -220,7 +211,7 @@ export async function createVersion(
 
     const assetIds = [...input.assetIds];
     if (input.newAsset) {
-      await insertAsset(tx, ctx, input.newAsset);
+      await insertAsset(tx, { projectId: ctx.projectId, userId: ctx.actor.userId }, input.newAsset);
       assetIds.push(input.newAsset.id);
     }
 
@@ -340,7 +331,7 @@ export async function insertLibraryItem(
   input: { asset: NewAsset } & Pick<LibraryItemRow, "category" | "title" | "description">,
 ): Promise<LibraryItemRow> {
   return getDb().transaction(async (tx) => {
-    await insertAsset(tx, ctx, input.asset);
+    await insertAsset(tx, { projectId: ctx.projectId, userId: ctx.actor.userId }, input.asset);
     const [row] = await tx
       .insert(libraryItems)
       .values({

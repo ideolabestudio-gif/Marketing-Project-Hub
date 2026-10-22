@@ -11,7 +11,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { contentItems, contentVersions } from "./content";
+import { assets, contentItems, contentVersions } from "./content";
 import { users } from "./identity";
 import { projects } from "./projects";
 
@@ -40,11 +40,19 @@ export const approvals = pgTable(
       .references(() => users.id),
     clientApproverName: text("client_approver_name"),
     evidence: text("evidence"),
+    /** Captura o PDF de la respuesta del cliente (opcional; solo en stage = client). */
+    evidenceAssetId: uuid("evidence_asset_id"),
     comment: text("comment"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     unique("approvals_project_id_id_uq").on(t.projectId, t.id),
+    foreignKey({
+      name: "approvals_evidence_asset_fk",
+      columns: [t.projectId, t.evidenceAssetId],
+      foreignColumns: [assets.projectId, assets.id],
+    }),
+    check("approvals_evidence_asset_ck", sql`${t.evidenceAssetId} IS NULL OR ${t.stage} = 'client'`),
     foreignKey({
       name: "approvals_item_fk",
       columns: [t.projectId, t.contentItemId],

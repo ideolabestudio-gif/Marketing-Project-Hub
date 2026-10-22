@@ -93,6 +93,8 @@ export async function currentChannelValues(ctx: ProjectContext, cycleIds: string
 export type NewValue = {
   cycleId: string;
   channelId: string;
+  /** Solo en métricas de una publicación concreta; null en las del canal en el mes. */
+  contentItemId?: string | null;
   metricKey: string;
   value: number;
   source: "manual" | "csv_import";
@@ -114,7 +116,10 @@ export async function insertValues(
   return getDb().transaction(async (tx) => {
     const inserted: ValueRow[] = [];
     for (const v of values) {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${v.cycleId}|${v.channelId}|${v.metricKey}`}))`);
+      const itemId = v.contentItemId ?? null;
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${`${v.cycleId}|${v.channelId}|${v.metricKey}|${itemId ?? ""}`}))`,
+      );
       const [current] = await tx
         .select({ id: metricValues.id })
         .from(metricValues)
@@ -124,7 +129,7 @@ export async function insertValues(
             eq(metricValues.cycleId, v.cycleId),
             eq(metricValues.channelId, v.channelId),
             eq(metricValues.metricKey, v.metricKey),
-            sql`${metricValues.contentItemId} IS NULL`,
+            itemId ? eq(metricValues.contentItemId, itemId) : sql`${metricValues.contentItemId} IS NULL`,
             sql`NOT EXISTS (SELECT 1 FROM metric_values s WHERE s.supersedes_id = ${metricValues.id})`,
           ),
         )

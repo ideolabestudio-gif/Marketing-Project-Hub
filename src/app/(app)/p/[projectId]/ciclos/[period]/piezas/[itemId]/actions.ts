@@ -16,6 +16,7 @@ import {
   updateItem,
   uploadAsset,
 } from "@/modules/content/service";
+import { recordItemMetricValue } from "@/modules/metrics/service";
 import {
   approveDirectly,
   cancelPublication,
@@ -182,6 +183,9 @@ export async function recordClientDecisionAction(
 ) {
   return runAction(async () => {
     const ctx = await projectContextForAction(projectId, "approval.client.record");
+    const file = formData.get("evidenceFile");
+    const evidenceFile =
+      file instanceof File && file.size > 0 ? { filename: file.name, bytes: new Uint8Array(await file.arrayBuffer()) } : null;
     await recordClientDecision(ctx, {
       itemId,
       versionId,
@@ -189,6 +193,7 @@ export async function recordClientDecisionAction(
       approverName: formString(formData, "approverName"),
       evidence: formString(formData, "evidence"),
       comment: formString(formData, "comment"),
+      evidenceFile,
     });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Respuesta del cliente registrada");
@@ -240,4 +245,18 @@ export async function cancelPublicationAction(
     await cancelPublication(ctx, { publicationId, reason: formString(formData, "reason") });
     revalidatePath(`/p/${projectId}`, "layout");
   }, "Programación cancelada");
+}
+
+export async function recordItemMetricAction(projectId: string, itemId: string, _: ActionState, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await projectContextForAction(projectId, "metrics.write");
+    await recordItemMetricValue(ctx, {
+      itemId,
+      metricKey: formString(formData, "metricKey"),
+      value: formString(formData, "value"),
+      numberFormat: formString(formData, "numberFormat") as never,
+      note: formString(formData, "note"),
+    });
+    revalidatePath(`/p/${projectId}`, "layout");
+  }, "Métrica registrada");
 }

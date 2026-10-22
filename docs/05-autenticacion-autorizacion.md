@@ -43,6 +43,8 @@ Dos niveles:
 | `report.approve` | ✔ | | ✔ | |
 | `integration.manage` | ✔ (y admin) | | | |
 | `comment.write` | ✔ | ✔ | ✔ | |
+| `project.activity` (ver la actividad del proyecto; también archivado) | ✔ | | | |
+| `project.export` (descargar el proyecto en un ZIP; también archivado) | ✔ | | | |
 
 Reglas adicionales independientes del rol:
 - **Separación de funciones**: quien crea una versión no puede darle la aprobación interna (configurable por proyecto; activado por defecto).

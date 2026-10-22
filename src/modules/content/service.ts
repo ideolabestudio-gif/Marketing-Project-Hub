@@ -1,8 +1,8 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { diffWords } from "diff";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
-import { assetStorageKey, getStorage } from "@/lib/storage";
+import { getStorage } from "@/lib/storage";
 import { periodOfWallTime, wallTimeToUtc } from "@/lib/time";
 import { isForeignKeyViolation, isUniqueViolation, isUuid, parseInput } from "@/lib/validation";
 import { authorize, type ProjectContext } from "@/modules/access/context";
@@ -10,7 +10,7 @@ import { recordAudit } from "@/modules/audit/service";
 import { assertCycleWritable, getCycle } from "@/modules/cycles/service";
 import { getProject, listChannels } from "@/modules/projects/service";
 import { assertContentEditable } from "@/modules/review/service";
-import { ALLOWED_DESCRIPTION, detectMimeType, MAX_UPLOAD_BYTES } from "./files";
+import { prepareFileAsset } from "./file-asset";
 import { isValidFormat } from "./formats";
 import * as repo from "./repo";
 
@@ -377,28 +377,8 @@ export async function saveVersion(ctx: ProjectContext, input: z.input<typeof ver
 
 const MAX_ASSETS_PER_VERSION = 20;
 
-/**
- * Valida el archivo (tamaño y tipo real por sus primeros bytes) y lo prepara para
- * guardarse en la base de datos junto con su fila, en la misma transacción.
- */
 async function storeFile(ctx: ProjectContext, input: { filename: string; bytes: Uint8Array }): Promise<repo.NewAsset> {
-  if (input.bytes.byteLength === 0) throw new ValidationError("El archivo está vacío");
-  if (input.bytes.byteLength > MAX_UPLOAD_BYTES) throw new ValidationError(`Archivo demasiado grande (${ALLOWED_DESCRIPTION})`);
-  const mimeType = detectMimeType(input.bytes);
-  if (!mimeType) throw new ValidationError(`Tipo de archivo no admitido (${ALLOWED_DESCRIPTION})`);
-  const assetId = randomUUID();
-  const storageKey = assetStorageKey(ctx.projectId, assetId);
-  return {
-    id: assetId,
-    kind: "file",
-    storageKey,
-    url: null,
-    filename: sanitizeFilename(input.filename),
-    mimeType,
-    sizeBytes: input.bytes.byteLength,
-    sha256: createHash("sha256").update(input.bytes).digest("hex"),
-    bytes: input.bytes,
-  };
+  return prepareFileAsset(ctx.projectId, input);
 }
 
 function linkAsset(url: string, label: string): repo.NewAsset {
@@ -563,12 +543,6 @@ export async function attachLibraryItem(ctx: ProjectContext, input: { itemId: st
     `Añadido de la biblioteca: ${entry.title}`,
     { action: "content_version.asset_added", data: { assetId: entry.asset.id, libraryItemId: entry.id } },
   );
-}
-
-function sanitizeFilename(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? "archivo";
-  const clean = base.replace(/[^\p{L}\p{N}._ -]/gu, "_").trim().slice(0, 150);
-  return clean || "archivo";
 }
 
 // ---------------------------------------------------------------------------
